@@ -963,12 +963,16 @@
       filename = trim(fname)
       INQUIRE( FILE=filename, EXIST=THERE )
       if (THERE) then
+#ifdef flang
+        inquire( file=filename, SIZE=size, IOSTAT=ierr )
+#else
         ierr = stat(filename, fstat)
         if (ierr .EQ. 0) then
           size = fstat(8)
         else
           size = 0
         end if
+#endif
       end if
     elseif((filesize(length:length)>='a'.AND.fsize(length:length)<='z').OR.(filesize(length:length)>='A' &
                 .AND.fsize(length:length)<='Z'))then
