@@ -239,15 +239,6 @@ module fms
   !> memutils
   use memutils_mod, only: memutils_init, print_memuse_stats
 
-  !> monin_obukhov
-  use monin_obukhov_mod, only: monin_obukhov_init, monin_obukhov_end, &
-                               mo_drag, mo_profile, mo_diff, stable_mix
-  use monin_obukhov_inter, only: monin_obukhov_diff, monin_obukhov_drag_1d, &
-                               monin_obukhov_solve_zeta, monin_obukhov_derivative_t, &
-                               monin_obukhov_derivative_m, monin_obukhov_profile_1d, &
-                               monin_obukhov_integral_m, monin_obukhov_integral_tq, &
-                               monin_obukhov_stable_mix
-
   !> mosaic
   use mosaic2_mod, only: get_mosaic_ntiles, get_mosaic_ncontacts, &
                       get_mosaic_grid_sizes, get_mosaic_contact, &
