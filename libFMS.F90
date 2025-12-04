@@ -376,12 +376,6 @@ module fms
   use random_numbers_mod, only: randomNumberStream, initializeRandomNumberStream, &
                                 getRandomNumbers, constructSeed
 
-  !> sat_vapor_pres
-  use sat_vapor_pres_mod, only: lookup_es, lookup_des, sat_vapor_pres_init, &
-                                lookup_es2, lookup_des2, lookup_es2_des2, &
-                                lookup_es3, lookup_des3, lookup_es3_des3, &
-                                lookup_es_des, compute_qs, compute_mrs, &
-                                escomp, descomp
   !> string_utils
   use fms_string_utils_mod, only: string, fms_array_to_pointer, fms_pointer_to_array, fms_sort_this, &
                                   fms_find_my_string, fms_find_unique, fms_c2f_string, fms_cstring2cpointer, &
