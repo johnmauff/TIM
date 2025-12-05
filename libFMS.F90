@@ -127,20 +127,6 @@ module fms
                            diag_send_complete_instant, DIAG_FIELD_NOT_FOUND, &
                            CMOR_MISSING_VALUE, null_axis_id
 
-  !> exchange
-  use xgrid_mod, only: xmap_type, setup_xmap, set_frac_area, put_to_xgrid, &
-                       get_from_xgrid, xgrid_count, some, conservation_check, &
-                       xgrid_init, AREA_ATM_SPHERE, AREA_OCN_SPHERE, AREA_ATM_MODEL, &
-                       AREA_OCN_MODEL, get_ocean_model_area_elements, grid_box_type, &
-                       get_xmap_grid_area, put_to_xgrid_ug, get_from_xgrid_ug, &
-                       set_frac_area_ug, FIRST_ORDER, SECOND_ORDER, stock_move_ug, &
-                       stock_move, stock_type, stock_print, get_index_range, &
-                       stock_integrate_2d
-  use stock_constants_mod, only: NELEMS, ISTOCK_WATER, ISTOCK_HEAT, ISTOCK_SALT, &
-                       ISTOCK_TOP, ISTOCK_BOTTOM, ISTOCK_SIDE, stocks_file, &
-                       stocks_report, stocks_report_init, stocks_set_init_time, &
-                       atm_stock, ocn_stock, lnd_stock, ice_stock
-
   !> field manager
   use field_manager_mod, only: field_manager_init, field_manager_end, find_field_index, &
                          get_field_info, &
