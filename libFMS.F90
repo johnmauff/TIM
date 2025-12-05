@@ -354,9 +354,6 @@ module fms
                               get_date_julian, get_date_no_leap, date_to_string
   use get_cal_time_mod, only: get_cal_time
 
-  !> tridiagonal
-  use tridiagonal_mod, only: tri_invert, close_tridiagonal
-
   implicit none
 
 #include <file_version.h>
