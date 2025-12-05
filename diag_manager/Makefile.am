@@ -34,6 +34,7 @@ libdiag_manager_la_SOURCES = \
   diag_axis.F90 \
   diag_data.F90 \
   diag_grid.F90 \
+  mppnccombine.c \
   diag_manager.F90 \
   diag_output.F90 \
   diag_table.F90 \
@@ -42,7 +43,7 @@ libdiag_manager_la_SOURCES = \
   fms_diag_outfield.F90 \
   fms_diag_elem_weight_procs.F90 \
   fms_diag_fieldbuff_update.F90 \
-		fms_diag_bbox.F90 \
+	fms_diag_bbox.F90 \
   include/fms_diag_fieldbuff_update.inc \
   include/fms_diag_fieldbuff_update.fh
 

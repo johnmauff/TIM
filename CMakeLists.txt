@@ -158,7 +158,6 @@ list(APPEND fms_fortran_src_files
   random_numbers/mersennetwister.F90
   random_numbers/random_numbers.F90
   string_utils/fms_string_utils.F90
-  time_interp/time_interp_external.F90
   time_interp/time_interp_external2.F90
   time_interp/time_interp.F90
   time_manager/get_cal_time.F90
@@ -168,6 +167,7 @@ list(APPEND fms_fortran_src_files
 
 # Collect FMS C source files
 list(APPEND fms_c_src_files
+  diag_manager/mppnccombine.c
   affinity/affinity.c
   mosaic/create_xgrid.c
   mosaic/gradient_c2l.c
