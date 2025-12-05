@@ -25,7 +25,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 # Make targets will be run in each subdirectory. Order is significant.
 SUBDIRS = coupler diag_manager data_override \
-mosaic fms mpp mpp_io time_interp time_manager \
+fms mpp mpp_io time_interp time_manager \
 horiz_interp field_manager axis_utils affinity fms2_io parser string_utils
 
 # testing utility scripts to distribute
