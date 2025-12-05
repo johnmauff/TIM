@@ -374,15 +374,6 @@ module fms
                             get_ocean_frac, get_ocean_mask, get_water_frac, &
                             get_water_mask
 
-  !> tracer_manager
-  use tracer_manager_mod, only: tracer_manager_init, tracer_manager_end, &
-                                check_if_prognostic, get_tracer_indices,  &
-                                get_tracer_index, get_tracer_names, &
-                                get_tracer_name, query_method, &
-                                set_tracer_atts, set_tracer_profile, &
-                                register_tracers, get_number_tracers,  &
-                                adjust_mass, adjust_positive_def, NO_TRACER, MAX_TRACER_FIELDS
-
   !> tridiagonal
   use tridiagonal_mod, only: tri_invert, close_tridiagonal
 
