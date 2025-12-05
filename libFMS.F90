@@ -64,11 +64,6 @@ module fms
   use fms_affinity_mod, only: fms_affinity_init, fms_affinity_get, &
                               fms_affinity_set
 
-  !> amip_interp
-  use amip_interp_mod, only: amip_interp_init, get_amip_sst, get_amip_ice, &
-                             amip_interp_new,amip_interp_del, amip_interp_type, &
-                             assignment(=), i_sst, j_sst, sst_ncep, sst_anom, &
-                             forecast_mode, use_ncep_sst
   !> astronomy
   use astronomy_mod, only: astronomy_init, get_period, set_period, &
                            set_orbital_parameters, get_orbital_parameters, &
@@ -84,12 +79,6 @@ module fms
   !>block_control
   use block_control_mod, only: block_control_type, define_blocks, &
                                define_blocks_packed
-
-  !> column_diagnostics
-  use column_diagnostics_mod, only: column_diagnostics_init, &
-                                    initialize_diagnostic_columns, &
-                                    column_diagnostics_header, &
-                                    close_column_diagnostics_units
 
   !> coupler
   use coupler_types_mod, only: coupler_types_init, coupler_type_copy, &
