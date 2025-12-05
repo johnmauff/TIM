@@ -108,11 +108,6 @@ module fms
   use data_override_mod, only: data_override_init, data_override, &
                                data_override_unset_domains, data_override_UG
 
-  !> diag_integral
-  use diag_integral_mod, only: diag_integral_init, diag_integral_field_init, &
-                               sum_diag_integral_field, diag_integral_output, &
-                               diag_integral_end
-
   !> diag_manager
   !! includes imports from submodules made public
   use diag_manager_mod, only: diag_manager_init, send_data, send_tile_averaged_data, &
