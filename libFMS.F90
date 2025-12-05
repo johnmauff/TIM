@@ -262,7 +262,6 @@ module fms
                      ptr_sync, mpp_from_pe, ptr_from, remote_Data_loc, &
                      ptr_remote, mpp_domains_stack, ptr_domains_stack, &
                      mpp_domains_stack_nonblock, ptr_domains_stack_nonblock
-  use mpp_utilities_mod, only: mpp_array_global_min_max
   use mpp_memutils_mod, only: mpp_print_memuse_stats, mpp_mem_dump, &
                      mpp_memuse_begin, mpp_memuse_end
   use mpp_efp_mod, only: mpp_reproducing_sum, mpp_efp_list_sum_across_PEs, &
