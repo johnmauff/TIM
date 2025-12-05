@@ -55,7 +55,7 @@ module FMSconstants
 
   use platform_mod, only: r4_kind, r8_kind
 
-#define CESM_CONSTANTS
+!!! #define CESM_CONSTANTS
 #if defined(CESM_CONSTANTS)
 use shr_kind_mod,   only : R8 => shr_kind_r8
 use shr_const_mod,  only : &

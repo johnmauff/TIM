@@ -101,22 +101,15 @@ endif ()
 # Collect FMS Fortran source files
 list(APPEND fms_fortran_src_files
   affinity/fms_affinity.F90
-  amip_interp/amip_interp.F90
   astronomy/astronomy.F90
-  axis_utils/axis_utils.F90
   axis_utils/axis_utils2.F90
-  block_control/block_control.F90
-  column_diagnostics/column_diagnostics.F90
   constants/constants.F90
   constants/fmsconstants.F90
-  constants4/constantsr4.F90
-  constants4/fmsconstantsr4.F90
   coupler/atmos_ocean_fluxes.F90
   coupler/coupler_types.F90
   coupler/ensemble_manager.F90
   data_override/get_grid_version.F90
   data_override/data_override.F90
-  diag_integral/diag_integral.F90
   diag_manager/diag_axis.F90
   diag_manager/diag_data.F90
   diag_manager/diag_grid.F90
@@ -129,15 +122,6 @@ list(APPEND fms_fortran_src_files
   diag_manager/fms_diag_elem_weight_procs.F90
   diag_manager/fms_diag_fieldbuff_update.F90
   diag_manager/fms_diag_bbox.F90
-  drifters/cloud_interpolator.F90
-  drifters/drifters.F90
-  drifters/drifters_comm.F90
-  drifters/drifters_core.F90
-  drifters/drifters_input.F90
-  drifters/drifters_io.F90
-  drifters/quicksort.F90
-  exchange/stock_constants.F90
-  exchange/xgrid.F90
   field_manager/field_manager.F90
   field_manager/fm_util.F90
   field_manager/fm_yaml.F90
@@ -155,10 +139,7 @@ list(APPEND fms_fortran_src_files
   horiz_interp/horiz_interp_spherical.F90
   horiz_interp/horiz_interp_type.F90
   horiz_interp/horiz_interp.F90
-  interpolator/interpolator.F90
   memutils/memutils.F90
-  monin_obukhov/monin_obukhov_inter.F90
-  monin_obukhov/monin_obukhov.F90
   mosaic/gradient.F90
   mosaic/grid.F90
   mosaic/mosaic.F90
@@ -171,24 +152,17 @@ list(APPEND fms_fortran_src_files
   mpp/mpp_io.F90
   mpp/mpp_memutils.F90
   mpp/mpp_parameter.F90
-  mpp/mpp_utilities.F90
   parser/yaml_parser.F90
   parser/fms_yaml_output.F90
   platform/platform.F90
   random_numbers/mersennetwister.F90
   random_numbers/random_numbers.F90
-  sat_vapor_pres/sat_vapor_pres_k.F90
-  sat_vapor_pres/sat_vapor_pres.F90
   string_utils/fms_string_utils.F90
   time_interp/time_interp_external.F90
   time_interp/time_interp_external2.F90
   time_interp/time_interp.F90
   time_manager/get_cal_time.F90
   time_manager/time_manager.F90
-  topography/gaussian_topog.F90
-  topography/topography.F90
-  tracer_manager/tracer_manager.F90
-  tridiagonal/tridiagonal.F90
   libFMS.F90
 )
 
@@ -299,7 +273,6 @@ foreach(kind ${kinds})
                                                  string_utils/include
                                                  mpp/include
                                                  diag_manager/include
-                                                 constants4
                                                  constants)
   target_compile_definitions(${libTgt}_f PRIVATE "${fms_defs}")
   target_compile_definitions(${libTgt}_f PRIVATE "${${kind}_defs}")

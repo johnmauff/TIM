@@ -422,36 +422,23 @@ AC_SUBST([MODDIR],[\$\(top_builddir\)/.mods])
 AC_CONFIG_FILES([
   Makefile
   affinity/Makefile
-  amip_interp/Makefile
   time_interp/Makefile
   time_manager/Makefile
   constants/Makefile
-  constants4/Makefile
   platform/Makefile
   fms/Makefile
   fms2_io/Makefile
   mpp/Makefile
-  tridiagonal/Makefile
-  tracer_manager/Makefile
-  topography/Makefile
   mosaic/Makefile
   mosaic2/Makefile
-  monin_obukhov/Makefile
   memutils/Makefile
-  interpolator/Makefile
   horiz_interp/Makefile
   field_manager/Makefile
-  exchange/Makefile
-  drifters/Makefile
   diag_manager/Makefile
   data_override/Makefile
-  column_diagnostics/Makefile
-  block_control/Makefile
   axis_utils/Makefile
   astronomy/Makefile
   coupler/Makefile
-  diag_integral/Makefile
-  sat_vapor_pres/Makefile
   random_numbers/Makefile
   libFMS/Makefile
   docs/Makefile
@@ -462,10 +449,6 @@ AC_CONFIG_FILES([
   test_fms/Makefile
   test_fms/diag_manager/Makefile
   test_fms/data_override/Makefile
-  test_fms/exchange/Makefile
-  test_fms/monin_obukhov/Makefile
-  test_fms/drifters/Makefile
-  test_fms/interpolator/Makefile
   test_fms/fms2_io/Makefile
   test_fms/fms/Makefile
   test_fms/mpp/Makefile
