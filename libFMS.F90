@@ -76,10 +76,6 @@ module fms
                              tranlon, frac_index, nearest_index, interp_1d, &
                              get_axis_modulo_times, axis_edges
 
-  !>block_control
-  use block_control_mod, only: block_control_type, define_blocks, &
-                               define_blocks_packed
-
   !> coupler
   use coupler_types_mod, only: coupler_types_init, coupler_type_copy, &
                                coupler_type_spawn, coupler_type_set_diags, &
@@ -196,15 +192,6 @@ module fms
   !! used via horiz_interp
   ! horiz_interp_bicubic_mod, horiz_interp_bilinear_mod
   ! horiz_interp_conserve_mod, horiz_interp_spherical_mod
-
-  !> interpolator
-  use interpolator_mod, only: interpolator_init, interpolator, interpolate_type_eq, &
-                              obtain_interpolator_time_slices, unset_interpolator_time_flag, &
-                              interpolator_end, init_clim_diag, query_interpolator, &
-                              interpolate_type, CONSTANT, &
-                              INTERP_WEIGHTED_P, INTERP_LINEAR_P, INTERP_LOG_P, &
-                              INTERPOLATOR_ZERO=>ZERO, & !! conflicts with mpp_parameter's ZERO
-                              interpolator_read_data=>read_data !! conflicts with fms2_io interface
 
   !> memutils
   use memutils_mod, only: memutils_init, print_memuse_stats
@@ -366,12 +353,6 @@ module fms
                               time_manager_init, print_time, print_date, set_date_julian, &
                               get_date_julian, get_date_no_leap, date_to_string
   use get_cal_time_mod, only: get_cal_time
-
-  !> topography
-  use gaussian_topog_mod, only: gaussian_topog_init, get_gaussian_topog
-  use topography_mod, only: topography_init, get_topog_mean, get_topog_stdev, &
-                            get_ocean_frac, get_ocean_mask, get_water_frac, &
-                            get_water_mask
 
   !> tridiagonal
   use tridiagonal_mod, only: tri_invert, close_tridiagonal
