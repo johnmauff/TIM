@@ -17,16 +17,23 @@
 #* License along with FMS.  If not, see <http://www.gnu.org/licenses/>.
 #***********************************************************************
 
-# This is the automake file for the test_fms directory.
-# Ed Hartnett 9/20/2019
+# This is part of the GFDL FMS package. This is a shell script to
+# execute tests in the test_fms/fms2_io directory.
 
-# This directory stores libtool macros, put there by aclocal.
-ACLOCAL_AMFLAGS = -I m4
+# Author: Uriel Ramirez 6/30/20
+#
+# Set common test settings.
+. ../test-lib.sh
 
-# Make targets will be run in each subdirectory. Order is significant.
-SUBDIRS = coupler diag_manager data_override \
-fms mpp mpp_io time_interp time_manager \
-horiz_interp field_manager axis_utils affinity fms2_io parser string_utils
+# Create and enter output directory
+output_dir
 
-# testing utility scripts to distribute
-EXTRA_DIST = test-lib.sh.in intel_coverage.sh.in tap-driver.sh
+# make an input.nml for mpp_init to read
+touch input.nml
+
+# run the tests
+test_expect_success "Global attribute test" '
+  mpirun -n 1 ../test_global_att
+'
+
+test_done

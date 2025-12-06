@@ -1,3 +1,5 @@
+#!/bin/sh
+
 #***********************************************************************
 #*                   GNU Lesser General Public License
 #*
@@ -17,16 +19,34 @@
 #* License along with FMS.  If not, see <http://www.gnu.org/licenses/>.
 #***********************************************************************
 
-# This is the automake file for the test_fms directory.
-# Ed Hartnett 9/20/2019
+# This is part of the GFDL FMS package. This is a shell script to
+# execute tests in the test_fms/fms2_io directory.
 
-# This directory stores libtool macros, put there by aclocal.
-ACLOCAL_AMFLAGS = -I m4
+# Set common test settings.
+. ../test-lib.sh
 
-# Make targets will be run in each subdirectory. Order is significant.
-SUBDIRS = coupler diag_manager data_override \
-fms mpp mpp_io time_interp time_manager \
-horiz_interp field_manager axis_utils affinity fms2_io parser string_utils
+# Create and enter output directory
+output_dir
 
-# testing utility scripts to distribute
-EXTRA_DIST = test-lib.sh.in intel_coverage.sh.in tap-driver.sh
+touch input.nml
+
+# run the tests
+test_expect_success "Test atmosphere IO" '
+  mpirun -n 6 ../test_atmosphere_io
+'
+
+# run test 2 - test for bad checksum (should fail)
+rm *.nc
+printf "&test_atmosphere_io_nml\n bad_checksum=.true.\n /" | cat > input.nml
+test_expect_failure "bad checksum failure" '
+  mpirun -n 6 ../test_atmosphere_io
+'
+
+# run test 3 - test for ignoring a bad checksum
+rm *.nc
+printf "&test_atmosphere_io_nml\n bad_checksum=.true.\n ignore_checksum=.true.\n /" | cat > input.nml
+test_expect_success "ignore bad checksum" '
+  mpirun -n 6 ../test_atmosphere_io
+'
+
+test_done

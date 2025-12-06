@@ -239,7 +239,8 @@ use platform_mod
   USE fms_diag_outfield_mod, ONLY: fmsDiagOutfieldIndex_type, fmsDiagOutfield_type
   USE fms_diag_fieldbuff_update_mod, ONLY: fieldbuff_update, fieldbuff_copy_missvals, &
    & fieldbuff_copy_fieldvals
-  use netcdf_io_mod, ONLY: filepath_list_type, partitioned_global_files, partitioned_section_files, append_to_filepath_list
+  use netcdf_io_mod, ONLY: filepath_list_type, partitioned_global_files
+  use netcdf_io_mod, ONLY: partitioned_section_files, append_to_filepath_list
 
 #ifdef use_netCDF
   USE netcdf, ONLY: NF90_INT, NF90_FLOAT, NF90_CHAR
@@ -3807,7 +3808,8 @@ CONTAINS
        do while (associated(current))
           !write(stdout_unit,*) ' Combining file ' // filepath(1:len(filepath)-5)
           ireturn = exec_mppnccombine(current%path)
-          if (ireturn /= 0) call error_mesg('diag_manager_mod::combine_files', 'mppnccombine failed for file ' // trim(current%path), FATAL)
+          if (ireturn /= 0) call error_mesg('diag_manager_mod::combine_files', 'mppnccombine failed for file ' // &
+               trim(current%path), FATAL)
           current => current%next
        end do
     end if
