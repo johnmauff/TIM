@@ -142,19 +142,19 @@
  #include <unistd.h>
  #include <glob.h>
  #include <limits.h>
- 
+
  #ifndef MAX_BF
  #define MAX_BF 100 /* maximum blocking factor */
  #endif
  #ifndef DEFAULT_BF /* default blocking factor, if none set */
  #define DEFAULT_BF 1
  #endif
- 
+
  /* Block size for NetCDF file open/reads */
  #ifndef NC_BLKSZ
  #define NC_BLKSZ 65536
  #endif
- 
+
  /* Information structure for a file */
  struct fileinfo
  {
@@ -190,20 +190,20 @@ int flush_decomp (struct fileinfo *, int, int, int, unsigned char);
  void print_debug (struct fileinfo *, unsigned char);
  char *nc_type_to_str (nc_type);
  int min (int, int);
- 
+
  static void ***varbuf
      = NULL; /* Buffers for multiple records of decomposed var */
- 
+
  struct rusage ruse; /* structure used to store values from getrusage() */
  static unsigned long maxrss = 0; /* maximum memory used so far in kilobytes */
  static int print_mem_usage = 0;
  static unsigned long mem_allocated = 0; /* memory allocated so far */
- 
+
  static const char version[] = "2024.02";
- 
+
  static unsigned long estimated_maxrss = 0; /* see option: -x */
  static int mem_dry_run = 0;                /* set if -x option is used */
- 
+
  static inline void
  check_mem_usage (void)
  {
@@ -233,7 +233,7 @@ int flush_decomp (struct fileinfo *, int, int, int, unsigned char);
    prev_rss = rss;
    return;
  }
- 
+
  static void
  print_estimated_mem_footprint (int verbose)
  {
@@ -586,7 +586,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
        if (!strcmp (strptr, ".0000"))
          outfilename[outlen - 5] = '\0';
      }
- 
+
    /* if -x (estimate memory usage) is set, k will be automatically set to 1 */
    if (mem_dry_run)
      {
@@ -598,10 +598,10 @@ char** find_partitioned_files(const char* filepath, int* count) {
          printf ("This run will estimate peak memory resident size. No output "
                  "file will be created.\n");
      }
- 
+
    /* Disable fatal returns from netCDF library functions */
    ncopts = 0;
- 
+
    if (!mem_dry_run)
      {
        /* Create a new netCDF output file */
@@ -642,7 +642,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
              }
          }
      }
- 
+
    /* No input files are specified on the command-line */
    if (inputarg == (-1))
      {
@@ -904,7 +904,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                  varbuf[k][v] = NULL;
                }
        }
- 
+
    /* Cleanup and check for any input or output file errors */
    if (ncsync (ncoutfile->ncfid) == (-1))
      outfileerrors++;
@@ -973,7 +973,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
        return (1);
      }
  }
- 
+
  /* Print the usage message for mppnccombine */
  void
  usage ()
@@ -1071,7 +1071,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            "value of 1\n");
    printf ("otherwise.\n");
  }
- 
+
  int
  min (int a, int b)
  {
@@ -1079,7 +1079,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
      return a;
    return b;
  }
- 
+
  /* Open an input file and get some information about it, define the   */
  /* structure of the output file if necessary, prepare to copy all the */
  /* variables for the current block to memory (and non-decomposed variables */
@@ -1103,10 +1103,10 @@ char** find_partitioned_files(const char* filepath, int* count) {
    char attname[MAX_NC_NAME];       /* Name of a global or variable attribute */
    unsigned char ncinfileerror = 0; /* Were there any file errors? */
    size_t blksz = NC_BLKSZ;         /* netCDF block size */
- 
+
    if (print_mem_usage)
      check_mem_usage ();
- 
+
    /* Information for netCDF input file */
    if ((ncinfile = (struct fileinfo *)malloc (sizeof (struct fileinfo)))
        == NULL)
@@ -1114,7 +1114,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
        fprintf (stderr, "Error: cannot allocate enough memory!\n");
        return (1);
      }
- 
+
    /* Open an input netCDF file */
    if ((ncinfile->ncfid = ncopen (ncname, NC_NOWRITE)) == (-1))
      {
@@ -1122,7 +1122,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
        free (ncinfile);
        return (1);
      }
- 
+
    /* Determine the number of files in the decomposed domain */
    if (ncattget (ncinfile->ncfid, NC_GLOBAL, "NumFilesInSet", (void *)&nfiles2)
        == (-1))
@@ -1141,7 +1141,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
          }
      }
    *nfiles = nfiles2;
- 
+
    /* Get some general information about the input netCDF file */
    if (ncinquire (ncinfile->ncfid, &(ncinfile->ndims), &(ncinfile->nvars),
                   &(ncinfile->ngatts), &(ncinfile->recdim))
@@ -1152,7 +1152,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
        free (ncinfile);
        return (1);
      }
- 
+
    /* Get some information about the dimensions */
    for (d = 0; d < ncinfile->ndims; d++)
      {
@@ -1170,14 +1170,14 @@ char** find_partitioned_files(const char* filepath, int* count) {
        ncinfile->dimstart[d] = 1;
        ncinfile->dimend[d] = (-1);
      }
- 
+
    /* Save some information for the output file */
    if ((block == 0) && (!mem_dry_run))
      {
        ncoutfile->nvars = ncinfile->nvars;
        ncoutfile->recdim = ncinfile->recdim;
      }
- 
+
    /* Get some information about the variables */
    for (v = 0; v < ncinfile->nvars; v++)
      {
@@ -1191,7 +1191,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            free (ncinfile);
            return (1);
          }
- 
+
        /* If the variable is also a dimension then get decomposition info */
        if ((dimid = ncdimid (ncinfile->ncfid, ncinfile->varname[v])) != (-1))
          {
@@ -1213,14 +1213,14 @@ char** find_partitioned_files(const char* filepath, int* count) {
              }
          }
      }
- 
+
    /* Get some additional information about the variables */
    for (v = 0; v < ncinfile->nvars; v++)
      {
- 
+
        /* start by assuming the variable has no decomposed dimension */
        ncinfile->vardecomp[v] = 0;
- 
+
        /* now, iterate over the variable's dimensions and mark the */
        /* variable as a decomposed variable if any dimension of */
        /* the variable is decomposed */
@@ -1233,7 +1233,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                break;
              }
          }
- 
+
        /* Save some information for the output file */
        /* This only needs to be done once per output file */
        if ((!appendnc) && (!mem_dry_run))
@@ -1248,13 +1248,13 @@ char** find_partitioned_files(const char* filepath, int* count) {
            ncoutfile->varmiss[v] = 0;
          }
      }
- 
+
    /* If the output netCDF file was just created then define its structure */
    if ((!appendnc) && (!mem_dry_run))
      {
        if (verbose)
          printf ("    Creating output \"%s\"\n", outncname);
- 
+
        /* Determine the format of the input netCDF file */
        if (nc_inq_format (ncinfile->ncfid, &ncinformat) == (-1))
          {
@@ -1263,7 +1263,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            free (ncinfile);
            return (1);
          }
- 
+
        /* Determine the format of the output netCDF file */
        if (nc_inq_format (ncoutfile->ncfid, &ncoutformat) == (-1))
          {
@@ -1272,11 +1272,11 @@ char** find_partitioned_files(const char* filepath, int* count) {
            free (ncinfile);
            return (1);
          }
- 
+
        if (verbose)
          printf ("    ncinformat=%d, ncoutformat=%d\n", ncinformat,
                  ncoutformat);
- 
+
        /* If the format option (-64 or -n4) for the output netCDF file
         * is not specified then recreate the output netCDF file based
         * upon the format of the input netCDF file. */
@@ -1320,7 +1320,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
              }
            ncsetfill (ncoutfile->ncfid, NC_NOFILL);
          }
- 
+
        /* Define the dimensions */
        for (d = 0; d < ncinfile->ndims; d++)
          {
@@ -1330,7 +1330,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
              ncdimdef (ncoutfile->ncfid, ncinfile->dimname[d],
                        ncinfile->dimfullsize[d]);
          }
- 
+
        /* Define the variables and copy their attributes */
        for (v = 0; v < ncinfile->nvars; v++)
          {
@@ -1367,7 +1367,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                  }
              }
          }
- 
+
        /* Copy the global attributes */
        for (n = 0; n < ncinfile->ngatts; n++)
          {
@@ -1390,7 +1390,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                  }
              }
          }
- 
+
        if (deflate == 1 && deflation > 0)
          {
            for (v = 0; v < ncinfile->nvars; v++)
@@ -1405,11 +1405,11 @@ char** find_partitioned_files(const char* filepath, int* count) {
                  }
              }
          }
- 
+
        /* Definitions done */
        nc__enddef (ncoutfile->ncfid, headerpad, 4, 0, 4);
      }
- 
+
    /* Copy all data values of the dimensions and variables to memory */
    /* For non-decomposed variables, process_vars will write them to the */
    /* output file. Decomposed variables for N records from this file will */
@@ -1436,13 +1436,13 @@ char** find_partitioned_files(const char* filepath, int* count) {
        r < min (
            ((block + 1) * (*bf)),
            *nrecs)); // r is a minimum of the next block start point and nrecs
- 
+
    /* Done */
    ncclose (ncinfile->ncfid);
    free (ncinfile);
    return (ncinfileerror);
  }
- 
+
  /* Decomposed variables from an input file and record will be written to memory
   */
  /* non-decomposed variables will be written to the output file */
@@ -1468,17 +1468,17 @@ char** find_partitioned_files(const char* filepath, int* count) {
    int recdimsize; /* Using a local value to correct issue when netcdf file does
                       not have a record dimension */
    long long varbufsize;
- 
+
    if (ncinfile->recdim < 0)
      recdimsize = 1;
    else
      recdimsize = ncinfile->dimsize[ncinfile->recdim];
- 
+
    /* Check the number of records */
    if (*nrecs == 1)
      {
        *nrecs = recdimsize;
- 
+
        /* adjust bf */
        if ((*bf) >= 1)
          {
@@ -1504,7 +1504,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
          *nblocks = (int)((*nrecs) / (*bf)) + 1;
        else
          *nblocks = (int)((*nrecs) / (*bf));
- 
+
        if (verbose)
          fprintf (stderr,
                   "blocking factor=%d, num. blocks=%d, num. records=%d\n", *bf,
@@ -1517,7 +1517,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            "Error: different number of records than the first input file!\n");
        return (1);
      }
- 
+
    /* Allocate memory for the decomposed variables, if none has been allocated
       yet We use an optimized algorithm to malloc and set up a double dimension
       array using a single malloc call. We do the cross-linking after the
@@ -1563,13 +1563,13 @@ char** find_partitioned_files(const char* filepath, int* count) {
          }
        */
      } /* end of memory allocation, done once per block */
- 
+
    /* Loop over all the variables */
    for (v = 0; v < ncinfile->nvars; v++)
      {
        if (verbose > 1)
          printf ("    variable = %s\n", ncinfile->varname[v]);
- 
+
        /* Get read/write dimension sizes for the variable */
        recsize = 1;
        recfullsize = 1;
@@ -1597,7 +1597,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
              printf ("      dim %d:  instart=%ld  outstart=%ld  count=%ld\n", d,
                      instart[d], outstart[d], count[d]);
          }
- 
+
        /* Prevent unnecessary reads/writes */
        if (r > 0)
          {
@@ -1618,11 +1618,11 @@ char** find_partitioned_files(const char* filepath, int* count) {
              {
                /* Prevent unnecessary reads/writes of non-decomposed variables
                if (ncinfile->vardecomp[v]!=1 && appendnc) continue; */
- 
+
                /* Non-record variables */
                if (varrecdim == (-1))
                  continue;
- 
+
                /* Non-decomposed record variables */
                if (ncinfile->vardecomp[v] != 1 && f > 0)
                  continue;
@@ -1633,7 +1633,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            if (ncinfile->vardecomp[v] != 1 && appendnc)
              continue;
          }
- 
+
        /* Allocate a buffer for the variable's record */
        if ((values = malloc (nctypelen (ncinfile->datatype[v]) * recsize))
            == NULL)
@@ -1645,7 +1645,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                     ncinfile->varname[v]);
            return (1);
          }
- 
+
        /* Read the variable */
        if (varrecdim != (-1))
          instart[varrecdim] = outstart[varrecdim] = r;
@@ -1655,7 +1655,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                     ncinfile->varname[v]);
            return (1);
          }
- 
+
        /* Write the buffered variable immediately if it's not decomposed */
        if ((ncinfile->vardecomp[v] != 1) && (!mem_dry_run))
          {
@@ -1740,7 +1740,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            if (verbose > 1)
              printf ("      writing %lld bytes to memory\n",
                      nctypelen (ncinfile->datatype[v]) * recsize);
- 
+
            imax = ncinfile
                       ->dimsize[ncinfile->vardim[v][ncinfile->varndims[v] - 1]];
            if (ncinfile->varndims[v] > 1)
@@ -1776,7 +1776,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
            if (verbose > 1)
              printf ("      imap=%d  jmax=%d  kmax=%d  lmax=%d\n", imax, jmax,
                      kmax, lmax);
- 
+
            imaxfull
                = ncinfile->dimfullsize[ncinfile->vardim[v][ncinfile->varndims[v]
                                                            - 1]];
@@ -1808,7 +1808,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                      imaxfull, jmaxfull, kmaxfull, lmaxfull);
            imaxjmaxfull = imaxfull * jmaxfull;
            imaxjmaxkmaxfull = imaxfull * jmaxfull * kmaxfull;
- 
+
            ioffset = outstart[ncinfile->varndims[v] - 0 - 1];
            if (ncinfile->varndims[v] > 1)
              joffset = outstart[ncinfile->varndims[v] - 1 - 1];
@@ -1939,7 +1939,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
                break;
              }
          }
- 
+
        /* Deallocate the decomposed variable's buffer */
        if (values != NULL)
          free (values);
@@ -1947,7 +1947,7 @@ char** find_partitioned_files(const char* filepath, int* count) {
    first = 0;
    return (0);
  }
- 
+
  /* Write all the buffered decomposed variables to the output file */
  int
  flush_decomp (struct fileinfo *ncoutfile, int nfiles, int r, int bf,
@@ -1957,12 +1957,12 @@ char** find_partitioned_files(const char* filepath, int* count) {
    long outstart[MAX_NC_DIMS]; /* Data array sizes */
    long count[MAX_NC_DIMS];    /*        "         */
    int varrecdim;              /* Position of a variable's record dimension */
- 
+
    if (verbose > 1)
      {
        printf ("    nvars=%d\n", ncoutfile->nvars);
      }
- 
+
    /* Write out all the decomposed variables */
    for (v = 0; v < ncoutfile->nvars; v++)
      {

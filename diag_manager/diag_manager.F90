@@ -376,7 +376,7 @@ use, intrinsic :: iso_c_binding, only: c_int, c_char
   END INTERFACE diag_field_add_attribute
 
 ! ----- interface to the C function -----
-interface 
+interface
   function exec_mppnccombine(outfile) bind(C)
     use, intrinsic :: iso_c_binding, only: c_int, c_char
     implicit none
@@ -1926,7 +1926,8 @@ CONTAINS
                 status = writing_field(out_num, .FALSE., error_string, time)
                 IF(status == -1) THEN
                    IF ( mpp_pe() .EQ. mpp_root_pe() ) THEN
-                      IF(fms_error_handler('diag_manager_mod::send_data_3d','module/output_field '//TRIM(error_string)&
+                      IF(fms_error_handler('diag_manager_mod::send_data_3d','module/output_field '//&
+                           & TRIM(error_string)&
                            & //', write EMPTY buffer', err_msg)) THEN
                          DEALLOCATE(field_out)
                          DEALLOCATE(oor_mask)
@@ -3733,7 +3734,7 @@ CONTAINS
     integer(c_int) :: smallest_pix ! The smallest IO PE index of the set of IO PEs writing the current section file.
     integer(c_int) :: ireturn      ! Return code from mppnccombine
     integer(c_int) :: niopes       ! Number of IO PEs participating in writing of global files
-    integer :: f                   ! File index for the global diagnostic files          
+    integer :: f                   ! File index for the global diagnostic files
     integer :: pix_order           ! 0-based order of the IO PE in the list of all IO PEs writing the file.
     type(filepath_list_type), pointer :: current
     type(filepath_list_type), pointer :: files_to_combine ! list of files to combined by this PE
@@ -3754,8 +3755,8 @@ CONTAINS
       filepath = trim(adjustl(current%path))
       outfile = filepath(1:len(filepath)-5) // c_null_char
 
-      ! get the number of files to combine (for the first global file only). The number of files is the 
-      ! same for all global files. Similarly, get pix and pix_order for the first file only, since for 
+      ! get the number of files to combine (for the first global file only). The number of files is the
+      ! same for all global files. Similarly, get pix and pix_order for the first file only, since for
       ! all global files, the pix and pix_order are the same.
       if (niopes == 0) then
          niopes = num_partitioned_files(outfile)
@@ -3825,10 +3826,10 @@ CONTAINS
       ! local
       integer :: pix_order       ! 0-based order of the pix in the list of all IO PEs writing the file
       character(len=4) :: suffix ! 0000, 0001, etc.
-      integer :: npes            ! total number of all PEs 
+      integer :: npes            ! total number of all PEs
       integer :: i, f
       logical :: exists
-   
+
       npes = mpp_npes()
       pix_order = -1
 

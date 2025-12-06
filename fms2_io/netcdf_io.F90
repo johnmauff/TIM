@@ -247,7 +247,7 @@ public :: write_restart_bc
 public :: read_restart_bc
 public :: flush_file
 public :: partitioned_global_files
-public :: partitioned_section_files 
+public :: partitioned_section_files
 public :: append_to_filepath_list
 
 !> @ingroup netcdf_io_mod
@@ -703,7 +703,7 @@ subroutine append_to_filepath_list(filepath, filepath_list)
   else
     current => filepath_list
     do
-      ! If file is already in the list, return. This happens when new_file_freq (e.g., daily) 
+      ! If file is already in the list, return. This happens when new_file_freq (e.g., daily)
       ! is more frequent than the date suffix (e.g., %4yr-%2mo), leading to overriding the file.
       if (string_compare(current%path, trim(filepath))) return
       ! If we reach the end of the list, exit the loop to add the new file.

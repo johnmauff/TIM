@@ -1726,7 +1726,8 @@ END SUBROUTINE check_bounds_are_exact_dynamic
     INTEGER, ALLOCATABLE  :: axesc(:) ! indices if compressed axes associated with the field
     LOGICAL :: time_ops, aux_present, match_aux_name, req_present, match_req_fields
     CHARACTER(len=7) :: avg_name = 'average'
-    CHARACTER(len=MAX_NAME_LENGTH) :: time_units, timeb_units, avg, error_string, filename, aux_name, req_fields, fieldname
+    CHARACTER(len=MAX_NAME_LENGTH) :: time_units, timeb_units, avg, error_string, filename, aux_name
+    CHARACTER(len=MAX_NAME_LENGTH) :: req_fields, fieldname
     CHARACTER(len=MAX_NAME_LENGTH) :: suffix, base_name
     CHARACTER(len=32) :: time_name, timeb_name,time_longname, timeb_longname, cart_name
     CHARACTER(len=MAX_FILENAME_LENGTH) :: fname
@@ -2290,10 +2291,10 @@ END SUBROUTINE check_bounds_are_exact_dynamic
     integer :: i
     integer :: first_percent
     integer :: first_percent_loc
-    
+
     first_percent = INDEX(filename, '%1')
     do i=2,9
-       write(first_fms_percent,"('%',i1)") i 
+       write(first_fms_percent,"('%',i1)") i
        first_percent_loc = INDEX(filename, first_fms_percent)
        if (first_percent_loc > 0) then
           if (first_percent == 0) then
