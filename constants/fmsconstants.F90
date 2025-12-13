@@ -55,8 +55,7 @@ module FMSconstants
 
   use platform_mod, only: r4_kind, r8_kind
 
-!!! #define CESM_CONSTANTS
-#if defined(CESM_CONSTANTS)
+#if defined(CESMCOUPLED)
 use shr_kind_mod,   only : R8 => shr_kind_r8
 use shr_const_mod,  only : &
      SHR_CONST_PSTD,                      & ! standard pressure ~ pascals
@@ -93,7 +92,7 @@ use shr_const_mod,  only : &
 #define RKIND sizeof(dum)
 
 !--- set a default for the FMSConstants
-#if defined(CESM_CONSTANTS)
+#if defined(CESMCOUPLED)
 #include <cesm_constants.fh>
 #else
 
@@ -108,14 +107,14 @@ use shr_const_mod,  only : &
 #elif !defined(GFDL_CONSTANTS) && defined(GFS_CONSTANTS) && !defined(GEOS_CONSTANTS)
 #warning "Using GFS constants"
 #include <gfs_constants.fh>
-#elif !defined(GFDL_CONSTANTS) && !defined(GFS_CONSTANTS) && defined(GEOS_CONSTANTS)
+#elif !defined(GFDL_CONSTANS) && !defined(GFS_CONSTANTS) && defined(GEOS_CONSTANTS)
 #warning "Using GEOS constants"
 #include <geos_constants.fh>
 #else
 #error FATAL FMSConstants error -  multiple constants macros are defined for FMS
 #endif
 
-#endif ! ifdef CESM_CONSTANTS
+#endif ! ifdef CESMCOUPLED
 
   !--- public interfaces
   public :: FMSConstants_init
