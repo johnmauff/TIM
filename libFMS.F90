@@ -197,15 +197,6 @@ module fms
   ! horiz_interp_bicubic_mod, horiz_interp_bilinear_mod
   ! horiz_interp_conserve_mod, horiz_interp_spherical_mod
 
-  !> interpolator
-  use interpolator_mod, only: interpolator_init, interpolator, interpolate_type_eq, &
-                              obtain_interpolator_time_slices, unset_interpolator_time_flag, &
-                              interpolator_end, init_clim_diag, query_interpolator, &
-                              interpolate_type, CONSTANT, &
-                              INTERP_WEIGHTED_P, INTERP_LINEAR_P, INTERP_LOG_P, &
-                              INTERPOLATOR_ZERO=>ZERO, & !! conflicts with mpp_parameter's ZERO
-                              interpolator_read_data=>read_data !! conflicts with fms2_io interface
-
   !> memutils
   use memutils_mod, only: memutils_init, print_memuse_stats
 
