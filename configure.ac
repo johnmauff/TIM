@@ -436,6 +436,7 @@ AC_CONFIG_FILES([
   field_manager/Makefile
   diag_manager/Makefile
   data_override/Makefile
+  block_control/Makefile
   axis_utils/Makefile
   astronomy/Makefile
   coupler/Makefile

@@ -50,6 +50,7 @@ SUBDIRS = \
   diag_manager \
   horiz_interp \
   time_interp \
+  block_control \
   data_override \
   astronomy \
   field_manager \

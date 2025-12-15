@@ -103,6 +103,7 @@ list(APPEND fms_fortran_src_files
   affinity/fms_affinity.F90
   astronomy/astronomy.F90
   axis_utils/axis_utils2.F90
+  block_control/block_control.F90
   constants/constants.F90
   constants/fmsconstants.F90
   coupler/atmos_ocean_fluxes.F90
