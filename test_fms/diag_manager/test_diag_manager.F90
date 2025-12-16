@@ -240,7 +240,7 @@ PROGRAM test
 
   USE diag_manager_mod, ONLY: diag_manager_init, send_data, diag_axis_init, diag_manager_end
   USE diag_manager_mod, ONLY: register_static_field, register_diag_field, diag_send_complete
-  USE diag_manager_mod, ONLY: diag_manager_set_time_end, diag_field_add_attribute, diag_axis_add_attribute
+  USE diag_manager_mod, ONLY: diag_manager_set_time_end, diag_field_add_attribute
   USE diag_manager_mod, ONLY: diag_field_add_cell_measures
   USE diag_manager_mod, ONLY: get_diag_field_id, DIAG_FIELD_NOT_FOUND
   USE diag_axis_mod, ONLY: get_axis_num

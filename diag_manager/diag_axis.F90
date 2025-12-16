@@ -51,7 +51,7 @@ use platform_mod
        & get_axis_length, get_axis_global_length, diag_subaxes_init,&
        & get_diag_axis_cart, get_diag_axis_data, max_axes, get_axis_aux,&
        & get_tile_count, get_axes_shift, get_diag_axis_name,&
-       & get_axis_num, get_diag_axis_domain_name, diag_axis_add_attribute,&
+       & get_axis_num, get_diag_axis_domain_name,&
        & get_domainUG, axis_compatible_check, axis_is_compressed, &
        & get_compressed_axes_ids, get_axis_reqfld, &
        & NORTH, EAST, CENTER
@@ -1017,46 +1017,6 @@ CONTAINS
        END SELECT
     END IF
   END SUBROUTINE diag_axis_attribute_init
-
-  SUBROUTINE diag_axis_add_attribute_scalar_r(diag_axis_id, att_name, att_value)
-    INTEGER, INTENT(in) :: diag_axis_id
-    CHARACTER(len=*), INTENT(in) :: att_name
-    REAL, INTENT(in) :: att_value
-
-    CALL diag_axis_add_attribute_r1d(diag_axis_id, att_name, (/ att_value /))
-  END SUBROUTINE diag_axis_add_attribute_scalar_r
-
-  SUBROUTINE diag_axis_add_attribute_scalar_i(diag_axis_id, att_name, att_value)
-    INTEGER, INTENT(in) :: diag_axis_id
-    CHARACTER(len=*), INTENT(in) :: att_name
-    INTEGER, INTENT(in) :: att_value
-
-    CALL diag_axis_add_attribute_i1d(diag_axis_id, att_name, (/ att_value /))
-  END SUBROUTINE diag_axis_add_attribute_scalar_i
-
-  SUBROUTINE diag_axis_add_attribute_scalar_c(diag_axis_id, att_name, att_value)
-    INTEGER, INTENT(in) :: diag_axis_id
-    CHARACTER(len=*), INTENT(in) :: att_name
-    CHARACTER(len=*), INTENT(in) :: att_value
-
-    CALL diag_axis_attribute_init(diag_axis_id, att_name, NF90_CHAR, cval=att_value)
-  END SUBROUTINE diag_axis_add_attribute_scalar_c
-
-  SUBROUTINE diag_axis_add_attribute_r1d(diag_axis_id, att_name, att_value)
-    INTEGER, INTENT(in) :: diag_axis_id
-    CHARACTER(len=*), INTENT(in) :: att_name
-    REAL, DIMENSION(:), INTENT(in) :: att_value
-
-    CALL diag_axis_attribute_init(diag_axis_id, att_name, NF90_FLOAT, rval=att_value)
-  END SUBROUTINE diag_axis_add_attribute_r1d
-
-  SUBROUTINE diag_axis_add_attribute_i1d(diag_axis_id, att_name, att_value)
-    INTEGER, INTENT(in) :: diag_axis_id
-    CHARACTER(len=*), INTENT(in) :: att_name
-    INTEGER, DIMENSION(:), INTENT(in) :: att_value
-
-    CALL diag_axis_attribute_init(diag_axis_id, att_name, NF90_INT, ival=att_value)
-  END SUBROUTINE diag_axis_add_attribute_i1d
 
   !> @brief Allocates memory in out_file for the attributes.  Will <TT>FATAL</TT> if err_msg is not included
   !!   in the subroutine call.

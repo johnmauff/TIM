@@ -141,7 +141,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - diag_field_add_attribute
 - diag_field_add_cell_measures
 - get_diag_field_id
-- diag_axis_add_attribute
 - diag_grid_init
 - diag_grid_end
 - diag_manager_set_time_end

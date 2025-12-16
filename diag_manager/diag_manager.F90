@@ -213,7 +213,7 @@ use platform_mod
   USE fms_mod, ONLY: error_mesg, FATAL, WARNING, NOTE, stdout, stdlog, write_version_number,&
        & fms_error_handler, check_nml_error, lowercase
   USE diag_axis_mod, ONLY: diag_axis_init, get_axis_length, get_axis_num, get_domain2d, get_tile_count,&
-       & diag_axis_add_attribute, axis_compatible_check, CENTER, NORTH, EAST, get_diag_axis_name
+       & axis_compatible_check, CENTER, NORTH, EAST, get_diag_axis_name
   USE diag_util_mod, ONLY: get_subfield_size, log_diag_field_info, update_bounds,&
        & check_out_of_bounds, check_bounds_are_exact_dynamic, check_bounds_are_exact_static,&
        & diag_time_inc, find_input_field, init_input_field, init_output_field,&
@@ -264,7 +264,7 @@ use, intrinsic :: iso_c_binding, only: c_int, c_char
        & need_data, DIAG_ALL, DIAG_OCEAN, DIAG_OTHER, get_date_dif, DIAG_SECONDS,&
        & DIAG_MINUTES, DIAG_HOURS, DIAG_DAYS, DIAG_MONTHS, DIAG_YEARS, get_diag_global_att,&
        & set_diag_global_att, diag_field_add_attribute, diag_field_add_cell_measures,&
-       & get_diag_field_id, diag_axis_add_attribute, CMOR_MISSING_VALUE, null_axis_id,&
+       & get_diag_field_id, CMOR_MISSING_VALUE, null_axis_id,&
        & exec_mppnccombine
   PUBLIC :: CENTER, NORTH, EAST !< Used for diag_axis_init
   ! Public interfaces from diag_grid_mod
