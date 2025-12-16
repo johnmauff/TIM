@@ -153,7 +153,6 @@ list(APPEND fms_fortran_src_files
   mpp/mpp_memutils.F90
   mpp/mpp_parameter.F90
   parser/yaml_parser.F90
-  parser/fms_yaml_output.F90
   platform/platform.F90
   random_numbers/mersennetwister.F90
   random_numbers/random_numbers.F90
