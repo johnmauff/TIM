@@ -500,8 +500,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_start_group_update
 - mpp_complete_group_update
 - mpp_reset_group_update_field
-- mpp_update_nest_fine
-- mpp_update_nest_coarse
 - mpp_get_boundary
 - mpp_update_domains_ad
 - mpp_get_boundary_ad
@@ -534,17 +532,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_get_UG_domains_index
 - mpp_get_UG_SG_domain
 - mpp_get_UG_domain_tile_pe_inf
-- mpp_define_nest_domains
-- mpp_get_C2F_index
-- mpp_get_F2C_index
-- mpp_get_nest_coarse_domain
-- mpp_get_nest_fine_domain
-- mpp_is_nest_coarse
-- mpp_is_nest_fine
-- mpp_get_nest_pelist
-- mpp_get_nest_npes
-- mpp_get_nest_fine_pelist
-- mpp_get_nest_fine_npes
 - mpp_domain_UG_is_tile_root_pe
 - mpp_deallocate_domainUG
 - mpp_get_io_domain_UG_layout
@@ -556,7 +543,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - domain1D
 - domain2D
 - DomainCommunicator2D
-- nest_domain_type
 - mpp_group_update_type
 - domainUG
 

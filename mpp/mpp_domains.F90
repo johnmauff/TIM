@@ -143,7 +143,7 @@ module mpp_domains_mod
   public :: NULL_DOMAIN1D, NULL_DOMAIN2D
 
   public :: domain_axis_spec, domain1D, domain2D, DomainCommunicator2D
-  public :: nest_domain_type, mpp_group_update_type
+  public :: mpp_group_update_type
 
   !--- public interface from mpp_domains_util.h
   public :: mpp_domains_set_stack_size, mpp_get_compute_domain, mpp_get_compute_domains
@@ -177,7 +177,6 @@ module mpp_domains_mod
   public :: mpp_create_group_update, mpp_do_group_update
   public :: mpp_start_group_update, mpp_complete_group_update
   public :: mpp_reset_group_update_field
-  public :: mpp_update_nest_fine, mpp_update_nest_coarse
   public :: mpp_get_boundary
   public :: mpp_update_domains_ad
   public :: mpp_get_boundary_ad
@@ -196,14 +195,6 @@ module mpp_domains_mod
   public :: mpp_global_field_ug, mpp_get_ug_domain_tile_list, mpp_get_UG_compute_domains
   public :: mpp_define_null_UG_domain, NULL_DOMAINUG, mpp_get_UG_domains_index
   public :: mpp_get_UG_SG_domain, mpp_get_UG_domain_tile_pe_inf
-
-  !--- public interface from mpp_define_domains.inc
-  public :: mpp_define_nest_domains, mpp_get_C2F_index, mpp_get_F2C_index
-  public :: mpp_shift_nest_domains
-  public :: mpp_get_nest_coarse_domain, mpp_get_nest_fine_domain
-  public :: mpp_is_nest_coarse, mpp_is_nest_fine
-  public :: mpp_get_nest_pelist, mpp_get_nest_npes
-  public :: mpp_get_nest_fine_pelist, mpp_get_nest_fine_npes
 
 !----------
 !ug support
@@ -422,73 +413,6 @@ module mpp_domains_mod
      integer, pointer :: is2(:)=>NULL(), ie2(:)=>NULL()         !< i-index of neighbor tile repsenting contact
      integer, pointer :: js2(:)=>NULL(), je2(:)=>NULL()         !< j-index of neighbor tile repsenting contact
   end type contact_type
-
-  !> index bounds for use in @ref nestSpec
-  !> @ingroup mpp_domains_mod
-  type :: index_type
-     integer :: is_me, ie_me, js_me, je_me
-     integer :: is_you, ie_you, js_you, je_you
-  end type index_type
-
-  !> Used to specify bounds and index information for nested tiles as a linked list
-  !> @ingroup mpp_domains_mod
-  type :: nestSpec
-     private
-     integer                     :: xbegin, xend, ybegin, yend
-     integer                     :: xbegin_c, xend_c, ybegin_c, yend_c
-     integer                     :: xbegin_f, xend_f, ybegin_f, yend_f
-     integer                     :: xsize_c, ysize_c
-     type(index_type)            :: west, east, south, north, center
-     integer                     :: nsend, nrecv
-     integer                     :: extra_halo
-     type(overlap_type), pointer :: send(:) => NULL()
-     type(overlap_type), pointer :: recv(:) => NULL()
-     type(nestSpec),     pointer :: next => NULL()
-
-  end type nestSpec
-
-  !> @brief domain with nested fine and course tiles
-  !> @ingroup mpp_domains_mod
-  type :: nest_domain_type
-     character(len=NAME_LENGTH)     :: name
-     integer                        :: num_level
-     integer,               pointer :: nest_level(:)    !< Added for moving nest functionality
-     type(nest_level_type), pointer :: nest(:) => NULL()
-     integer                        :: num_nest
-     integer,               pointer :: tile_fine(:), tile_coarse(:)
-     integer,               pointer :: istart_fine(:), iend_fine(:), jstart_fine(:), jend_fine(:)
-     integer,               pointer :: istart_coarse(:), iend_coarse(:), jstart_coarse(:), jend_coarse(:)
-  end type nest_domain_type
-
-  !> Private type to hold data for each level of nesting
-  !> @ingroup mpp_domains_mod
-  type :: nest_level_type
-     private
-     logical                    :: on_level
-     logical                    :: is_fine, is_coarse
-     integer                    :: num_nest
-     integer                    :: my_num_nest
-     integer,           pointer :: my_nest_id(:)
-     integer,           pointer :: tile_fine(:), tile_coarse(:)
-     integer,           pointer :: istart_fine(:), iend_fine(:), jstart_fine(:), jend_fine(:)
-     integer,           pointer :: istart_coarse(:), iend_coarse(:), jstart_coarse(:), jend_coarse(:)
-     integer                    :: x_refine, y_refine
-     logical                    :: is_fine_pe, is_coarse_pe
-     integer,           pointer :: pelist(:) => NULL()
-     integer,           pointer :: pelist_fine(:) => NULL()
-     integer,           pointer :: pelist_coarse(:) => NULL()
-     type(nestSpec), pointer :: C2F_T => NULL()
-     type(nestSpec), pointer :: C2F_C => NULL()
-     type(nestSpec), pointer :: C2F_E => NULL()
-     type(nestSpec), pointer :: C2F_N => NULL()
-     type(nestSpec), pointer :: F2C_T => NULL()
-     type(nestSpec), pointer :: F2C_C => NULL()
-     type(nestSpec), pointer :: F2C_E => NULL()
-     type(nestSpec), pointer :: F2C_N => NULL()
-     type(domain2d), pointer :: domain_fine   => NULL()
-     type(domain2d), pointer :: domain_coarse => NULL()
-  end type nest_level_type
-
 
   !> Used for sending domain data between pe's
   !> @ingroup mpp_domains_mod
@@ -717,8 +641,6 @@ module mpp_domains_mod
   integer :: wait_clock=0, pack_clock=0
   integer :: send_pack_clock_nonblock=0, recv_clock_nonblock=0, unpk_clock_nonblock=0
   integer :: wait_clock_nonblock=0
-  integer :: nest_send_clock=0, nest_recv_clock=0, nest_unpk_clock=0
-  integer :: nest_wait_clock=0, nest_pack_clock=0
   integer :: group_recv_clock=0, group_send_clock=0, group_pack_clock=0, group_unpk_clock=0, group_wait_clock=0
   integer :: nonblock_group_recv_clock=0, nonblock_group_send_clock=0, nonblock_group_pack_clock=0
   integer :: nonblock_group_unpk_clock=0, nonblock_group_wait_clock=0
@@ -1369,142 +1291,17 @@ module mpp_domains_mod
      module procedure mpp_reset_group_update_field_r8_4dv
   end interface mpp_reset_group_update_field
 
-  !> Pass the data from coarse grid to fill the buffer to be ready to be interpolated
-  !! onto fine grid.
-  !! <br>Example usage:
-  !!
-  !!                call mpp_update_nest_fine(field, nest_domain, wbuffer, ebuffer, sbuffer,
-  !!                            nbuffer, nest_level, flags, complete, position, extra_halo, name,
-  !!                            tile_count)
-  !> @ingroup mpp_domains_mod
-  interface mpp_update_nest_fine
-     module procedure mpp_update_nest_fine_r8_2d
-     module procedure mpp_update_nest_fine_r8_3d
-     module procedure mpp_update_nest_fine_r8_4d
-     module procedure mpp_update_nest_fine_r8_2dv
-     module procedure mpp_update_nest_fine_r8_3dv
-     module procedure mpp_update_nest_fine_r8_4dv
-#ifdef OVERLOAD_C8
-     module procedure mpp_update_nest_fine_c8_2d
-     module procedure mpp_update_nest_fine_c8_3d
-     module procedure mpp_update_nest_fine_c8_4d
-#endif
-     module procedure mpp_update_nest_fine_i8_2d
-     module procedure mpp_update_nest_fine_i8_3d
-     module procedure mpp_update_nest_fine_i8_4d
-     module procedure mpp_update_nest_fine_r4_2d
-     module procedure mpp_update_nest_fine_r4_3d
-     module procedure mpp_update_nest_fine_r4_4d
-     module procedure mpp_update_nest_fine_r4_2dv
-     module procedure mpp_update_nest_fine_r4_3dv
-     module procedure mpp_update_nest_fine_r4_4dv
-#ifdef OVERLOAD_C4
-     module procedure mpp_update_nest_fine_c4_2d
-     module procedure mpp_update_nest_fine_c4_3d
-     module procedure mpp_update_nest_fine_c4_4d
-#endif
-     module procedure mpp_update_nest_fine_i4_2d
-     module procedure mpp_update_nest_fine_i4_3d
-     module procedure mpp_update_nest_fine_i4_4d
-  end interface
-
-  !> @ingroup mpp_domains_mod
-  interface mpp_do_update_nest_fine
-     module procedure mpp_do_update_nest_fine_r8_3d
-     module procedure mpp_do_update_nest_fine_r8_3dv
-#ifdef OVERLOAD_C8
-     module procedure mpp_do_update_nest_fine_c8_3d
-#endif
-     module procedure mpp_do_update_nest_fine_i8_3d
-     module procedure mpp_do_update_nest_fine_r4_3d
-     module procedure mpp_do_update_nest_fine_r4_3dv
-#ifdef OVERLOAD_C4
-     module procedure mpp_do_update_nest_fine_c4_3d
-#endif
-     module procedure mpp_do_update_nest_fine_i4_3d
-  end interface
-
-  !> Pass the data from fine grid to fill the buffer to be ready to be interpolated
-  !! onto coarse grid.
-  !! <br>Example usage:
-  !!
-  !!               call mpp_update_nest_coarse(field, nest_domain, field_out, nest_level, complete,
-  !!                                 position, name, tile_count)
-  !> @ingroup mpp_domains_mod
-  interface mpp_update_nest_coarse
-     module procedure mpp_update_nest_coarse_r8_2d
-     module procedure mpp_update_nest_coarse_r8_3d
-     module procedure mpp_update_nest_coarse_r8_4d
-     module procedure mpp_update_nest_coarse_r8_2dv
-     module procedure mpp_update_nest_coarse_r8_3dv
-     module procedure mpp_update_nest_coarse_r8_4dv
-#ifdef OVERLOAD_C8
-     module procedure mpp_update_nest_coarse_c8_2d
-     module procedure mpp_update_nest_coarse_c8_3d
-     module procedure mpp_update_nest_coarse_c8_4d
-#endif
-     module procedure mpp_update_nest_coarse_i8_2d
-     module procedure mpp_update_nest_coarse_i8_3d
-     module procedure mpp_update_nest_coarse_i8_4d
-     module procedure mpp_update_nest_coarse_r4_2d
-     module procedure mpp_update_nest_coarse_r4_3d
-     module procedure mpp_update_nest_coarse_r4_4d
-     module procedure mpp_update_nest_coarse_r4_2dv
-     module procedure mpp_update_nest_coarse_r4_3dv
-     module procedure mpp_update_nest_coarse_r4_4dv
-#ifdef OVERLOAD_C4
-     module procedure mpp_update_nest_coarse_c4_2d
-     module procedure mpp_update_nest_coarse_c4_3d
-     module procedure mpp_update_nest_coarse_c4_4d
-#endif
-     module procedure mpp_update_nest_coarse_i4_2d
-     module procedure mpp_update_nest_coarse_i4_3d
-     module procedure mpp_update_nest_coarse_i4_4d
-  end interface
-
-  !> @brief Used by @ref mpp_update_nest_coarse to perform domain updates
-  !!
-  !> @ingroup mpp_domains_mod
-  interface mpp_do_update_nest_coarse
-     module procedure mpp_do_update_nest_coarse_r8_3d
-     module procedure mpp_do_update_nest_coarse_r8_3dv
-#ifdef OVERLOAD_C8
-     module procedure mpp_do_update_nest_coarse_c8_3d
-#endif
-     module procedure mpp_do_update_nest_coarse_i8_3d
-     module procedure mpp_do_update_nest_coarse_r4_3d
-     module procedure mpp_do_update_nest_coarse_r4_3dv
-#ifdef OVERLOAD_C4
-     module procedure mpp_do_update_nest_coarse_c4_3d
-#endif
-     module procedure mpp_do_update_nest_coarse_i4_3d
-  end interface
-
-  !> Get the index of the data passed from fine grid to coarse grid.
-  !! <br>Example usage:
-  !!
-  !!            call mpp_get_F2C_index(nest_domain, is_coarse, ie_coarse, js_coarse, je_coarse,
-  !!                            is_fine, ie_fine, js_fine, je_fine, nest_level, position)
-  !> @ingroup mpp_domains_mod
-  interface mpp_get_F2C_index
-    module procedure mpp_get_F2C_index_fine
-    module procedure mpp_get_F2C_index_coarse
-  end interface
-
   !> Broadcasts domain to every pe. Only useful outside the context of it's own pelist
   !!
   !> <br>Example usage:
   !!                    call mpp_broadcast_domain(domain)
   !!                    call mpp_broadcast_domain(domain_in, domain_out)
-  !!                    call mpp_broadcast_domain(domain, tile_coarse) ! nested domains
   !!
   !> @ingroup mpp_domains_mod
   interface mpp_broadcast_domain
     module procedure mpp_broadcast_domain_1
     module procedure mpp_broadcast_domain_2
     module procedure mpp_broadcast_domain_ug
-    module procedure mpp_broadcast_domain_nest_fine
-    module procedure mpp_broadcast_domain_nest_coarse
   end interface
 
 !--------------------------------------------------------------
@@ -2327,12 +2124,6 @@ module mpp_domains_mod
      module procedure mpp_get_layout1D
      module procedure mpp_get_layout2D
   end interface
-  !> Private interface for internal usage, compares two sizes
-  !> @ingroup mpp_domains_mod
-  interface check_data_size
-     module procedure check_data_size_1d
-     module procedure check_data_size_2d
-  end interface
 
   !> Nullify domain list. This interface is needed in mpp_domains_test.
   !! 1-D case can be added in if needed.
@@ -2351,7 +2142,6 @@ module mpp_domains_mod
 
 contains
 
-#include <mpp_define_nest_domains.inc>
 #include <mpp_domains_util.inc>
 #include <mpp_domains_comm.inc>
 #include <mpp_domains_define.inc>

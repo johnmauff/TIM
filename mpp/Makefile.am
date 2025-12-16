@@ -51,7 +51,6 @@ libmpp_la_SOURCES = \
   include/mpp_comm_nocomm.inc \
   include/mpp_data_mpi.inc \
   include/mpp_data_nocomm.inc \
-  include/mpp_define_nest_domains.inc \
   include/mpp_do_check.fh \
   include/mpp_do_checkV.fh \
   include/mpp_do_get_boundary.fh \
@@ -64,7 +63,6 @@ libmpp_la_SOURCES = \
   include/mpp_do_updateV_ad.fh \
   include/mpp_do_updateV_nonblock.fh \
   include/mpp_do_update_ad.fh \
-  include/mpp_do_update_nest.fh \
   include/mpp_do_update_nonblock.fh \
   include/mpp_domains_comm.inc \
   include/mpp_domains_define.inc \
@@ -116,7 +114,6 @@ libmpp_la_SOURCES = \
   include/mpp_update_domains2D.fh \
   include/mpp_update_domains2D_ad.fh \
   include/mpp_update_domains2D_nonblock.fh \
-  include/mpp_update_nest_domains.fh \
   include/mpp_util.inc \
   include/mpp_util_mpi.inc \
   include/mpp_util_nocomm.inc \
@@ -170,7 +167,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   mpp_mod.$(FC_MODEXT) \
   mpp_memutils_mod.$(FC_MODEXT) \
   mpp_efp_mod.$(FC_MODEXT) \
-  include/mpp_define_nest_domains.inc \
   include/mpp_domains_util.inc \
   include/mpp_domains_comm.inc \
   include/mpp_domains_define.inc \
@@ -185,7 +181,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_do_updateV_ad.fh \
   include/mpp_do_updateV_nonblock.fh \
   include/mpp_do_update_ad.fh \
-  include/mpp_do_update_nest.fh \
   include/mpp_do_update_nonblock.fh \
   include/mpp_get_boundary.fh \
   include/mpp_get_boundary_ad.fh \
@@ -195,7 +190,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_update_domains2D.fh \
   include/mpp_update_domains2D_ad.fh \
   include/mpp_update_domains2D_nonblock.fh \
-  include/mpp_update_nest_domains.fh \
   include/mpp_domains_reduce.inc \
   include/mpp_do_global_field.fh \
   include/mpp_do_global_field_ad.fh \

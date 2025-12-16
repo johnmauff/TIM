@@ -39,13 +39,6 @@ program test_mpp_domains
   use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST, mpp_define_mosaic_pelist
   use mpp_domains_mod, only : mpp_get_global_domain, ZERO, NINETY, MINUS_NINETY
   use mpp_domains_mod, only : mpp_get_boundary, mpp_start_update_domains, mpp_complete_update_domains
-  use mpp_domains_mod, only : mpp_define_nest_domains, nest_domain_type
-  use mpp_domains_mod, only : mpp_get_C2F_index, mpp_update_nest_fine
-  use mpp_domains_mod, only : mpp_get_F2C_index, mpp_update_nest_coarse
-  use mpp_domains_mod, only : mpp_get_nest_coarse_domain, mpp_get_nest_fine_domain
-  use mpp_domains_mod, only : mpp_is_nest_fine, mpp_is_nest_coarse
-  use mpp_domains_mod, only : mpp_get_nest_pelist, mpp_get_nest_npes
-  use mpp_domains_mod, only : mpp_get_nest_fine_pelist, mpp_get_nest_fine_npes
   use mpp_domains_mod, only : mpp_get_domain_shift, EDGEUPDATE, mpp_deallocate_domain
   use mpp_domains_mod, only : mpp_group_update_type, mpp_create_group_update
   use mpp_domains_mod, only : mpp_do_group_update, mpp_clear_group_update

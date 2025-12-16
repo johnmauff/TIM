@@ -31,11 +31,6 @@ module test_domains_utility_mod
     module procedure fill_coarse_data_r4
   end interface fill_coarse_data
 
-  interface fill_nest_data
-    module procedure fill_nest_data_r8
-    module procedure fill_nest_data_r4
-  end interface fill_nest_data
-
   contains
 
 subroutine fill_coarse_data_r8(data, rotate, iadd, jadd, is_c, ie_c, js_c, je_c, nz, isd, jsd, nx, ny, &
@@ -176,105 +171,6 @@ subroutine fill_coarse_data_r4(data, rotate, iadd, jadd, is_c, ie_c, js_c, je_c,
   end subroutine fill_coarse_data_r4
 
   !###########################################################################################
-
-    subroutine fill_nest_data_r8(buffer, is, ie, js, je, nnest, tile, ishift, jshift, iadd, jadd, rotate, &
-                            isl, iel, jsl, jel, xadd, yadd, sign1, sign2, nx, ny)
-     real(kind=r8_kind), dimension(is:,js:,:), intent(inout) :: buffer
-     integer,                       intent(in) :: is, ie, js, je, nnest
-     integer,                       intent(in) :: ishift, jshift
-     integer, dimension(:),         intent(in) :: tile, iadd, jadd, rotate, isl, iel, jsl, jel
-     real(kind=r8_kind),                          intent(in) :: xadd, yadd
-     integer,                       intent(in) :: sign1, sign2
-     integer,                       intent(in) :: nx, ny
-     integer :: i, j, k, n, nk
-     integer :: ioff, joff
-
-     ioff = 0
-     joff = 0
-     nk = size(buffer,3)
-     do k = 1, nk
-        do n = 1, nnest
-           if(iel(n) == ie) ioff = ishift
-           if(jel(n) == je) joff = jshift
-
-           select case (rotate(n))
-           case(ZERO)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = xadd + dble(tile(n)) + dble(i-iadd(n))*1.d-3 &
-                                  & + dble(j-jadd(n))*1.d-6 + dble(k)*1.d-9
-                 enddo
-              enddo
-           case (NINETY)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = sign2*(yadd + dble(tile(n)) + dble(j-jadd(n))*1.d-3 &
-                                  & + dble(nx-i+iadd(n)+1+ioff)*1.d-6 + dble(k)*1.d-9)
-                 enddo
-              enddo
-           case (MINUS_NINETY)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = sign1*(yadd + dble(tile(n)) + dble(ny-j+jadd(n)+1+joff)*1.d-3 &
-                                  & + dble(i-iadd(n))*1.d-6 + dble(k)*1.d-9)
-                 enddo
-              enddo
-           case default
-              call mpp_error(FATAL,"fill_nest_data: rotate must be ZERO, NINETY, MINUS_NINETY")
-           end select
-        enddo
-     enddo
-
-   end subroutine fill_nest_data_r8
-
-   !###########################################################################################
-
-    subroutine fill_nest_data_r4(buffer, is, ie, js, je, nnest, tile, ishift, jshift, iadd, jadd, rotate, &
-                            isl, iel, jsl, jel, xadd, yadd, sign1, sign2, nx, ny)
-     real(kind=r4_kind), dimension(is:,js:,:), intent(inout) :: buffer
-     integer,                       intent(in) :: is, ie, js, je, nnest
-     integer,                       intent(in) :: ishift, jshift
-     integer, dimension(:),         intent(in) :: tile, iadd, jadd, rotate, isl, iel, jsl, jel
-     real(kind=r4_kind),                          intent(in) :: xadd, yadd
-     integer,                       intent(in) :: sign1, sign2
-     integer,                       intent(in) :: nx, ny
-     integer :: i, j, k, n, nk
-     integer :: ioff, joff
-
-     ioff = 0
-     joff = 0
-     nk = size(buffer,3)
-     do k = 1, nk
-        do n = 1, nnest
-           if(iel(n) == ie) ioff = ishift
-           if(jel(n) == je) joff = jshift
-
-           select case (rotate(n))
-           case(ZERO)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = xadd + tile(n) + (i-iadd(n))*1.e-3 + (j-jadd(n))*1.e-6 + k*1.e-9
-                 enddo
-              enddo
-           case (NINETY)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = sign2*(yadd + tile(n) + (j-jadd(n))*1.e-3 + (nx-i+iadd(n)+1+ioff)*1.e-6 + k*1.e-9)
-                 enddo
-              enddo
-           case (MINUS_NINETY)
-              do j = jsl(n), jel(n)+joff
-                 do i = isl(n), iel(n)+ioff
-                    buffer(i,j,k) = sign1*(yadd + tile(n) + (ny-j+jadd(n)+1+joff)*1.e-3 + (i-iadd(n))*1.e-6 + k*1.e-9)
-                 enddo
-              enddo
-           case default
-              call mpp_error(FATAL,"fill_nest_data: rotate must be ZERO, NINETY, MINUS_NINETY")
-           end select
-        enddo
-     enddo
-
-  end subroutine fill_nest_data_r4
 
   !#######################################################################################
   !--- define mosaic domain for cubic grid

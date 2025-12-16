@@ -256,7 +256,7 @@ module fms
                      operator(-), assignment(=), mpp_query_efp_overflow_error, &
                      mpp_reset_efp_overflow_error, mpp_efp_type
   use mpp_domains_mod, only: domain_axis_spec, domain1D, domain2D, DomainCommunicator2D, &
-                     nest_domain_type, mpp_group_update_type, &
+                     mpp_group_update_type, &
                      mpp_domains_set_stack_size, mpp_get_compute_domain, &
                      mpp_get_compute_domains, mpp_get_data_domain, &
                      mpp_get_global_domain, mpp_get_domain_components, &
@@ -284,7 +284,7 @@ module fms
                      mpp_complete_update_domains, mpp_create_group_update, &
                      mpp_do_group_update, mpp_start_group_update, &
                      mpp_complete_group_update, mpp_reset_group_update_field, &
-                     mpp_update_nest_fine, mpp_update_nest_coarse, mpp_get_boundary, &
+                     mpp_get_boundary, &
                      mpp_update_domains_ad, mpp_get_boundary_ad, mpp_pass_SG_to_UG, &
                      mpp_pass_UG_to_SG, mpp_define_layout, mpp_define_domains, &
                      mpp_modify_domain, mpp_define_mosaic, mpp_define_mosaic_pelist, &
@@ -299,14 +299,9 @@ module fms
                      mpp_get_ug_domain_tile_list, mpp_get_UG_compute_domains, &
                      mpp_define_null_UG_domain, NULL_DOMAINUG, mpp_get_UG_domains_index, &
                      mpp_get_UG_SG_domain, mpp_get_UG_domain_tile_pe_inf, &
-                     mpp_define_nest_domains, mpp_get_C2F_index, mpp_get_F2C_index, &
-                     mpp_get_nest_coarse_domain, mpp_get_nest_fine_domain, &
-                     mpp_is_nest_coarse, mpp_is_nest_fine, &
-                     mpp_get_nest_pelist, mpp_get_nest_npes, &
-                     mpp_get_nest_fine_pelist, mpp_get_nest_fine_npes, &
                      mpp_domain_UG_is_tile_root_pe, mpp_deallocate_domainUG, &
                      mpp_get_io_domain_UG_layout, NULL_DOMAIN1D, NULL_DOMAIN2D, &
-                     mpp_create_super_grid_domain, mpp_shift_nest_domains
+                     mpp_create_super_grid_domain
 
   !> platform
   use platform_mod, only: r8_kind, r4_kind, i8_kind, i4_kind, c8_kind, c4_kind, &
