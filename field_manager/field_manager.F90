@@ -199,15 +199,10 @@ public :: field_manager_end    !< ()
 public :: find_field_index     !< (model, field_name) or (list_path)
 public :: find_field_index_old !< (model, field_name) returns index of field_name in
 public :: find_field_index_new
-public :: get_field_info       !< (n,fld_type,fld_name,model,num_methods)
-                               !! Returns parameters relating to field n.
-public :: get_field_method     !< (n, m, method) Returns the m-th method of field n
-public :: get_field_methods    !< (n, methods) Returns the methods related to field n
 public :: parse                !< (text, label, values) Overloaded function to parse integer,
                                !! real or character. Parse returns the number of values
                                !! decoded (> 1 => an array of values)
 public :: fm_change_list       !< (list) return success
-public :: fm_change_root       !< (list) return success
 public :: fm_dump_list         !< (list [, recursive]) return success
 public :: fm_exists            !< (field) return success
 public :: fm_get_index         !< (field) return index
@@ -219,7 +214,6 @@ public :: fm_get_value_integer !<   as above (overloaded function)
 public :: fm_get_value_logical !<   as above (overloaded function)
 public :: fm_get_value_real    !<   as above (overloaded function)
 public :: fm_get_value_string  !<   as above (overloaded function)
-public :: fm_init_loop         !< (list, iter)
 public :: fm_loop_over_list    !< (list, name, type, index) return success
                                !! (iter, name, type, index) return success
 public :: fm_new_list          !< (list [, create] [, keep]) return index
@@ -228,8 +222,6 @@ public :: fm_new_value_integer !<   as above (overloaded function)
 public :: fm_new_value_logical !<   as above (overloaded function)
 public :: fm_new_value_real    !<   as above (overloaded function)
 public :: fm_new_value_string  !<   as above (overloaded function)
-public :: fm_reset_loop        !< ()
-public :: fm_return_root       !< () return success
 public :: fm_modify_name       !< (oldname, newname) return success
 public :: fm_query_method      !< (name, method_name, method_control) return success and
                                !! name and control strings
@@ -1105,68 +1097,6 @@ find_field_index_new = fm_get_index(field_name)
 
 end function find_field_index_new
 
-!> @brief This routine allows access to field information given an index.
-!!
-!> When passed an index, this routine will return the type of field,
-!! the name of the field, the model which the field is associated and
-!! the number of methods associated with the field.
-!! <br>Example usage:
-!! @code{.F90}
-!! call get_field_info( n,fld_type,fld_name,model,num_methods )
-!! @endcode
-subroutine get_field_info(n,fld_type,fld_name,model,num_methods)
-integer,          intent(in)  :: n !< index of field
-character (len=*),intent(out) :: fld_type !< field type
-character (len=*),intent(out) :: fld_name !< name of the field
-integer, intent(out) :: model !< number indicating which model is used
-integer, intent(out) :: num_methods !< number of methods
-
-if (n < 1 .or. n > num_fields) call mpp_error(FATAL,trim(error_header)//'Invalid field index')
-
-fld_type    = fields(n)%field_type
-fld_name    = fields(n)%field_name
-model       = fields(n)%model
-num_methods = fields(n)%num_methods
-
-end subroutine get_field_info
-
-!> @brief A routine to get a specified method
-!!
-!> This routine, when passed a field index and a method index will
-!! return the method text associated with the field(n) method(m).
-subroutine get_field_method(n,m,method)
-
-integer,           intent(in)    :: n !< index of field
-integer,           intent(in)    :: m !< index of method
-type(method_type) ,intent(inout) :: method !< the m-th method of field with index n
-
-if (n < 1 .or. n > num_fields) call mpp_error(FATAL,trim(error_header)//'Invalid field index')
-if (m < 1 .or. m > fields(n)%num_methods) call mpp_error(FATAL,trim(error_header)//'Invalid method index')
-
-  method = fields(n)%methods(m)
-
-end subroutine get_field_method
-
-!> @brief A routine to obtain all the methods associated with a field.
-!!
-!> When passed a field index, this routine will return the text
-!! associated with all the methods attached to the field.
-subroutine get_field_methods(n,methods)
-
-integer,          intent(in)  :: n !< field index
-type(method_type),intent(inout) :: methods(:) !< an array of methods for field with index n
-
-  if (n < 1 .or. n > num_fields) &
-    call mpp_error(FATAL,trim(error_header)//'Invalid field index')
-
-  if (size(methods(:)) <  fields(n)%num_methods) &
-    call mpp_error(FATAL,trim(error_header)//'Method array too small')
-
-  methods = default_method
-  methods(1:fields(n)%num_methods) = fields(n)%methods(1:fields(n)%num_methods)
-
-end subroutine get_field_methods
-
 !> @returns The number of values that have been decoded. This allows
 !! a user to define a large array and fill it partially with
 !! values from a list. This should be the size of the value array.
@@ -1692,61 +1622,6 @@ endif
 
 end function fm_change_list
 
-!> @brief Change the root list
-!!
-!> This function changes the root of the field tree to correspond to the
-!! field named name. An example of a use of this would be if code is
-!! interested in a subset of fields with a common base. This common base
-!! could be set using fm_change_root and fields could be referenced using
-!! this root.
-!!
-!! This function should be used in conjunction with fm_return_root.
-!! @return A flag to indicate operation success, true = no errors
-function  fm_change_root(name)                                        &
-          result (success)
-logical        :: success
-character(len=*), intent(in)  :: name !< name of the field which the user wishes to become the root.
-
-type (field_def), pointer, save :: temp_list_p
-integer :: out_unit
-!        Initialize the field manager if needed
-if (.not. module_is_initialized) then
-  call initialize
-endif
-out_unit = stdout()
-!        Must supply a field field name
-if (name .eq. ' ') then
-  success = .false.
-  return
-endif
-!        Get a pointer to the list
-temp_list_p => find_list(name, current_list_p, .false.)
-
-if (associated(temp_list_p)) then
-!        restore the saved root values if we've already changed root
-  if (save_root_name .ne. ' ') then
-    root_p%name = save_root_name
-    root_p%parent => save_root_parent_p
-  endif
-!        set the pointer for the new root field
-  root_p => temp_list_p
-!        save the new root field's name and parent
-  save_root_name = root_p%name
-  save_root_parent_p => root_p%parent
-!        set the new root name and parent fields to appropriate values
-  root_p%name = ' '
-  nullify(root_p%parent)
-!        set the current list to the new root as it likely is not
-!        going to be meaningful anymore
-  current_list_p => root_p
-  success = .true.
-else
-!        Couldn't find the list
-  success = .false.
-endif
-
-end function  fm_change_root
-
 !> @brief A function to list properties associated with a field.
 !!
 !> This function writes the contents of the field named "name" to stdout.
@@ -2266,22 +2141,6 @@ function  set_list_stuff()                                                &
 end function  set_list_stuff
 
 end function  fm_loop_over_list_old
-
-!> given a name of the list, prepares an iterator over the list content.
-!! If the name of the given list is blank, then the current list is used
-subroutine fm_init_loop(loop_list, iter)
-  character(len=*)       , intent(in)  :: loop_list !< name of the list to iterate over
-  type(fm_list_iter_type), intent(out) :: iter     !< loop iterator
-
-  if (.not.module_is_initialized) call initialize
-
-  if (loop_list==' ') then ! looping over current list
-     iter%ptr => current_list_p%first_field
-  else
-     iter%ptr => find_list(loop_list,current_list_p,.false.)
-     if (associated(iter%ptr)) iter%ptr => iter%ptr%first_field
-  endif
-end subroutine fm_init_loop
 
 !> given a list iterator, returns information about curren list element
 !! and advances the iterator to the next list element. At the end of the
@@ -2923,41 +2782,6 @@ else
 endif
 
 end function  fm_new_value_string
-
-
-!> Resets the loop variable. For use in conjunction with fm_loop_over_list.
-subroutine  fm_reset_loop
-!        Initialize the field manager if needed
-if (.not. module_is_initialized) then
-  call initialize
-endif
-!        Reset the variables
-loop_list = ' '
-nullify(loop_list_p)
-
-end subroutine  fm_reset_loop
-
-!> Return the root list to the value at initialization.
-!!
-!> For use in conjunction with fm_change_root.
-!!
-!! Users should use this routine before leaving their routine if they
-!! previously used fm_change_root.
-subroutine  fm_return_root
-!        Initialize the field manager if needed
-if (.not. module_is_initialized) then
-  call initialize
-endif
-!        restore the saved values to the current root
-root_p%name = save_root_name
-root_p%parent => save_root_parent_p
-!        set the pointer to the original root field
-root_p => root
-!        reset the save root name and parent variables
-save_root_name = ' '
-nullify(save_root_parent_p)
-
-end subroutine  fm_return_root
 
 !> Return a pointer to the field if it exists relative to this_list_p,
 !! null otherwise
