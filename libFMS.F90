@@ -41,10 +41,9 @@
 !! Not in this module:
 !!
 !!                     axis_utils_mod, fms_io_mod, time_interp_external_mod
-!!                     get_grid_version_mpp_mod, mpp_io_mod, mosaic_mod,
+!!                     get_grid_version_mpp_mod, mpp_io_mod,
 !!                     fms_mod(partial, old io excluded), drifters modules
 !!                     constants_mod (FMSconstants should be used externally)
-!!                     mosaic_mod
 !!
 !! A full list of supported interfaces and public types intended for use via
 !! this module is provided in the [supported_interfaces.md](../../supported_interfaces.md)
@@ -210,7 +209,6 @@ module fms
   use grid2_mod, only: get_grid_ntiles, get_grid_size, get_grid_cell_centers, &
                       get_grid_cell_vertices, get_grid_cell_Area, get_grid_comp_area, &
                       define_cube_mosaic, get_great_circle_algorithm, grid_init, grid_end
-  use gradient_mod, only: gradient_cubic, calc_cubic_grid_info
 
   !> mpp
   use mpp_mod, only: stdin, stdout, stderr, &

@@ -406,7 +406,6 @@ AC_CONFIG_FILES([
   fms/Makefile
   fms2_io/Makefile
   mpp/Makefile
-  mosaic/Makefile
   mosaic2/Makefile
   memutils/Makefile
   horiz_interp/Makefile

@@ -134,8 +134,6 @@ list(APPEND fms_fortran_src_files
   horiz_interp/horiz_interp_type.F90
   horiz_interp/horiz_interp.F90
   memutils/memutils.F90
-  mosaic/gradient.F90
-  mosaic/mosaic.F90
   mosaic2/grid2.F90
   mosaic2/mosaic2.F90
   mpp/mpp.F90
@@ -160,11 +158,11 @@ list(APPEND fms_fortran_src_files
 list(APPEND fms_c_src_files
   diag_manager/mppnccombine.c
   affinity/affinity.c
-  mosaic/create_xgrid.c
-  mosaic/gradient_c2l.c
-  mosaic/interp.c
-  mosaic/mosaic_util.c
-  mosaic/read_mosaic.c
+  mosaic2/create_xgrid.c
+  mosaic2/gradient_c2l.c
+  mosaic2/interp.c
+  mosaic2/mosaic_util.c
+  mosaic2/read_mosaic.c
   mpp/mpp_memuse.c
   string_utils/fms_string_utils_binding.c
 )

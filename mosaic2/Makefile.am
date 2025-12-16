@@ -23,7 +23,7 @@
 # Ed Hartnett 2/22/19
 
 # Include .h and .mod files.
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/mosaic
+AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_FCFLAGS = $(FC_MODINC). $(FC_MODOUT)$(MODDIR)
 
 # Build these uninstalled convenience libraries.
@@ -31,6 +31,15 @@ AM_FCFLAGS = $(FC_MODINC). $(FC_MODOUT)$(MODDIR)
 noinst_LTLIBRARIES = libmosaic2.la
 
 libmosaic2_la_SOURCES = \
+constant.h \
+create_xgrid.c \
+create_xgrid.h \
+gradient_c2l.c \
+gradient_c2l.h \
+mosaic_util.c \
+mosaic_util.h \
+read_mosaic.c \
+read_mosaic.h \
 mosaic2.F90 \
 grid2.F90
 
