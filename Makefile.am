@@ -42,7 +42,6 @@ SUBDIRS = \
   fms2_io \
   mosaic2 \
   fms \
-  parser \
   affinity \
   mosaic \
   time_manager \

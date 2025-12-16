@@ -155,16 +155,12 @@
 !> @addtogroup field_manager_mod
 !> @{
 module field_manager_mod
-#ifndef use_yaml
 #ifndef MAXFIELDS_
 #define MAXFIELDS_ 250
 #endif
-#endif
 
-#ifndef use_yaml
 #ifndef MAXFIELDMETHODS_
 #define MAXFIELDMETHODS_ 250
-#endif
 #endif
 
 !
@@ -191,9 +187,6 @@ use    mpp_mod, only : mpp_error,   &
 use    fms_mod, only : lowercase,   &
                        write_version_number
 use fms2_io_mod, only: file_exists
-#ifdef use_yaml
-use fm_yaml_mod
-#endif
 
 implicit none
 private
@@ -431,12 +424,10 @@ character(len=35), parameter :: warn_header       = '==>Warning from '//trim(mod
 character(len=32), parameter :: note_header       = '==>Note from '//trim(module_name)//': '
 character(len=1),  parameter :: comma             = ","
 character(len=1),  parameter :: list_sep          = '/'
-#ifndef use_yaml
 character(len=1),  parameter :: comment           = '#'
 character(len=1),  parameter :: dquote            = '"'
 character(len=1),  parameter :: equal             = '='
 character(len=1),  parameter :: squote            = "'"
-#endif
 integer,           parameter :: null_type         = 0
 integer,           parameter :: integer_type      = 1
 integer,           parameter :: list_type         = 2
@@ -445,10 +436,8 @@ integer,           parameter :: real_type         = 4
 integer,           parameter :: string_type       = 5
 integer,           parameter :: num_types         = 5
 integer,           parameter :: array_increment   = 10
-#ifndef use_yaml
 integer,           parameter :: MAX_FIELDS        = MAXFIELDS_
 integer,           parameter :: MAX_FIELD_METHODS = MAXFIELDMETHODS_
-#endif
 
 !> @brief Private type for internal use
 !> @ingroup field_manager_mod
@@ -456,14 +445,9 @@ type, private :: field_mgr_type
   character(len=fm_field_name_len)                    :: field_type
   character(len=fm_string_len)                        :: field_name
   integer                                             :: model, num_methods
-#ifdef use_yaml
-  type(method_type), dimension(:), allocatable        :: methods !< methods associated with this field name
-#else
   type(method_type)                                   :: methods(MAX_FIELD_METHODS)
-#endif
 end type field_mgr_type
 
-#ifndef use_yaml
 !> @brief Private type for internal use
 !> @ingroup field_manager_mod
 type, private :: field_names_type
@@ -478,7 +462,6 @@ type, private :: field_names_type_short
   character(len=fm_field_name_len)                    :: fld_type
   character(len=fm_field_name_len)                    :: mod_name
 end type field_names_type_short
-#endif
 
 !> @brief Private type for internal use
 !> @ingroup field_manager_mod
@@ -503,11 +486,7 @@ end type field_def
 !> @addtogroup field_manager_mod
 !> @{
 
-#ifdef use_yaml
-type(field_mgr_type), dimension(:), allocatable, private :: fields !< fields of field_mgr_type
-#else
 type(field_mgr_type), private :: fields(MAX_FIELDS)
-#endif
 
 character(len=fm_path_name_len)  :: loop_list
 character(len=fm_type_name_len)  :: field_type_name(num_types)
@@ -528,290 +507,6 @@ type (field_def), pointer        :: save_root_parent_p => NULL()
 type (field_def), target, save   :: root
 
 contains
-
-#ifdef use_yaml
-
-!> @brief Routine to initialize the field manager.
-!!
-!> This routine reads from a file containing yaml paramaters.
-!! These yaml parameters contain information on which schemes are
-!! needed within various modules. The field manager does not
-!! initialize any of those schemes however. It simply holds the
-!! information and is queried by the appropriate  module.
-!!
-!! The routine has two loops. The first loop initializes the my_table object
-!! and counts the number of fields contained therein. The second loop is the
-!! main loop that acts on each field in the my_table object, defining a list
-!! object (in the field_manager definition) from which various fm routines may be
-!! called, as well as populating the "fields" object and the "methods" objects
-!! within each field object. The "fields" and "methods" objects are then used
-!! with the subroutine new_name to append various characteristics to the list
-!! object. Note that the "fields" and "methods" objects are also used with other
-!! fm routines in a bit of a parallel system.
-subroutine field_manager_init(nfields, table_name)
-integer,                      intent(out), optional :: nfields    !< number of fields
-character(len=fm_string_len), intent(in),  optional :: table_name !< Name of the field table, default
-
-character(len=fm_string_len)    :: tbl_name !< field_table yaml file
-character(len=fm_string_len)    :: method_control !< field_table yaml file
-integer                         :: h, i, j, k, l, m !< dummy integer buffer
-type (fmTable_t)                :: my_table       !< the field table
-integer                         :: model !< model assocaited with the current field
-character(len=fm_path_name_len) :: list_name !< field_manager list name
-character(len=fm_string_len)    :: subparamvalue !< subparam value to be used when defining new name
-character(len=fm_string_len)    :: fm_yaml_null !< useful hack when OG subparam does not contain an equals sign
-integer                         :: current_field !< field index within loop
-integer                         :: index_list_name !< integer used as check for "no field"
-integer                         :: subparamindex !< index to identify whether subparams exist for this field
-logical                         :: fm_success !< logical for whether fm_change_list was a success
-logical                         :: subparams !< logical whether subparams exist in this iteration
-
-if (module_is_initialized) then
-   if(present(nfields)) nfields = num_fields
-   return
-endif
-
-call initialize
-
-if (.not.PRESENT(table_name)) then
-   tbl_name = 'field_table.yaml'
-else
-   tbl_name = trim(table_name)
-endif
-if (.not. file_exists(trim(tbl_name))) then
-  if(present(nfields)) nfields = 0
-  return
-endif
-
-
-! Define my_table object and read in number of fields
-my_table = fmTable_t(trim(tbl_name))
-call my_table%get_blocks
-call my_table%create_children
-do h=1,my_table%nchildren
-  do i=1,my_table%children(h)%nchildren
-    do j=1,my_table%children(h)%children(i)%nchildren
-      num_fields = num_fields + 1
-    end do
-  end do
-end do
-
-allocate(fields(num_fields))
-
-current_field = 0
-do h=1,my_table%nchildren
-  do i=1,my_table%children(h)%nchildren
-    select case (my_table%children(h)%children(i)%name)
-    case ('coupler_mod')
-       model = MODEL_COUPLER
-    case ('atmos_mod')
-       model = MODEL_ATMOS
-    case ('ocean_mod')
-       model = MODEL_OCEAN
-    case ('land_mod')
-       model = MODEL_LAND
-    case ('ice_mod')
-       model = MODEL_ICE
-    case default
-      call mpp_error(FATAL, trim(error_header)//'The model name is unrecognised : &
-        &'//trim(my_table%children(h)%children(i)%name))
-    end select
-    do j=1,my_table%children(h)%children(i)%nchildren
-      current_field = current_field + 1
-      list_name = list_sep//lowercase(trim(my_table%children(h)%children(i)%name))//list_sep//&
-               lowercase(trim(my_table%children(h)%name))//list_sep//&
-               lowercase(trim(my_table%children(h)%children(i)%children(j)%name))
-      index_list_name = fm_new_list(list_name, create = .true.)
-      if ( index_list_name == NO_FIELD ) &
-        call mpp_error(FATAL, trim(error_header)//'Could not set field list for '//trim(list_name))
-      fm_success = fm_change_list(list_name)
-      fields(current_field)%model       = model
-      fields(current_field)%field_name  = lowercase(trim(my_table%children(h)%children(i)%children(j)%name))
-      fields(current_field)%field_type  = lowercase(trim(my_table%children(h)%name))
-      fields(current_field)%num_methods = size(my_table%children(h)%children(i)%children(j)%key_ids)
-      allocate(fields(current_field)%methods(fields(current_field)%num_methods))
-      if(fields(current_field)%num_methods.gt.0) then
-        if (my_table%children(h)%children(i)%children(j)%nchildren .gt. 0) subparams = .true.
-        do k=1,size(my_table%children(h)%children(i)%children(j)%keys)
-          fields(current_field)%methods(k)%method_type = &
-            lowercase(trim(my_table%children(h)%children(i)%children(j)%keys(k)))
-          fields(current_field)%methods(k)%method_name = &
-            lowercase(trim(my_table%children(h)%children(i)%children(j)%values(k)))
-          if (.not.subparams) then
-            call new_name(list_name, my_table%children(h)%children(i)%children(j)%keys(k),&
-              my_table%children(h)%children(i)%children(j)%values(k) )
-          else
-            subparamindex=-1
-            do l=1,my_table%children(h)%children(i)%children(j)%nchildren
-              if(lowercase(trim(my_table%children(h)%children(i)%children(j)%children(l)%paramname)).eq.&
-                lowercase(trim(fields(current_field)%methods(k)%method_type))) then
-                  subparamindex = l
-                  exit
-              end if
-            end do
-            if (subparamindex.eq.-1) then
-              call new_name(list_name, my_table%children(h)%children(i)%children(j)%keys(k),&
-                my_table%children(h)%children(i)%children(j)%values(k) )
-            else
-              do m=1,size(my_table%children(h)%children(i)%children(j)%children(subparamindex)%keys)
-                method_control = " "
-                subparamvalue = " "
-                if (trim(my_table%children(h)%children(i)%children(j)%values(k)).eq.'fm_yaml_null') then
-                  fm_yaml_null = ''
-                else
-                  fm_yaml_null = trim(my_table%children(h)%children(i)%children(j)%values(k))//'/'
-                end if
-                method_control = trim(my_table%children(h)%children(i)%children(j)%keys(k))//"/"//&
-                  &trim(fm_yaml_null)//&
-                  &trim(my_table%children(h)%children(i)%children(j)%children(subparamindex)%keys(m))
-                subparamvalue = trim(my_table%children(h)%children(i)%children(j)%children(subparamindex)%values(m))
-                call new_name(list_name, method_control, subparamvalue)
-              end do
-            end if
-          end if
-        end do
-      end if
-    end do
-  end do
-end do
-
-if (present(nfields)) nfields = num_fields
-call my_table%destruct
-end subroutine field_manager_init
-
-!> @brief Subroutine to add new values to list parameters.
-!!
-!> This subroutine uses input strings list_name, method_name
-!! and val_name_in to add new values to the list. Given
-!! list_name a new list item is created that is named
-!! method_name and is given the value or values in
-!! val_name_in. If there is more than 1 value in
-!! val_name_in, these values should be  comma-separated.
-subroutine new_name ( list_name, method_name_in , val_name_in)
-character(len=*), intent(in)    :: list_name !< The name of the field that is of interest here.
-character(len=*), intent(in)    :: method_name_in !< The name of the method that values are
-                                                  !! being supplied for.
-character(len=*), intent(inout) :: val_name_in !< The value or values that will be parsed and
-                                               !! used as the value when creating a new field or fields.
-
-character(len=fm_string_len)       :: method_name !< name of method to be attached to new list
-character(len=fm_string_len)       :: val_name !< value name (to be converted to appropriate type)
-integer, dimension(:), allocatable :: end_val !< end values in comma separated list
-integer, dimension(:), allocatable :: start_val !< start values in comma separated list
-integer                            :: i !< loop index
-integer                            :: index_t !< appending index
-integer                            :: num_elem !< number of elements in comma list
-integer                            :: val_int !< value when converted to integer
-integer                            :: val_type !< value type represented as integer for use in select case
-logical                            :: append_new !< whether or not to append to existing list structure
-logical                            :: val_logic !< value when converted to logical
-real                               :: val_real !< value when converted to real
-
-call strip_front_blanks(val_name_in)
-method_name = trim(method_name_in)
-call strip_front_blanks(method_name)
-
-index_t  = 1
-num_elem = 1
-append_new = .false.
-
-! If the array of values being passed in is a comma delimited list then count
-! the number of elements.
-
-do i = 1, len_trim(val_name_in)
-  if ( val_name_in(i:i) == comma ) then
-    num_elem = num_elem + 1
-  endif
-enddo
-
-allocate(start_val(num_elem))
-allocate(end_val(num_elem))
-start_val(1) = 1
-end_val(:) = len_trim(val_name_in)
-
-num_elem = 1
-do i = 1, len_trim(val_name_in)
-  if ( val_name_in(i:i) == comma ) then
-    end_val(num_elem) = i-1
-    start_val(num_elem+1) = i+1
-    num_elem = num_elem + 1
-  endif
-enddo
-
-do i = 1, num_elem
-
-  if ( i .gt. 1 .or. index_t .eq. 0 ) then
-    append_new = .true.
-    index_t = 0 ! If append is true then index must be <= 0
-  endif
-  val_type = string_type  ! Assume it is a string
-  val_name = val_name_in(start_val(i):end_val(i))
-  call strip_front_blanks(val_name)
-
-  if ( scan(val_name(1:1), setnum ) > 0 ) then
-    if ( scan(val_name, set_nonexp ) .le. 0 ) then
-      if ( scan(val_name, '.') > 0 .or. scan(val_name, 'e') > 0 .or. scan(val_name, 'E') > 0) then
-        read(val_name, *) val_real
-        val_type = real_type
-      else
-        read(val_name, *) val_int
-        val_type = integer_type
-      endif
-    endif
-  endif
-
-  if ( len_trim(val_name) == 1 .or. len_trim(val_name) == 3) then
-    if ( val_name == 't' .or. val_name == 'T' .or. val_name == '.t.' .or. val_name == '.T.' ) then
-      val_logic = .TRUE.
-      val_type = logical_type
-    endif
-    if ( val_name == 'f' .or. val_name == 'F' .or. val_name == '.f.' .or. val_name == '.F.' ) then
-      val_logic = .FALSE.
-      val_type = logical_type
-    endif
-  endif
-  if ( trim(lowercase(val_name)) == 'true' .or. trim(lowercase(val_name)) == '.true.' ) then
-    val_logic = .TRUE.
-    val_type = logical_type
-  endif
-  if ( trim(lowercase(val_name)) == 'false' .or. trim(lowercase(val_name)) == '.false.' ) then
-    val_logic = .FALSE.
-    val_type = logical_type
-  endif
-
-  select case(val_type)
-
-    case (integer_type)
-      if ( fm_new_value( method_name, val_int, create = .true., index = index_t, append = append_new ) < 0 ) &
-        call mpp_error(FATAL, trim(error_header)//'Could not set "' // trim(val_name) // '" for '//trim(method_name)//&
-                              ' (I) for '//trim(list_name))
-
-    case (logical_type)
-      if ( fm_new_value( method_name, val_logic, create = .true., index = index_t, append = append_new) < 0 ) &
-        call mpp_error(FATAL, trim(error_header)//'Could not set "' // trim(val_name) // '" for '//trim(method_name)//&
-                              ' (L) for '//trim(list_name))
-
-    case (real_type)
-      if ( fm_new_value( method_name, val_real, create = .true., index = index_t, append = append_new) < 0 ) &
-        call mpp_error(FATAL, trim(error_header)//'Could not set "' // trim(val_name) // '" for '//trim(method_name)//&
-                              ' (R) for '//trim(list_name))
-
-    case (string_type)
-      if ( fm_new_value( method_name, val_name, create = .true., index = index_t, append = append_new) < 0 ) &
-        call mpp_error(FATAL, trim(error_header)//'Could not set "' // trim(val_name) // '" for '//trim(method_name)//&
-                              ' (S) for '//trim(list_name))
-    case default
-      call mpp_error(FATAL, trim(error_header)//'Could not find a valid type to set the '//trim(method_name)//&
-                            ' for '//trim(list_name))
-
-  end select
-
-enddo
-  deallocate(start_val)
-  deallocate(end_val)
-
-end subroutine new_name
-#else
 
 !> @brief Routine to initialize the field manager.
 !!
@@ -1351,7 +1046,6 @@ do i = 1, num_elem
 enddo
 
 end subroutine new_name
-#endif
 
 !> @brief Destructor for field manager.
 !!
@@ -1359,18 +1053,7 @@ end subroutine new_name
 !! changes the initialized flag to false.
 subroutine field_manager_end
 
-#ifdef use_yaml
-integer :: j
-#endif
-
 module_is_initialized = .false.
-
-#ifdef use_yaml
-do j=1,size(fields)
-  if(allocated(fields(j)%methods)) deallocate(fields(j)%methods)
-end do
-if(allocated(fields)) deallocate(fields)
-#endif
 
 end subroutine field_manager_end
 

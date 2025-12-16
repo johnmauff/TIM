@@ -155,8 +155,6 @@ it with a m4 compile test
 ### Known Issues
 - GCC 11.1.0 is unsupported due to compilation issues with `select type`. The issue appears to be resolved in later GCC releases
 ### Added
-- PARSER: Adds a parser using the libyaml C library to support yaml format input files.
-  Currently implemented in data override and can be enabled with the configure option  `--with-yaml` or with CMake option `-DWITH_YAML`
 - FMS: Adds an interface, `fms_c2f_string`, to convert C strings and C pointers to Fortran strings
 - MPP: Adds a routine `mpp_shift_nest_domains` and a field to `nest_domain_type` to allow for modifying the position of a given nest domain
 - FMS2_IO: Reintroduces the option to flush_nc_files with fms2_io

@@ -43,4 +43,3 @@ for the build system:
      If enabled a coverage report can be generated with `make check-code-coverage`
 -    `--enable-test-input=/path/to/input` turns on test scripts that require input netcdf files (interpolator, xgrid, data_override).
      This option is mainly used internally and in automated testing since we do not host the input data publicly.
--    `--with-yaml` compile with yaml input and enable it's associated tests

@@ -66,12 +66,6 @@ AC_ARG_WITH([mpi],
 AS_IF([test ${with_mpi:-yes} = yes],
   [with_mpi=yes],
   [with_mpi=no])
-AC_ARG_WITH([yaml],
-  [AS_HELP_STRING([--with-yaml],
-    [Build with YAML support.  This option will be ignored if --disable-fortran-flag-setting is also given. (Default no)])])
-AS_IF([test ${with_yaml:-no} = no],
-  [with_yaml=no],
-  [with_yaml=yes])
 AC_ARG_ENABLE([setting-flags],
   [AS_HELP_STRING([--enable-setting-flags],
     [Allow configure to set some compiler flags.  Disabling this will also disable any other --with or --enable options that set flags, and will only use user-provided falgs. (Default yes)])])
@@ -179,19 +173,6 @@ if test $with_mpi = yes; then
   # We expect users to set CC and FC to MPI compiler wrappers, or that the correct
   # CPPFLAGS, {C,FC}FLAGS, LDFLAGS and LIBS options are given.
   GX_MPI()
-fi
-
-# Require yaml
-if test $with_yaml = yes; then
-  AC_CHECK_HEADERS([yaml.h], [], [AC_MSG_ERROR(["Can't find the libYAML C header file.  Set CC/CPPFLAGS/CFLAGS"])])
-  AC_SEARCH_LIBS([yaml_parser_initialize], [yaml], [], [AC_MSG_ERROR(["Can't find the libYAML C library.  Set CC/LDFLAGS/LIBS"])])
-
-  #If the test pass, define use_yaml macro
-  AC_DEFINE([use_yaml], [1], [This is required to use yaml parser])
-
-  AM_CONDITIONAL([SKIP_PARSER_TESTS], false )
-else
-  AM_CONDITIONAL([SKIP_PARSER_TESTS], true )
 fi
 
 # Require netCDF
@@ -335,10 +316,6 @@ if test $enable_setting_flags = yes; then
     FCFLAGS="$FCFLAGS -prof-gen=srcpos"
     CFLAGS="$CFLAGS -prof-gen=srcpos"
   fi
-  # add yaml flag
-  if test $with_yaml = yes; then
-    LDFLAGS="$LDFLAGS -lyaml"
-  fi
 fi
 
 # Find which mpi launcher to use
@@ -443,7 +420,6 @@ AC_CONFIG_FILES([
   random_numbers/Makefile
   libFMS/Makefile
   docs/Makefile
-  parser/Makefile
   string_utils/Makefile
   test_fms/test-lib.sh
   test_fms/intel_coverage.sh
@@ -461,7 +437,6 @@ AC_CONFIG_FILES([
   test_fms/axis_utils/Makefile
   test_fms/affinity/Makefile
   test_fms/coupler/Makefile
-  test_fms/parser/Makefile
   test_fms/string_utils/Makefile
   FMS.pc
   ])

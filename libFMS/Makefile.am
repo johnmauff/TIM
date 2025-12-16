@@ -50,7 +50,6 @@ libFMS_la_LIBADD += $(top_builddir)/data_override/libdata_override.la
 libFMS_la_LIBADD += $(top_builddir)/astronomy/libastronomy.la
 libFMS_la_LIBADD += $(top_builddir)/field_manager/libfield_manager.la
 libFMS_la_LIBADD += $(top_builddir)/random_numbers/librandom_numbers.la
-libFMS_la_LIBADD += $(top_builddir)/parser/libparser.la
 libFMS_la_LIBADD += $(top_builddir)/string_utils/libstring_utils.la
 libFMS_la_LIBADD += $(top_builddir)/libFMS_mod.la
 

@@ -43,7 +43,6 @@ container hosted at [noaagfdl/ubuntu_libfms_gnu:latest](https://hub.docker.com/r
 cmake flags:
 - `-DOPENMP=on`
 - `-DOPENMP=on`
-- `-DWITH_YAML=on`
 - `-D64BIT=on`
 
 ### libFMS lint tests

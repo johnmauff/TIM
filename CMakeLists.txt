@@ -65,7 +65,6 @@ option(INTERNAL_FILE_NML     "Enable compiler definition -DINTERNAL_FILE_NML"   
 option(ENABLE_QUAD_PRECISION "Enable compiler definition -DENABLE_QUAD_PRECISION"  ON)
 option(GFS_PHYS              "Enable compiler definition -DGFS_PHYS"              OFF)
 option(LARGEFILE             "Enable compiler definition -Duse_LARGEFILE"         OFF)
-option(WITH_YAML             "Enable compiler definition -Duse_yaml"              OFF)
 
 if(32BIT)
   list(APPEND kinds "r4")
@@ -87,11 +86,6 @@ find_package(NetCDF REQUIRED COMPONENTS C Fortran)
 if (OPENMP)
   find_package(OpenMP REQUIRED COMPONENTS C Fortran)
 endif()
-
-if (WITH_YAML)
-  find_package(libyaml REQUIRED)
-  include_directories(${LIBYAML_INCLUDE_DIR})
-endif ()
 
 # Enables position independent code (i.e., -fPIC)
 if (FPIC)
@@ -125,7 +119,6 @@ list(APPEND fms_fortran_src_files
   diag_manager/fms_diag_bbox.F90
   field_manager/field_manager.F90
   field_manager/fm_util.F90
-  field_manager/fm_yaml.F90
   fms/fms_io.F90
   fms/fms.F90
   fms2_io/blackboxio.F90
@@ -152,7 +145,6 @@ list(APPEND fms_fortran_src_files
   mpp/mpp_io.F90
   mpp/mpp_memutils.F90
   mpp/mpp_parameter.F90
-  parser/yaml_parser.F90
   platform/platform.F90
   random_numbers/mersennetwister.F90
   random_numbers/random_numbers.F90
@@ -174,8 +166,6 @@ list(APPEND fms_c_src_files
   mosaic/mosaic_util.c
   mosaic/read_mosaic.c
   mpp/mpp_memuse.c
-  parser/yaml_parser_binding.c
-  parser/yaml_output_functions.c
   string_utils/fms_string_utils_binding.c
 )
 
@@ -213,10 +203,6 @@ endif()
 
 if(GFS_PHYS)
   list(APPEND fms_defs GFS_PHYS)
-endif()
-
-if(WITH_YAML)
-  list(APPEND fms_defs use_yaml)
 endif()
 
 if(INTERNAL_FILE_NML)

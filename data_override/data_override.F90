@@ -37,7 +37,6 @@
 !! data_override will take place, field values outside the region will not be affected.
 
 module data_override_mod
-use yaml_parser_mod
 use constants_mod, only: PI
 use mpp_mod, only : mpp_error, FATAL, WARNING, NOTE, stdout, stdlog, mpp_max
 use mpp_mod, only : input_nml_file
@@ -136,11 +135,7 @@ real                                      :: min_glo_lon_atm, max_glo_lon_atm
 real                                      :: min_glo_lon_lnd, max_glo_lon_lnd
 real                                      :: min_glo_lon_ice, max_glo_lon_ice
 integer:: num_fields = 0 !< number of fields in override_array already processed
-#ifdef use_yaml
-type(data_type), dimension(:), allocatable           :: data_table !< user-provided data table
-#else
 type(data_type), dimension(max_table)           :: data_table !< user-provided data table
-#endif
 
 type(data_type)                                 :: default_table
 type(override_type), dimension(max_array), save :: override_array !< to store processed fields
@@ -240,14 +235,10 @@ endif
     default_table%factor = 1.
     default_table%interpol_method = 'bilinear'
 
-#ifdef use_yaml
-    call read_table_yaml(data_table)
-#else
     do i = 1,max_table
        data_table(i) = default_table
     enddo
     call read_table(data_table)
-#endif
 
 !  Initialize override array
     default_array%gridname = 'NONE'
@@ -354,7 +345,6 @@ endif
 
 end subroutine data_override_init
 
-#ifndef use_yaml
 subroutine read_table(data_table)
     type(data_type), dimension(max_table), intent(inout) :: data_table
 
@@ -498,64 +488,6 @@ subroutine read_table(data_table)
     close(iunit, iostat=io_status)
     if(io_status/=0) call mpp_error(FATAL, 'data_override_mod: Error in closing file data_table')
 end subroutine read_table
-
-#else
-subroutine read_table_yaml(data_table)
-    type(data_type), dimension(:), allocatable, intent(out) :: data_table
-
-    integer, allocatable :: entry_id(:)
-    integer :: nentries
-    integer :: i
-    character(len=50) :: buffer
-    integer :: file_id
-
-    file_id = open_and_parse_file("data_table.yaml")
-    if (file_id==999) then
-      nentries = 0
-    else
-      nentries = get_num_blocks(file_id, "data_table")
-      allocate(data_table(nentries))
-      allocate(entry_id(nentries))
-      call get_block_ids(file_id, "data_table", entry_id)
-
-      do i = 1, nentries
-         call get_value_from_key(file_id, entry_id(i), "gridname", data_table(i)%gridname)
-         call get_value_from_key(file_id, entry_id(i), "fieldname_code", data_table(i)%fieldname_code)
-
-         data_table(i)%fieldname_file = ""
-         call get_value_from_key(file_id, entry_id(i), "fieldname_file", data_table(i)%fieldname_file, &
-           & is_optional=.true.)
-
-         data_table(i)%file_name = ""
-         call get_value_from_key(file_id, entry_id(i), "file_name", data_table(i)%file_name, &
-           & is_optional=.true.)
-
-         data_table(i)%interpol_method = "none"
-         call get_value_from_key(file_id, entry_id(i), "interpol_method", data_table(i)%interpol_method, &
-           & is_optional=.true.)
-
-         call get_value_from_key(file_id, entry_id(i), "factor", data_table(i)%factor)
-         call get_value_from_key(file_id, entry_id(i), "region_type", buffer, is_optional=.true.)
-
-         if(trim(buffer) == "inside_region" ) then
-            data_table(i)%region_type = INSIDE_REGION
-         else if( trim(buffer) == "outside_region" ) then
-            data_table(i)%region_type = OUTSIDE_REGION
-         else
-            data_table(i)%region_type = NO_REGION
-         endif
-
-         call get_value_from_key(file_id, entry_id(i), "lon_start", data_table(i)%lon_start, is_optional=.true.)
-         call get_value_from_key(file_id, entry_id(i), "lon_end", data_table(i)%lon_end, is_optional=.true.)
-         call get_value_from_key(file_id, entry_id(i), "lat_start", data_table(i)%lat_start, is_optional=.true.)
-         call get_value_from_key(file_id, entry_id(i), "lat_end", data_table(i)%lat_end, is_optional=.true.)
-
-      end do
-
-    end if
-    table_size = nentries !< Because one variable is not enough
-end subroutine read_table_yaml
-#endif
 
 !> @brief Unset domains that had previously been set for use by data_override.
 !!

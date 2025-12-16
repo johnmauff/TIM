@@ -81,7 +81,6 @@ The configure script has some standard options, including:
 ## FMS Configure Options
 
 Configure build options for FMS:
-* `--with-yaml` : Build with support for yaml input files(requires the libyaml library and headers)
 * `--enable-mixed-mode` : Build in mixed precision mode, with default 4 byte reals and 8 byte real overloads
 * `--disable-setting-flags` : Build without automatically setting flags during configuration
 * `--with-mpi` : Build with MPI support, enabled by default

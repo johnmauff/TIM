@@ -36,11 +36,7 @@ test_data_override_SOURCES = test_data_override.F90
 test_data_override_ongrid_SOURCES = test_data_override_ongrid.F90
 test_get_grid_v1_SOURCES = test_get_grid_v1.F90
 
-if SKIP_PARSER_TESTS
 skipflag="skip"
-else
-skipflag=""
-endif
 
 TEST_EXTENSIONS = .sh
 SH_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \

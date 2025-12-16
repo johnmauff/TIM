@@ -313,11 +313,6 @@ module fms
                      mpp_domain_UG_is_tile_root_pe, mpp_deallocate_domainUG, &
                      mpp_get_io_domain_UG_layout, NULL_DOMAIN1D, NULL_DOMAIN2D, &
                      mpp_create_super_grid_domain, mpp_shift_nest_domains
-  !> parser
-#ifdef use_yaml
-  use yaml_parser_mod, only: open_and_parse_file, get_num_blocks, get_block_ids, get_value_from_key, &
-                        get_nkeys, get_key_ids, get_key_name, get_key_value
-#endif
 
   !> platform
   use platform_mod, only: r8_kind, r4_kind, i8_kind, i4_kind, c8_kind, c4_kind, &
