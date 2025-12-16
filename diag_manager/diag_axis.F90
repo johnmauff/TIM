@@ -76,25 +76,6 @@ use platform_mod
 
   !> @}
 
-  !> @brief Add an arbitrary attribute and value to the diagnostic axis.
-  !!
-  !> Any number of attributes can be added to a given axis.  All attribute addition must
-  !! be done before first <TT>send_data</TT> call.<br>
-  !!
-  !! If a real or integer attribute is already defined, a FATAL error will be called.
-  !! If a character attribute is already defined, then it will be prepended to the
-  !! existing attribute value.
-  !! <br>Example usage:
-  !! @code{.F90} call diag_axis_add_attribute(diag_axis_id, att_name, att_value) @endcode
-  !> @ingroup diag_axis_mod
-  INTERFACE diag_axis_add_attribute
-     MODULE PROCEDURE diag_axis_add_attribute_scalar_r
-     MODULE PROCEDURE diag_axis_add_attribute_scalar_i
-     MODULE PROCEDURE diag_axis_add_attribute_scalar_c
-     MODULE PROCEDURE diag_axis_add_attribute_r1d
-     MODULE PROCEDURE diag_axis_add_attribute_i1d
-  END INTERFACE diag_axis_add_attribute
-
   !> @addtogroup diag_axis_mod
   !> @{
 

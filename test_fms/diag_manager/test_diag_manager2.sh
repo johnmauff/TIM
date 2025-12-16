@@ -406,23 +406,6 @@ test_expect_success "Get diag_field_id, ID found and not found (test $my_test_co
   mpirun -n 1 ../test_diag_manager
 '
 
-my_test_count=21
-cat <<_EOF > diag_table
-test_diag_manager_21
-1 3 1 0 0 0
-
-#output files
- "diag_test_21_file1", 1, "days", 1, "days", "time"
-
-#output variables
-"test_diag_manager_mod", "dat1",              "dat1",           "diag_test_21_file1", "all", .true., "none", 2
-"test_diag_manager_mod", "solar_constant",    "solar_constant", "diag_test_21_file1", "all", .true., "none", 2
-_EOF
-setup_test
-test_expect_success "Add axis attributes (test $my_test_count)" '
-  mpirun -n 1 ../test_diag_manager
-'
-
 my_test_count=22
 cat <<_EOF > diag_table
 test_diag_manager_22
