@@ -44,7 +44,7 @@
 !!                     get_grid_version_mpp_mod, mpp_io_mod, mosaic_mod,
 !!                     fms_mod(partial, old io excluded), drifters modules
 !!                     constants_mod (FMSconstants should be used externally)
-!!                     grid_mod, mosaic_mod
+!!                     mosaic_mod
 !!
 !! A full list of supported interfaces and public types intended for use via
 !! this module is provided in the [supported_interfaces.md](../../supported_interfaces.md)

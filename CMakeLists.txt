@@ -142,7 +142,6 @@ list(APPEND fms_fortran_src_files
   horiz_interp/horiz_interp.F90
   memutils/memutils.F90
   mosaic/gradient.F90
-  mosaic/grid.F90
   mosaic/mosaic.F90
   mosaic2/grid2.F90
   mosaic2/mosaic2.F90
