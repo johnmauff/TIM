@@ -45,14 +45,11 @@ public :: get_great_circle_algorithm ! returns great_circle_algorithm
 public :: get_grid_ntiles ! returns number of tiles
 public :: get_grid_size   ! returns horizontal sizes of the grid
 ! grid geometry inquiry subroutines
-public :: get_grid_cell_centers
 public :: get_grid_cell_vertices
 ! grid area inquiry subroutines
 public :: get_grid_cell_area
-public :: get_grid_comp_area
 ! decompose cubed sphere domains -- probably does not belong here, but it should
 ! be in some place available for component models
-public :: define_cube_mosaic
 public :: grid_init
 public :: grid_end
 ! ==== end of public interfaces ==============================================
@@ -73,27 +70,12 @@ interface get_grid_cell_vertices
    module procedure get_grid_cell_vertices_UG
 end interface
 
-!> Gets grid cell centers
-!> @ingroup grid2_mod
-interface get_grid_cell_centers
-   module procedure get_grid_cell_centers_1D
-   module procedure get_grid_cell_centers_2D
-   module procedure get_grid_cell_centers_UG
-end interface
-
 !> Finds area of a grid cell
 !> @ingroup grid2_mod
 interface get_grid_cell_area
    module procedure get_grid_cell_area_SG
    module procedure get_grid_cell_area_UG
 end interface get_grid_cell_area
-
-!> Gets the area of a given component per grid cell
-!> @ingroup grid2_mod
-interface get_grid_comp_area
-   module procedure get_grid_comp_area_SG
-   module procedure get_grid_comp_area_UG
-end interface get_grid_comp_area
 
 !> @addtogroup grid2_mod
 !> @{
@@ -770,24 +752,6 @@ subroutine get_grid_cell_area_UG(component, tile, cellarea, SG_domain, UG_domain
   deallocate(SG_area)
 end subroutine get_grid_cell_area_UG
 
-!> @brief get the area of the component per grid cell for an unstructured domain
-subroutine get_grid_comp_area_UG(component, tile, area, SG_domain, UG_domain)
-  character(len=*),   intent(in)    :: component !< Component model (atm, lnd, ocn)
-  integer         ,   intent(in)    :: tile !< Tile number
-  real            ,   intent(inout) :: area(:) !< Area of the component
-  type(domain2d)  ,   intent(in)    :: SG_domain !< Structured domain
-  type(domainUG)  ,   intent(in)    :: UG_domain !< Unstructured domain
-  integer :: is, ie, js, je
-  real, allocatable :: SG_area(:,:)
-
-  call mpp_get_compute_domain(SG_domain, is, ie, js, je)
-  allocate(SG_area(is:ie, js:je))
-  call get_grid_comp_area_SG(component, tile, SG_area, SG_domain)
-  call mpp_pass_SG_to_UG(UG_domain, SG_area, area)
-  deallocate(SG_area)
-
-end subroutine get_grid_comp_area_UG
-
 !> @brief returns arrays of global grid cell boundaries for given model component and
 !! mosaic tile number.
 subroutine get_grid_cell_vertices_1D(component, tile, glonb, glatb)
@@ -1212,77 +1176,6 @@ subroutine get_grid_cell_vertices_UG(component, tile, lonb, latb, SG_domain, UG_
 end subroutine get_grid_cell_vertices_UG
 
 !> @brief returns grid cell centers given model component and mosaic tile number
-subroutine get_grid_cell_centers_1D(component, tile, glon, glat)
-  character(len=*), intent(in) :: component !< Component model (atm, lnd, ocn)
-  integer, intent(in) :: tile !< Tile number
-  real, intent(inout) :: glon(:),glat(:) !< Grid cell centers
-
-  integer                      :: nlon, nlat
-  integer                      :: start(4), nread(4)
-  real, allocatable            :: tmp(:,:)
-  character(len=MAX_FILE)      :: tilefile
-  type(FmsNetcdfFile_t)  :: tilefileobj
-
-  call get_grid_size_for_one_tile(component, tile, nlon, nlat)
-  if (size(glon(:))/=nlon) &
-       call mpp_error (FATAL, module_name//'/get_grid_cell_centers_1D '//&
-       'Size of argument "glon" is not consistent with the grid size')
-  if (size(glat(:))/=nlat) &
-       call mpp_error (FATAL, module_name//'/get_grid_cell_centers_1D '//&
-       'Size of argument "glat" is not consistent with the grid size')
-  if(trim(component) .NE. 'ATM' .AND. component .NE. 'LND' .AND. component .NE. 'OCN') then
-     call mpp_error(FATAL, module_name//'/get_grid_cell_centers_1D '//&
-          'Illegal component name "'//trim(component)//'": must be one of ATM, LND, or OCN')
-  endif
-
-  select case(grid_version)
-  case(VERSION_GEOLON_T)
-     if (.not. grid_spec_exists) then
-       call mpp_error(FATAL, 'grid2_mod(get_grid_cell_centers_1D): grid_spec does not exist')
-     end if
-     select case(trim(component))
-     case('ATM','LND')
-        call read_data(gridfileobj, 'xt'//lowercase(component(1:1)), glon)
-        call read_data(gridfileobj, 'yt'//lowercase(component(1:1)), glat)
-     case('OCN')
-        call read_data(gridfileobj, "gridlon_t", glon)
-        call read_data(gridfileobj, "gridlat_t", glat)
-     end select
-  case(VERSION_X_T)
-     if (.not. grid_spec_exists) then
-       call mpp_error(FATAL, 'grid2_mod(get_grid_cell_centers_1D): grid_spec does not exist')
-     end if
-     select case(trim(component))
-     case('ATM','LND')
-        call read_data(gridfileobj, 'xt'//lowercase(component(1:1)), glon)
-        call read_data(gridfileobj, 'yt'//lowercase(component(1:1)), glat)
-     case('OCN')
-        call read_data(gridfileobj, "grid_x_T", glon)
-        call read_data(gridfileobj, "grid_y_T", glat)
-     end select
-  case(VERSION_OCN_MOSAIC_FILE, VERSION_GRIDFILES)
-     ! get the name of the grid file for the component and tile
-     tilefile = read_file_name(mosaic_fileobj(get_component_number(trim(component))), 'gridfiles',tile)
-     call open_grid_file(tilefileobj, grid_dir//tilefile)
-
-     start = 1; nread = 1
-     nread(1) = 2*nlon+1; start(2) = 2
-     allocate( tmp(2*nlon+1,1) )
-     call read_data(tilefileobj, "x", tmp, corner=start, edge_lengths=nread)
-     glon(1:nlon) = tmp(2:2*nlon:2,1)
-     deallocate(tmp)
-     allocate(tmp(1, 2*nlat+1))
-
-     start = 1; nread = 1
-     nread(2) = 2*nlat+1; start(1) = 2
-     call read_data(tilefileobj, "y", tmp, corner=start, edge_lengths=nread)
-     glat(1:nlat) = tmp(1,2:2*nlat:2)
-     deallocate(tmp)
-     call close_file(tilefileobj)
-  end select
-end subroutine get_grid_cell_centers_1D
-
-!> @brief returns grid cell centers given model component and mosaic tile number
 subroutine get_grid_cell_centers_2D(component, tile, lon, lat, domain)
   character(len=*), intent(in) :: component !< Component model (atm, lnd, ocn)
   integer, intent(in) :: tile !< Tile number
@@ -1416,93 +1309,6 @@ subroutine get_grid_cell_centers_2D(component, tile, lon, lat, domain)
      call close_file(tilefileobj)
   end select
 end subroutine get_grid_cell_centers_2D
-
-!> @brief returns grid cell centers given model component and mosaic tile number
-!! for unstructured domain
-subroutine get_grid_cell_centers_UG(component, tile, lon, lat, SG_domain, UG_domain)
-  character(len=*), intent(in) :: component !< Component model (atm, lnd, ocn)
-  integer, intent(in) :: tile !< Tile number
-  real, intent(inout) :: lon(:),lat(:) !< Grid cell centers
-  type(domain2d)  ,   intent(in) :: SG_domain !< Structured domain
-  type(domainUG)  ,   intent(in) :: UG_domain !< Unstructured domain
-  integer :: is, ie, js, je
-  real, allocatable :: SG_lon(:,:), SG_lat(:,:)
-
-  call mpp_get_compute_domain(SG_domain, is, ie, js, je)
-  allocate(SG_lon(is:ie, js:je))
-  allocate(SG_lat(is:ie, js:je))
-  call get_grid_cell_centers_2D(component, tile, SG_lon, SG_lat, SG_domain)
-  call mpp_pass_SG_to_UG(UG_domain, SG_lon, lon)
-  call mpp_pass_SG_to_UG(UG_domain, SG_lat, lat)
-  deallocate(SG_lon, SG_lat)
-end subroutine get_grid_cell_centers_UG
-
-!> @brief given a model component, a layout, and (optionally) a halo size, returns a
-!! domain for current processor
-subroutine define_cube_mosaic(component, domain, layout, halo, maskmap)
-  character(len=*) , intent(in)    :: component !< Component model (atm, lnd, ocn)
-  type(domain2d)   , intent(inout) :: domain !< Domain
-  integer          , intent(in)    :: layout(2) !< Layout
-  integer, optional, intent(in)    :: halo !< Halo
-  logical, optional, intent(in)    :: maskmap(:,:,:) !< Maskmap
-
-  ! ---- local vars
-  integer :: ntiles     ! number of tiles
-  integer :: ncontacts  ! number of contacts between mosaic tiles
-  integer :: n
-  integer :: ng, pe_pos, npes         ! halo size
-  integer, allocatable :: nlon(:), nlat(:), global_indices(:,:)
-  integer, allocatable :: pe_start(:), pe_end(:), layout_2d(:,:)
-  integer, allocatable :: tile1(:),tile2(:)
-  integer, allocatable :: is1(:),ie1(:),js1(:),je1(:)
-  integer, allocatable :: is2(:),ie2(:),js2(:),je2(:)
-
-  call get_grid_ntiles(component,ntiles)
-  allocate(nlon(ntiles), nlat(ntiles))
-  allocate(global_indices(4,ntiles))
-  allocate(pe_start(ntiles),pe_end(ntiles))
-  allocate(layout_2d(2,ntiles))
-  call get_grid_size(component,nlon,nlat)
-
-  pe_pos = mpp_root_pe()
-  do n = 1, ntiles
-     global_indices(:,n) = (/ 1, nlon(n), 1, nlat(n) /)
-     layout_2d     (:,n) = layout
-     if(present(maskmap)) then
-        npes = count(maskmap(:,:,n))
-     else
-        npes = layout(1)*layout(2)
-     endif
-     pe_start(n) = pe_pos
-     pe_end  (n) = pe_pos + npes - 1
-     pe_pos      = pe_end(n) + 1
-  enddo
-
-  ! get the contact information from mosaic file
-  ncontacts = get_mosaic_ncontacts(mosaic_fileobj(get_component_number(trim(component))))
-  allocate(tile1(ncontacts),tile2(ncontacts))
-  allocate(is1(ncontacts),ie1(ncontacts),js1(ncontacts),je1(ncontacts))
-  allocate(is2(ncontacts),ie2(ncontacts),js2(ncontacts),je2(ncontacts))
-  call get_mosaic_contact(mosaic_fileobj(get_component_number(trim(component))), tile1, tile2, &
-       is1, ie1, js1, je1, is2, ie2, js2, je2)
-
-  ng = 0
-  if(present(halo)) ng = halo
-  ! create the domain2d variable
-  call mpp_define_mosaic ( global_indices, layout_2d, domain, &
-       ntiles, ncontacts, tile1, tile2,                  &
-       is1, ie1, js1, je1, &
-       is2, ie2, js2, je2, &
-       pe_start=pe_start, pe_end=pe_end, symmetry=.true.,  &
-       shalo = ng, nhalo = ng, whalo = ng, ehalo = ng,     &
-       maskmap = maskmap,                                  &
-       name = trim(component)//'Cubic-Sphere Grid' )
-
-  deallocate(nlon,nlat,global_indices,pe_start,pe_end,layout_2d)
-  deallocate(tile1,tile2)
-  deallocate(is1,ie1,js1,je1)
-  deallocate(is2,ie2,js2,je2)
-end subroutine define_cube_mosaic
 
 end module grid2_mod
 !> @}
