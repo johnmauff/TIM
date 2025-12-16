@@ -72,7 +72,7 @@ module fms
 
   !> axis_utils
   use axis_utils2_mod, only: get_axis_cart, get_axis_modulo, lon_in_range, &
-                             tranlon, frac_index, nearest_index, interp_1d, &
+                             frac_index, nearest_index, interp_1d, &
                              get_axis_modulo_times, axis_edges
 
   !>block_control
@@ -318,7 +318,7 @@ module fms
                                 getRandomNumbers, constructSeed
 
   !> string_utils
-  use fms_string_utils_mod, only: string, fms_array_to_pointer, fms_pointer_to_array, fms_sort_this, &
+  use fms_string_utils_mod, only: string, fms_array_to_pointer, fms_pointer_to_array, &
                                   fms_find_my_string, fms_find_unique, fms_c2f_string, fms_cstring2cpointer, &
                                   string_copy
 

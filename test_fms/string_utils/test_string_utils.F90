@@ -18,7 +18,7 @@
 !***********************************************************************
 
 !> @brief  This programs tests the public subroutines in test_fms_string_utils:
-!! fms_array_to_pointer, fms_pointer_to_array, fms_sort_this, fms_find_my_string
+!! fms_array_to_pointer, fms_pointer_to_array, fms_find_my_string
 program test_fms_string_utils
   use fms_string_utils_mod
   use fms_mod, only: fms_init, fms_end
@@ -61,11 +61,6 @@ program test_fms_string_utils
   print *, "Check if fms_find_unique works without sorting the array first!"
   nunique = fms_find_unique(my_pointer, 10)
   if (nunique .ne. 7) call mpp_error(FATAL, "The number of unique strings in your array is not correct")
-
-  call fms_sort_this(my_pointer, 10, my_ids)
-  my_sorted_array = fms_pointer_to_array(my_pointer, 10)
-  print *, "Checking if the array was sorted correctly"
-  call check_my_sorted_array(my_sorted_array)
 
   ifind = fms_find_my_string(my_pointer, 10, "alpha")
   print *, "Checking if 'alpha' was found in the array at all the right places"

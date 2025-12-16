@@ -42,7 +42,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - get_axis_cart
 - get_axis_modulo
 - lon_in_range
-- tranlon
 - frac_index
 - nearest_index
 - interp_1d

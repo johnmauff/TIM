@@ -35,7 +35,7 @@ module axis_utils2_mod
   implicit none
 
   public get_axis_cart, get_axis_modulo, lon_in_range, &
-         tranlon, frac_index, nearest_index, interp_1d, get_axis_modulo_times, axis_edges
+         frac_index, nearest_index, interp_1d, get_axis_modulo_times, axis_edges
 
   private
 
@@ -334,62 +334,6 @@ end subroutine axis_edges
     end do
 
   end function lon_in_range
-
-  !> @brief Returns monotonic array of longitudes s.t., lon_strt <= lon(:) <= lon_strt+360.
-  !!
-  !> <br>The first istrt-1 entries are moved to the end of the array:
-  !!
-  !! e.g.
-  !!        lon =      0 1 2 3 4 5  ...  358 359; lon_strt = 3 ==>
-  !!        tranlon =  3 4 5 6 7 8  ...  359 360 361 362; istrt = 4
-  subroutine tranlon(lon, lon_start, istrt)
-
-    ! returns array of longitudes s.t.  lon_strt <= lon < lon_strt+360.
-    ! also, the first istrt-1 entries are moved to the end of the array
-    !
-    ! e.g.
-    !        lon =      0 1 2 3 4 5  ...  358 359; lon_strt = 3 ==>
-    !        tranlon =  3 4 5 6 7 8  ...  359 360 361 362; istrt = 4
-
-    real, intent(inout), dimension(:) :: lon
-    real, intent(in) :: lon_start
-    integer, intent(out) :: istrt
-
-
-    integer :: len, i
-    real :: lon_strt, tmp(size(lon(:))-1)
-
-    len = size(lon(:))
-
-    do i=1,len
-       lon(i) = lon_in_range(lon(i),lon_start)
-    enddo
-
-    istrt=0
-    do i=1,len-1
-       if (lon(i+1) < lon(i)) then
-          istrt=i+1
-          exit
-       endif
-    enddo
-
-    if (istrt>1) then ! grid is not monotonic
-       if (abs(lon(len)-lon(1)) < epsln) then
-          tmp = cshift(lon(1:len-1),istrt-1)
-          lon(1:len-1) = tmp
-          lon(len) = lon(1)
-       else
-          lon = cshift(lon,istrt-1)
-       endif
-       lon_strt = lon(1)
-       do i=2,len+1
-          lon(i) = lon_in_range(lon(i),lon_strt)
-          lon_strt = lon(i)
-       enddo
-    endif
-
-    return
-  end subroutine tranlon
 
   !>     nearest_index = index of nearest data point within "array" corresponding to
   !!            "value".

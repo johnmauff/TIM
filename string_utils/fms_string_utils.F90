@@ -36,11 +36,9 @@ module fms_string_utils_mod
 
   public :: fms_array_to_pointer
   public :: fms_pointer_to_array
-  public :: fms_sort_this
   public :: fms_find_my_string
   public :: fms_find_unique
   public :: fms_c2f_string
-  public :: fms_f2c_string
   public :: fms_cstring2cpointer
   public :: string
   public :: string_copy
@@ -48,17 +46,6 @@ module fms_string_utils_mod
 !> @}
 
   interface
-  !> @brief Sorts an array of pointers (my pointer) of size (p_size) in
-  !! alphabetical order.
-  subroutine fms_sort_this(my_pointer, p_size, indices) bind(c)
-    use iso_c_binding
-
-    type(c_ptr),         intent(inout) :: my_pointer(*) !< IN:  Array of c pointers to sort
-                                                        !! OUT: Sorted array of c pointers
-    integer(kind=c_int), intent(in)    :: p_size        !< Size of the array
-    integer(kind=c_int), intent(inout) :: indices(*)    !< IN:  Array of the indices of my_pointer
-                                                        !! OUT: Sorted array of indices
-  end subroutine fms_sort_this
 
   !> @brief Private c function that finds a string in a SORTED array of c pointers
   !! @return Indices of my_pointer where the string was found as a string!!!
@@ -168,7 +155,6 @@ contains
   !! If the string was not found, indices will be indices(1) = -999
   !> <br>Example usage:
   !!     my_pointer = fms_array_to_pointer(my_array)
-  !!     call fms_sort_this(my_pointer, n_array, indices)
   !!     ifind = fms_find_my_string(my_pointer, n_array, string_to_find)
   function fms_find_my_string(my_pointer, narray, string_to_find) &
   result(ifind)
@@ -223,22 +209,6 @@ contains
     fstring = string_buffer
     deallocate(string_buffer)
   end function cpointer_fortran_conversion
-
-!> @brief Copies a Fortran string into a C string and puts c_null_char in any trailing spaces
-  subroutine fms_f2c_string (dest, str_in)
-    character (c_char), intent (out) :: dest (:) !< C String to be copied into
-    character (len=*), intent (in) :: str_in !< Fortran string to copy to C string
-    integer :: i !< for looping
-!> Drop an error if the C string is not large enough to hold the input and the c_null_char at the end.
-    if (len(trim(str_in)) .ge. size(dest)) call mpp_error(FATAL, &
-      "The string "//trim(str_in)//" is larger than the destination C string")
-!> Copy c_null_char into each spot in dest
-    dest = c_null_char
-!> Loop though and put each character of the Fortran string into the C string array
-    do i = 1, len(trim(str_in))
-      dest(i) = str_in(i:i)
-    enddo
-end subroutine fms_f2c_string
 
   !> @brief Converts a number or a Boolean value to a string
   !> @return The argument as a string
