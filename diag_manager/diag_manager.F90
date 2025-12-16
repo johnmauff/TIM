@@ -234,7 +234,6 @@ use platform_mod
   USE diag_data_mod, ONLY:  fileobj, fileobjU, fnum_for_domain, fileobjND
   USE diag_table_mod, ONLY: parse_diag_table
   USE diag_output_mod, ONLY: get_diag_global_att, set_diag_global_att
-  USE diag_grid_mod, ONLY: diag_grid_init, diag_grid_end
   USE constants_mod, ONLY: SECONDS_PER_DAY
   USE fms_diag_outfield_mod, ONLY: fmsDiagOutfieldIndex_type, fmsDiagOutfield_type
   USE fms_diag_fieldbuff_update_mod, ONLY: fieldbuff_update, fieldbuff_copy_missvals, &
@@ -268,7 +267,6 @@ use, intrinsic :: iso_c_binding, only: c_int, c_char
        & exec_mppnccombine
   PUBLIC :: CENTER, NORTH, EAST !< Used for diag_axis_init
   ! Public interfaces from diag_grid_mod
-  PUBLIC :: diag_grid_init, diag_grid_end
   PUBLIC :: diag_manager_set_time_end, diag_send_complete
   PUBLIC :: diag_send_complete_instant
   ! Public interfaces from diag_data_mod

@@ -107,7 +107,6 @@ list(APPEND fms_fortran_src_files
   data_override/data_override.F90
   diag_manager/diag_axis.F90
   diag_manager/diag_data.F90
-  diag_manager/diag_grid.F90
   diag_manager/diag_manager.F90
   diag_manager/diag_output.F90
   diag_manager/diag_table.F90

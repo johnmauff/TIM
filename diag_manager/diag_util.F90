@@ -58,7 +58,6 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
   USE diag_output_mod, ONLY: diag_output_init, write_axis_meta_data,&
        & write_field_meta_data, done_meta_data, diag_flush
   USE diag_output_mod, ONLY: diag_field_write, diag_write_time !<fms2_io use_mpp_io=.false.
-  USE diag_grid_mod, ONLY: get_local_indexes
   USE fms_mod, ONLY: error_mesg, FATAL, WARNING, NOTE, mpp_pe, mpp_root_pe, lowercase, fms_error_handler,&
        & string, write_version_number
   USE mpp_domains_mod,ONLY: domain1d, domain2d, mpp_get_compute_domain, null_domain1d, null_domain2d,&
@@ -258,64 +257,7 @@ CONTAINS
           END IF
        END DO
     ELSE ! cubed sphere
-       ! get the i and j start and end indexes
-       CALL get_local_indexes(LONSTART=start(1), LONEND=END(1), &
-            &                 LATSTART=start(2), LATEND=END(2), &
-            &                 ISTART=gstart_indx(1), IEND=gend_indx(1), &
-            &                 JSTART=gstart_indx(2), JEND=gend_indx(2))
-       global_axis_size =  get_axis_global_length(axes(1))
-       ALLOCATE(global_lon(global_axis_size))
-       global_axis_sizey = get_axis_global_length(axes(2))
-       ALLOCATE(global_lat(global_axis_sizey))
-       CALL get_diag_axis_data(axes(1),global_lon)
-       CALL get_diag_axis_data(axes(2),global_lat)
-
-       !Potential fix for out-of-bounds error for global_lon and global_lat.
-       IF ((gstart_indx(1) .GT. 0 .AND. gstart_indx(2) .GT. 0) .AND. &
-           (gstart_indx(1) .LE. global_axis_size .AND. gstart_indx(2) .LE. global_axis_sizey) .AND. &
-           (gend_indx(1) .GT. 0 .AND. gend_indx(2) .GT. 0) .AND. &
-           (gend_indx(1) .LE. global_axis_size .AND. gend_indx(2) .LE. global_axis_sizey)) THEN
-          ALLOCATE(subaxis_x(gstart_indx(1):gend_indx(1)))
-          ALLOCATE(subaxis_y(gstart_indx(2):gend_indx(2)))
-          subaxis_x=global_lon(gstart_indx(1):gend_indx(1))
-          subaxis_y=global_lat(gstart_indx(2):gend_indx(2))
-       END IF
-
-       ! Now deal with the Z component
-       IF ( SIZE(axes(:)) > 2 ) THEN
-          global_axis_size = get_axis_global_length(axes(3))
-          output_fields(outnum)%output_grid%subaxes(3) = -1
-          CALL get_diag_axis_cart(axes(3), cart)
-          ! <ERROR STATUS="FATAL">
-          !   axis(3) should be Z-axis
-          ! </ERROR>
-          IF ( lowercase(cart) /= 'z' ) CALL error_mesg('diag_util_mod::get_subfield_size', &
-               &'axis(3) should be Z-axis', FATAL)
-          ! <ERROR STATUS="FATAL">
-          !   wrong values in vertical axis of region
-          ! </ERROR>
-          IF ( start(3)*END(3)<0. ) CALL error_mesg('diag_util_mod::get_subfield_size',&
-               & 'wrong values in vertical axis of region',FATAL)
-          IF ( start(3)>=0. .AND. END(3)>0. ) THEN
-             ALLOCATE(global_depth(global_axis_size))
-             CALL get_diag_axis_data(axes(3),global_depth)
-             gstart_indx(3) = get_index(start(3),global_depth)
-             IF( start(3) == 0.0 )  gstart_indx(3) = 1
-             gend_indx(3) = get_index(END(3),global_depth)
-             IF( start(3) >= MAXVAL(global_depth) ) gstart_indx(3)= global_axis_size
-             IF( END(3)   >= MAXVAL(global_depth) ) gend_indx(3)  = global_axis_size
-
-             ALLOCATE(subaxis_z(gstart_indx(3):gend_indx(3)))
-             subaxis_z=global_depth(gstart_indx(3):gend_indx(3))
-             output_fields(outnum)%output_grid%subaxes(3) =&
-                  & diag_subaxes_init(axes(3),subaxis_z, gstart_indx(3),gend_indx(3))
-             DEALLOCATE(subaxis_z,global_depth)
-          ELSE ! regional vertical axis is the same as global vertical axis
-             gstart_indx(3) = 1
-             gend_indx(3) = global_axis_size
-             output_fields(outnum)%output_grid%subaxes(3) = axes(3)
-          END IF
-       END IF
+      print *, "NOT SUPPORTED BY TIM", __FILE__, __LINE__; STOP
     END IF
 
     ! get domain and compute_domain(xbegin,xend,ybegin,yend)

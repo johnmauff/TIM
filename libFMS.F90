@@ -116,7 +116,6 @@ module fms
                            DIAG_MINUTES, DIAG_HOURS, DIAG_DAYS, DIAG_MONTHS, DIAG_YEARS, &
                            get_diag_global_att, set_diag_global_att, diag_field_add_attribute, &
                            diag_field_add_cell_measures, get_diag_field_id, &
-                           diag_grid_init, diag_grid_end, &
                            diag_manager_set_time_end, diag_send_complete, &
                            diag_send_complete_instant, DIAG_FIELD_NOT_FOUND, &
                            CMOR_MISSING_VALUE, null_axis_id

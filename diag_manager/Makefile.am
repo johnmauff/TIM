@@ -33,7 +33,6 @@ noinst_LTLIBRARIES = libdiag_manager.la
 libdiag_manager_la_SOURCES = \
   diag_axis.F90 \
   diag_data.F90 \
-  diag_grid.F90 \
   mppnccombine.c \
   diag_manager.F90 \
   diag_output.F90 \
@@ -52,7 +51,7 @@ diag_data_mod.$(FC_MODEXT): fms_diag_bbox_mod.$(FC_MODEXT)
 diag_axis_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT)
 diag_output_mod.$(FC_MODEXT): diag_axis_mod.$(FC_MODEXT) diag_data_mod.$(FC_MODEXT)
 diag_util_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT) diag_axis_mod.$(FC_MODEXT) diag_output_mod.$(FC_MODEXT) \
-                  diag_grid_mod.$(FC_MODEXT) fms_diag_bbox_mod.$(FC_MODEXT)
+                  fms_diag_bbox_mod.$(FC_MODEXT)
 diag_table_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT) diag_util_mod.$(FC_MODEXT)
 fms_diag_axis_object_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT) fms_diag_time_utils_mod.$(FC_MODEXT)
 fms_diag_time_reduction_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT)
@@ -61,7 +60,7 @@ fms_diag_outfield_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT) fms_diag_elem_wei
 fms_diag_fieldbuff_update_mod.$(FC_MODEXT): diag_data_mod.$(FC_MODEXT) fms_diag_outfield_mod.$(FC_MODEXT) \
                   fms_diag_elem_weight_procs_mod.$(FC_MODEXT) fms_diag_bbox_mod.$(FC_MODEXT)
 diag_manager_mod.$(FC_MODEXT): diag_axis_mod.$(FC_MODEXT) diag_data_mod.$(FC_MODEXT) diag_util_mod.$(FC_MODEXT) \
-                  diag_output_mod.$(FC_MODEXT) diag_grid_mod.$(FC_MODEXT) diag_table_mod.$(FC_MODEXT) \
+                  diag_output_mod.$(FC_MODEXT) diag_table_mod.$(FC_MODEXT) \
                   fms_diag_time_reduction_mod.$(FC_MODEXT) fms_diag_outfield_mod.$(FC_MODEXT) \
                   fms_diag_fieldbuff_update_mod.$(FC_MODEXT)
 
@@ -70,7 +69,6 @@ diag_manager_mod.$(FC_MODEXT): diag_axis_mod.$(FC_MODEXT) diag_data_mod.$(FC_MOD
 MODFILES = \
   diag_data_mod.$(FC_MODEXT) \
   diag_axis_mod.$(FC_MODEXT) \
-  diag_grid_mod.$(FC_MODEXT) \
   diag_output_mod.$(FC_MODEXT) \
   diag_util_mod.$(FC_MODEXT) \
   diag_table_mod.$(FC_MODEXT) \
