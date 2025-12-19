@@ -29,7 +29,6 @@ use fms_io_utils_mod
 use netcdf_io_mod
 use fms_netcdf_domain_io_mod
 use fms_netcdf_unstructured_domain_io_mod
-use blackboxio
 use mpp_mod, only: mpp_init, input_nml_file, mpp_error, FATAL
 use mpp_domains_mod, only: mpp_domains_init
 implicit none
@@ -40,7 +39,6 @@ public :: FmsNetcdfFile_t
 public :: FmsNetcdfDomainFile_t
 public :: FmsNetcdfUnstructuredDomainFile_t
 public :: open_file
-public :: open_virtual_file
 public :: close_file
 public :: register_axis
 public :: register_unlimited_compressed_axis
@@ -49,9 +47,7 @@ public :: register_restart_field
 public :: write_data
 public :: read_data
 public :: write_restart
-public :: write_new_restart
 public :: read_restart
-public :: read_new_restart
 public :: global_att_exists
 public :: variable_att_exists
 public :: register_global_attribute
@@ -125,29 +121,6 @@ interface open_file
   module procedure open_unstructured_domain_file
 end interface open_file
 
-
-!> @brief Creates a diskless netcdf or domain file
-!!
-!> @return true if successful, false otherwise
-!!
-!> <br>Example usage:
-!!
-!!              io_success = open_virtual_file(fileobj, "filename", pelist)
-!!
-!! Opens a virtual file through @ref fmsnetcdffile_t at an optional file path and pelist
-!!
-!!              io_success = open_virtual_file(fileobj, domain, "filename")
-!!
-!! Opens a virtual domain file through @ref fmsnetcdfdomainfile_t or
-!! @ref fmsnetcdfunstructureddomainfile_t for a given 2D domain at an optional path <br>
-!!
-!! @note For individual documentation on the listed routines, please see the appropriate helper module: @ref blackboxio
-!> @ingroup fms2_io_mod
-interface open_virtual_file
-  module procedure create_diskless_netcdf_file_wrap
-  module procedure create_diskless_domain_file
-  module procedure create_diskless_unstructured_domain_file
-end interface open_virtual_file
 
 !> @brief Close a netcdf or domain file opened with @ref open_file or
 !! @ref open_virtual_file
@@ -328,22 +301,6 @@ interface write_restart
   module procedure unstructured_write_restart
 end interface write_restart
 
-!> @brief Writes all restart fields in a given restart file to a new restart file
-!> <br>Example usage:
-!!
-!!              call write_new_restart(fileobj, timestamp="tstring", filename="new_restartfilename")
-!!
-!! Creates a new restart file, with the provided timestamp and filename, out of the registered
-!! restart fields in the given restart file.
-!!
-!! @note For individual documentation on the listed routines, please see the appropriate helper module: @ref blackboxio
-!> @ingroup fms2_io_mod
-interface write_new_restart
-  module procedure netcdf_save_restart_wrap2
-  module procedure save_domain_restart_wrap
-  module procedure unstructured_write_restart_wrap
-end interface write_new_restart
-
 !> @brief Reads in restart variables from a given file
 !> <br>Example usage:
 !!              call read_restart(fileobj)
@@ -357,19 +314,6 @@ interface read_restart
   module procedure netcdf_restore_state
   module procedure restore_domain_state
 end interface read_restart
-
-!> @brief Read registered restarts from a new file
-!! Optionally takes directory to write to, model time and filename
-!> <br>Example usage:
-!!              call read_new_restart(fileobj, unlimted_dimension_level)
-!!
-!!              call read_new_restart(fileobj, unlimited_dimension_level, directory, timestamp, filename)
-!! @note For individual documentation on the listed routines, please see the appropriate helper module: @ref blackboxio
-!> @ingroup fms2_io_mod
-interface read_new_restart
-  module procedure netcdf_restore_state_wrap
-  module procedure restore_domain_state_wrap
-end interface read_new_restart
 
 !> @addtogroup fms2_io_mod
 !> @{
@@ -414,7 +358,6 @@ subroutine fms2_io_init ()
       "deflate_level in fms2_io_nml must be a positive number between 1 and 9 as it is required by NetCDF")
   endif
   call netcdf_io_init (ncchksz,header_buffer_val,netcdf_default_format, deflate_level, shuffle)
-  call blackboxio_init (ncchksz)
 !> Mark the fms2_io as initialized
   fms2_io_is_initialized = .true.
 end subroutine fms2_io_init

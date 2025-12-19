@@ -120,7 +120,6 @@ list(APPEND fms_fortran_src_files
   field_manager/fm_util.F90
   fms/fms_io.F90
   fms/fms.F90
-  fms2_io/blackboxio.F90
   fms2_io/fms_io_utils.F90
   fms2_io/fms_netcdf_domain_io.F90
   fms2_io/fms_netcdf_unstructured_domain_io.F90

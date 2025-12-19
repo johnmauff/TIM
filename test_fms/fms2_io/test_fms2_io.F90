@@ -150,31 +150,6 @@ enddo
 ocn_layout = (/1, npes/)
 
 call fms2_io_init()
-!Run tests.
-if (tests(atmos)) then
-  if (mod(npes,ntiles) .ne. 0) then
-    call mpp_error(FATAL, "the number of ranks must be divisible by ntiles.")
-  endif
-  call create_atmosphere_domain((/nx, nx, nx, nx, nx, nx/), &
-                                (/ny, ny, ny, ny, ny, ny/), &
-                                global_indices, layout, pe_start, pe_end, &
-                                io_layout, atmosphere_domain)
-  call atmosphere_restart_file(atmosphere_domain, nz, 3, debug)
-endif
-if (tests(land)) then
-  if (.not. tests(atmos)) then
-    if (mod(npes, ntiles) .ne. 0) then
-      call mpp_error(FATAL, "the number of ranks must be divisible by ntiles.")
-    endif
-    call create_atmosphere_domain((/nx, nx, nx, nx, nx, nx/), &
-                                  (/ny, ny, ny, ny, ny, ny/), &
-                                  global_indices, layout, pe_start, pe_end, &
-                                  io_layout, atmosphere_domain)
-  endif
-  call create_land_domain(atmosphere_domain, nx, ny, ntiles, land_domain, npes_group)
-  call land_unstructured_restart_file(land_domain, nz, 2, debug)
-  call land_compressed_restart_file(nz, 4, debug)
-endif
 if (tests(ocean)) then
   call create_ocean_domain(ntiles*nx, ntiles*ny, npes, ocean_domain, ocn_layout, &
                            ocn_io_layout)
@@ -194,7 +169,6 @@ contains
 include "create_atmosphere_domain.inc"
 include "create_land_domain.inc"
 include "create_ocean_domain.inc"
-include "atmosphere_restart_file_test.inc"
 include "land_unstructured_restart_file_test.inc"
 include "land_compressed_restart_file_test.inc"
 include "ocean_restart_file_test.inc"

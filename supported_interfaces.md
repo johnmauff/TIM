@@ -245,7 +245,6 @@ Additional information for this module and others can be found in the Doxygen ge
 ##### Interfaces
 - fms2_io_init
 - open_file
-- open_virtual_file
 - close_file
 - register_axis
 - register_field
@@ -253,9 +252,7 @@ Additional information for this module and others can be found in the Doxygen ge
 - write_data
 - read_data
 - write_restart
-- write_new_restart
 - read_restart
-- read_new_restart
 - global_att_exists
 - variable_att_exists
 - register_global_attribute

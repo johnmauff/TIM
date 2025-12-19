@@ -150,10 +150,10 @@ module fms
 
   !> fms2_io
   use fms2_io_mod, only: unlimited, FmsNetcdfFile_t, FmsNetcdfDomainFile_t, &
-                         FmsNetcdfUnstructuredDomainFile_t, open_file, open_virtual_file, &
+                         FmsNetcdfUnstructuredDomainFile_t, open_file, &
                          close_file, register_axis, register_field, register_restart_field, &
-                         write_data, read_data, write_restart, write_new_restart, &
-                         read_restart, read_new_restart, global_att_exists, &
+                         write_data, read_data, write_restart, &
+                         read_restart, global_att_exists, &
                          variable_att_exists, register_global_attribute, &
                          register_variable_attribute, get_global_attribute, &
                          get_variable_attribute, get_num_dimensions, &
@@ -175,7 +175,7 @@ module fms
                          parse_mask_table
   ! used via fms2_io
   ! fms_io_utils_mod, fms_netcdf_domain_io_mod, netcdf_io_mod,
-  ! fms_netcdf_unstructured_domain_io_mod, blackboxio
+  ! fms_netcdf_unstructured_domain_io_mod
 
   !> fms
   !! routines that don't conflict with fms2_io
