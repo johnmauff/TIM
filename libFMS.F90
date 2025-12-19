@@ -250,11 +250,6 @@ module fms
                      mpp_domains_stack_nonblock, ptr_domains_stack_nonblock
   use mpp_memutils_mod, only: mpp_print_memuse_stats, mpp_mem_dump, &
                      mpp_memuse_begin, mpp_memuse_end
-  use mpp_efp_mod, only: mpp_reproducing_sum, mpp_efp_list_sum_across_PEs, &
-                     mpp_efp_plus, mpp_efp_minus, mpp_efp_to_real, &
-                     mpp_real_to_efp, mpp_efp_real_diff, operator(+), &
-                     operator(-), assignment(=), mpp_query_efp_overflow_error, &
-                     mpp_reset_efp_overflow_error, mpp_efp_type
   use mpp_domains_mod, only: domain_axis_spec, domain1D, domain2D, DomainCommunicator2D, &
                      mpp_group_update_type, &
                      mpp_domains_set_stack_size, mpp_get_compute_domain, &

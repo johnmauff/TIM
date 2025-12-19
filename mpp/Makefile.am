@@ -36,7 +36,6 @@ libmpp_la_SOURCES = \
   mpp_data.F90 \
   mpp_domains.F90 \
   mpp_io.F90 \
-  mpp_efp.F90 \
   mpp_memutils.F90 \
   mpp_memuse.c \
   include/group_update_pack.inc \
@@ -166,7 +165,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   mpp_parameter_mod.$(FC_MODEXT) \
   mpp_mod.$(FC_MODEXT) \
   mpp_memutils_mod.$(FC_MODEXT) \
-  mpp_efp_mod.$(FC_MODEXT) \
   include/mpp_domains_util.inc \
   include/mpp_domains_comm.inc \
   include/mpp_domains_define.inc \
@@ -221,7 +219,6 @@ mpp_io_mod.$(FC_MODEXT): \
   include/mpp_write_unlimited_axis.fh \
   include/mpp_io_unstructured_write.inc \
   include/mpp_io_unstructured_read.inc
-mpp_efp_mod.$(FC_MODEXT): mpp_parameter_mod.$(FC_MODEXT) mpp_mod.$(FC_MODEXT)
 mpp_memutils_mod.$(FC_MODEXT): mpp_mod.$(FC_MODEXT)
 
 # Mod files are built and then installed as headers.
@@ -230,7 +227,6 @@ BUILT_SOURCES = \
   mpp_data_mod.$(FC_MODEXT) \
   mpp_mod.$(FC_MODEXT) \
   mpp_memutils_mod.$(FC_MODEXT) \
-  mpp_efp_mod.$(FC_MODEXT) \
   mpp_domains_mod.$(FC_MODEXT) \
   mpp_io_mod.$(FC_MODEXT)
 nodist_include_HEADERS = $(BUILT_SOURCES)

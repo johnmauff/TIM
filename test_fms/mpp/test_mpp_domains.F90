@@ -28,7 +28,7 @@ program test_mpp_domains
   use mpp_domains_mod, only : GLOBAL_DATA_DOMAIN, BITWISE_EXACT_SUM, BGRID_NE, CGRID_NE, DGRID_NE, AGRID
   use mpp_domains_mod, only : FOLD_SOUTH_EDGE, FOLD_NORTH_EDGE, FOLD_WEST_EDGE, FOLD_EAST_EDGE
   use mpp_domains_mod, only : MPP_DOMAIN_TIME, CYCLIC_GLOBAL_DOMAIN, NUPDATE,EUPDATE, XUPDATE, YUPDATE, SCALAR_PAIR
-  use mpp_domains_mod, only : domain1D, domain2D, DomainCommunicator2D, BITWISE_EFP_SUM
+  use mpp_domains_mod, only : domain1D, domain2D, DomainCommunicator2D
   use mpp_domains_mod, only : mpp_get_compute_domain, mpp_get_data_domain, mpp_domains_set_stack_size
   use mpp_domains_mod, only : mpp_global_field, mpp_global_sum, mpp_global_max, mpp_global_min
   use mpp_domains_mod, only : mpp_domains_init, mpp_domains_exit, mpp_broadcast_domain
@@ -2385,8 +2385,6 @@ contains
     enddo
 
     id1 = mpp_clock_id( type//' bitwise sum 3D', flags=MPP_CLOCK_SYNC )
-    id2 = mpp_clock_id( type//' EFP sum 3D', flags=MPP_CLOCK_SYNC )
-    id3 = mpp_clock_id( type//' EFP sum 3D check', flags=MPP_CLOCK_SYNC )
     id4 = mpp_clock_id( type//' non-bitwise sum 3D', flags=MPP_CLOCK_SYNC )
 
     call mpp_clock_begin(id1)
@@ -2394,18 +2392,6 @@ contains
        gsum1 = mpp_global_sum(domain, data_3d, flags=BITWISE_EXACT_SUM)
     enddo
     call mpp_clock_end(id1)
-
-    call mpp_clock_begin(id2)
-    do n = 1, num_iter
-       gsum2 = mpp_global_sum(domain, data_3d, flags=BITWISE_EFP_SUM)
-    enddo
-    call mpp_clock_end(id2)
-
-    call mpp_clock_begin(id3)
-    do n = 1, num_iter
-       gsum3 = mpp_global_sum(domain, data_3d, flags=BITWISE_EFP_SUM, overflow_check=.true. )
-    enddo
-    call mpp_clock_end(id3)
 
     call mpp_clock_begin(id4)
     do n = 1, num_iter
@@ -2415,19 +2401,13 @@ contains
 
     write(outunit, *) " ********************************************************************************"
     write(outunit, *) " global sum for "//type//' bitwise exact sum 3D = ', gsum1
-    write(outunit, *) " global sum for "//type//' bitwise EFP sum 3D = ', gsum2
-    write(outunit, *) " global sum for "//type//' bitwise EFP sum 3D with overflow_check = ', gsum3
     write(outunit, *) " global sum for "//type//' non-bitwise sum 3D = ', gsum4
     write(outunit, *) " "
     write(outunit, *) " chksum for "//type//' bitwise exact sum 3D = ', transfer(gsum1, mold)
-    write(outunit, *) " chksum for "//type//' bitwise EFP sum 3D = ', transfer(gsum2, mold)
-    write(outunit, *) " chksum for "//type//' bitwise EFP sum 3D with overflow_check = ', transfer(gsum3, mold)
     write(outunit, *) " chksum for "//type//' non-bitwise sum 3D = ', transfer(gsum4, mold)
     write(outunit, *) " ********************************************************************************"
 
     id1 = mpp_clock_id( type//' bitwise sum 2D', flags=MPP_CLOCK_SYNC )
-    id2 = mpp_clock_id( type//' EFP sum 2D', flags=MPP_CLOCK_SYNC )
-    id3 = mpp_clock_id( type//' EFP sum 2D check', flags=MPP_CLOCK_SYNC )
     id4 = mpp_clock_id( type//' non-bitwise sum 2D', flags=MPP_CLOCK_SYNC )
 
     call mpp_clock_begin(id1)
@@ -2435,18 +2415,6 @@ contains
        gsum1 = mpp_global_sum(domain, data_2d, flags=BITWISE_EXACT_SUM)
     enddo
     call mpp_clock_end(id1)
-
-    call mpp_clock_begin(id2)
-    do n = 1, num_iter
-       gsum2 = mpp_global_sum(domain, data_2d, flags=BITWISE_EFP_SUM)
-    enddo
-    call mpp_clock_end(id2)
-
-    call mpp_clock_begin(id3)
-    do n = 1, num_iter
-       gsum3 = mpp_global_sum(domain, data_2d, flags=BITWISE_EFP_SUM, overflow_check=.true. )
-    enddo
-    call mpp_clock_end(id3)
 
     call mpp_clock_begin(id4)
     do n = 1, num_iter
@@ -2456,13 +2424,9 @@ contains
 
     write(outunit, *) " ********************************************************************************"
     write(outunit, *) " global sum for "//type//' bitwise exact sum 2D = ', gsum1
-    write(outunit, *) " global sum for "//type//' bitwise EFP sum 2D = ', gsum2
-    write(outunit, *) " global sum for "//type//' bitwise EFP sum 2D with overflow_check = ', gsum3
     write(outunit, *) " global sum for "//type//' non-bitwise sum 2D = ', gsum4
     write(outunit, *) " "
     write(outunit, *) " chksum for "//type//' bitwise exact sum 2D = ', transfer(gsum1, mold)
-    write(outunit, *) " chksum for "//type//' bitwise EFP sum 2D = ', transfer(gsum2, mold)
-    write(outunit, *) " chksum for "//type//' bitwise EFP sum 2D with overflow_check = ', transfer(gsum3, mold)
     write(outunit, *) " chksum for "//type//' non-bitwise sum 2D = ', transfer(gsum4, mold)
     write(outunit, *) " ********************************************************************************"
 

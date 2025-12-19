@@ -138,7 +138,6 @@ list(APPEND fms_fortran_src_files
   mpp/mpp.F90
   mpp/mpp_data.F90
   mpp/mpp_domains.F90
-  mpp/mpp_efp.F90
   mpp/mpp_io.F90
   mpp/mpp_memutils.F90
   mpp/mpp_parameter.F90

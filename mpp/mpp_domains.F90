@@ -123,7 +123,6 @@ module mpp_domains_mod
   use mpp_mod,                only : COMM_TAG_1, COMM_TAG_2, COMM_TAG_3, COMM_TAG_4
   use mpp_mod,                only : mpp_declare_pelist, mpp_set_current_pelist
   use mpp_memutils_mod,       only : mpp_memuse_begin, mpp_memuse_end
-  use mpp_efp_mod,            only : mpp_reproducing_sum
   use platform_mod
   implicit none
   private

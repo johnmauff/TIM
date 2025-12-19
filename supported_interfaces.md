@@ -420,21 +420,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_memuse_begin
 - mpp_memuse_end
 
-### mpp_efp
-##### Interfaces
-- mpp_reproducing_sum
-- mpp_efp_list_sum_across_PEs
-- mpp_efp_plus
-- mpp_efp_minus
-- mpp_efp_to_real
-- mpp_real_to_efp
-- mpp_efp_real_diff
-- mpp_query_efp_overflow_error
-- mpp_reset_efp_overflow
-- OPERATOR(+), OPERATOR(-), and ASSIGNMENT(=) for mpp_efp_types
-##### Types
-- mpp_efp_type
-
 ### mpp_domains
 ##### Interfaces
 - mpp_domains_set_stack_size
