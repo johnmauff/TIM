@@ -105,7 +105,7 @@ module fms
 
   !> data_override
   use data_override_mod, only: data_override_init, data_override, &
-                               data_override_unset_domains, data_override_UG
+                               data_override_unset_domains
 
   !> diag_manager
   !! includes imports from submodules made public
@@ -150,7 +150,7 @@ module fms
 
   !> fms2_io
   use fms2_io_mod, only: unlimited, FmsNetcdfFile_t, FmsNetcdfDomainFile_t, &
-                         FmsNetcdfUnstructuredDomainFile_t, open_file, &
+                         open_file, &
                          close_file, register_axis, register_field, register_restart_field, &
                          write_data, read_data, write_restart, &
                          read_restart, global_att_exists, &
@@ -175,7 +175,6 @@ module fms
                          parse_mask_table
   ! used via fms2_io
   ! fms_io_utils_mod, fms_netcdf_domain_io_mod, netcdf_io_mod,
-  ! fms_netcdf_unstructured_domain_io_mod
 
   !> fms
   !! routines that don't conflict with fms2_io
@@ -280,22 +279,13 @@ module fms
                      mpp_do_group_update, mpp_start_group_update, &
                      mpp_complete_group_update, mpp_reset_group_update_field, &
                      mpp_get_boundary, &
-                     mpp_update_domains_ad, mpp_get_boundary_ad, mpp_pass_SG_to_UG, &
-                     mpp_pass_UG_to_SG, mpp_define_layout, mpp_define_domains, &
+                     mpp_update_domains_ad, mpp_get_boundary_ad, &
+                     mpp_define_layout, mpp_define_domains, &
                      mpp_modify_domain, mpp_define_mosaic, mpp_define_mosaic_pelist, &
                      mpp_define_null_domain, mpp_mosaic_defined, &
                      mpp_define_io_domain, mpp_deallocate_domain, &
                      mpp_compute_extent, mpp_compute_block_extent, &
-                     mpp_define_unstruct_domain, domainUG, mpp_get_UG_io_domain, &
-                     mpp_get_UG_domain_npes, mpp_get_UG_compute_domain, &
-                     mpp_get_UG_domain_tile_id, mpp_get_UG_domain_pelist, &
-                     mpp_get_ug_domain_grid_index, mpp_get_UG_domain_ntiles, &
-                     mpp_get_UG_global_domain, mpp_global_field_ug, &
-                     mpp_get_ug_domain_tile_list, mpp_get_UG_compute_domains, &
-                     mpp_define_null_UG_domain, NULL_DOMAINUG, mpp_get_UG_domains_index, &
-                     mpp_get_UG_SG_domain, mpp_get_UG_domain_tile_pe_inf, &
-                     mpp_domain_UG_is_tile_root_pe, mpp_deallocate_domainUG, &
-                     mpp_get_io_domain_UG_layout, NULL_DOMAIN1D, NULL_DOMAIN2D, &
+                     NULL_DOMAIN1D, NULL_DOMAIN2D, &
                      mpp_create_super_grid_domain
 
   !> platform

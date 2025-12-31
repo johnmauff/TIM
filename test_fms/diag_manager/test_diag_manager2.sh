@@ -423,26 +423,6 @@ test_expect_success "Get 'nv' axis id (test $my_test_count)" '
   mpirun -n 1 ../test_diag_manager
 '
 
-my_test_count=23
-cat <<_EOF > diag_table
-test_diag_manager_23
-1990 1 1 0 0 0
-
-#output files
-"unstructured_diag_test", 2, "days", 2, "days", "time",
-
-#output variables
-"UG_unit_test", "unstructured_real_scalar_field_data", "rsf_diag_1", "unstructured_diag_test", "all", .TRUE., "none", 1,
-"UG_unit_test", "unstructured_real_1D_field_data", "unstructured_real_1D_field_data", "unstructured_diag_test", "all", .TRUE., "none", 1,
-"UG_unit_test", "unstructured_real_2D_field_data", "unstructured_real_2D_field_data", "unstructured_diag_test", "all", .TRUE., "none", 1,
-"UG_unit_test", "lon", "grid_xt", "unstructured_diag_test", "all", .TRUE., "none", 1,
-"UG_unit_test", "lat", "grid_yt", "unstructured_diag_test", "all", .TRUE., "none", 1,
-_EOF
-setup_test
-test_expect_success "Unstructured grid (test $my_test_count)" '
-  mpirun -n 1 ../test_diag_manager
-'
-
 # test_diag_manager_time
 cat <<_EOF > diag_table
 test_diag_manager

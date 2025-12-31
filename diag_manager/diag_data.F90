@@ -49,7 +49,7 @@ MODULE diag_data_mod
 use platform_mod
 
   USE time_manager_mod, ONLY: time_type
-  USE mpp_domains_mod, ONLY: domain1d, domain2d, domainUG
+  USE mpp_domains_mod, ONLY: domain1d, domain2d
   USE fms_mod, ONLY: WARNING, write_version_number
   USE fms_diag_bbox_mod, ONLY: fmsDiagIbounds_type
 
@@ -101,7 +101,6 @@ use platform_mod
   !> @ingroup diag_data_mod
   TYPE diag_fieldtype
      TYPE(domain2d) :: Domain
-     TYPE(domainUG) :: DomainU
      REAL :: miss, miss_pack
      LOGICAL :: miss_present, miss_pack_present
      INTEGER :: tile_count
@@ -160,11 +159,7 @@ use platform_mod
      TYPE(diag_fieldtype):: f_avg_start, f_avg_end, f_avg_nitems, f_bounds
      TYPE(diag_atttype), allocatable, dimension(:) :: attributes !< Array to hold user definable attributes
      INTEGER :: num_attributes !< Number of defined attibutes
-!----------
-!ug support
-     logical(I4_KIND) :: use_domainUG = .false.
      logical(I4_KIND) :: use_domain2D = .false.
-!----------
 !Check if time axis was already registered
      logical, allocatable :: is_time_axis_registered
 !Support for fms2_io time
@@ -251,10 +246,6 @@ use platform_mod
      TYPE(time_type) :: Time_of_prev_field_data
      TYPE(diag_atttype), allocatable, dimension(:) :: attributes
      INTEGER :: num_attributes
-!----------
-!ug support
-     logical :: reduced_k_unstruct = .false.
-!----------
   END TYPE output_field_type
 
   !> @brief Type to hold the diagnostic axis description.
@@ -271,7 +262,6 @@ use platform_mod
      TYPE(domain1d) :: Domain
      TYPE(domain2d) :: Domain2
      TYPE(domain2d), dimension(MAX_SUBAXES) :: subaxis_domain2
-     type(domainUG) :: DomainUG
      CHARACTER(len=MAX_NAME_LENGTH) :: aux, req
      INTEGER :: tile_count
      TYPE(diag_atttype), allocatable, dimension(:) :: attributes !< Array to hold user definable attributes
@@ -365,7 +355,6 @@ use platform_mod
   TYPE(input_field_type), ALLOCATABLE :: input_fields(:)
   TYPE(output_field_type), ALLOCATABLE :: output_fields(:)
   ! used if use_mpp_io = .false.
-  type(FmsNetcdfUnstructuredDomainFile_t),allocatable, target :: fileobjU(:)
   type(FmsNetcdfDomainFile_t),allocatable, target :: fileobj(:)
   type(FmsNetcdfFile_t),allocatable, target :: fileobjND(:)
   character(len=2),allocatable :: fnum_for_domain(:) !< If this file number in the array is for the "unstructured"

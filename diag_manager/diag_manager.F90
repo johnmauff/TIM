@@ -231,7 +231,7 @@ use platform_mod
        & max_out_per_in_field, flush_nc_files, region_out_use_alt_value, max_field_attributes, output_field_type,&
        & max_file_attributes, max_axis_attributes, prepend_date, DIAG_FIELD_NOT_FOUND, diag_init_time, diag_data_init,&
        & use_mpp_io, use_refactored_send, auto_merge_nc
-  USE diag_data_mod, ONLY:  fileobj, fileobjU, fnum_for_domain, fileobjND
+  USE diag_data_mod, ONLY:  fileobj, fnum_for_domain, fileobjND
   USE diag_table_mod, ONLY: parse_diag_table
   USE diag_output_mod, ONLY: get_diag_global_att, set_diag_global_att
   USE constants_mod, ONLY: SECONDS_PER_DAY
@@ -245,11 +245,7 @@ use platform_mod
   USE netcdf, ONLY: NF90_INT, NF90_FLOAT, NF90_CHAR
 #endif
 
-!----------
-!ug support
   use diag_axis_mod, only: DIAG_AXIS_2DDOMAIN
-  use diag_axis_mod, only: DIAG_AXIS_UGDOMAIN
-!----------
 
 use iso_fortran_env, only: compiler_version
 use iso_c_binding, only : c_int, c_char, c_ptr, c_null_ptr, c_null_char, c_new_line
@@ -924,26 +920,8 @@ CONTAINS
        !the domain associated output files to which it will be written.
        file_num = output_fields(out_num)%output_file
        if (domain_type .eq. DIAG_AXIS_2DDOMAIN) then
-           if (files(file_num)%use_domainUG) then
-               call error_mesg("diag_manager_mod::register_static_field", &
-                               "Diagnostics living on a structured grid" &
-                               //" and an unstructured grid cannot exist" &
-                               //" in the same file (" &
-                               //trim(files(file_num)%name)//")", &
-                               FATAL)
-           elseif (.not. files(file_num)%use_domain2D) then
+           if (.not. files(file_num)%use_domain2D) then
                files(file_num)%use_domain2D = .true.
-           endif
-       elseif (domain_type .eq. DIAG_AXIS_UGDOMAIN) then
-           if (files(file_num)%use_domain2D) then
-               call error_mesg("diag_manager_mod::register_static_field", &
-                               "Diagnostics living on a structured grid" &
-                               //" and an unstructured grid cannot exist" &
-                               //" in the same file (" &
-                               //trim(files(file_num)%name)//")", &
-                               FATAL)
-           elseif (.not. files(file_num)%use_domainUG) then
-               files(file_num)%use_domainUG = .true.
            endif
        endif
 
@@ -952,30 +930,13 @@ CONTAINS
        IF ( output_fields(out_num)%reduced_k_range ) THEN
           CALL get_subfield_vert_size(axes, out_num)
 
-!----------
-!ug support
-         !Send_data requires that the reduced k dimension be the 3rd dimension
-         !of the buffer, so set it to be the correct size.  If the diagnostic
-         !is unstructured, set the second dimension of the buffer to be 1.
-          if (domain_type .eq. DIAG_AXIS_UGDOMAIN) then
-              local_start(2) = output_fields(out_num)%output_grid%l_start_indx(2)
-              local_end(2) = output_fields(out_num)%output_grid%l_end_indx(2)
-              local_siz(2) = local_end(2) - local_start(2) + 1
-              allocate(output_fields(out_num)%buffer(siz(1),local_siz(2),siz(3), &
-                                                     output_fields(out_num)%n_diurnal_samples))
-              output_fields(out_num)%region_elements = siz(1)*local_siz(2)*siz(3)
-              output_fields(out_num)%reduced_k_unstruct = .true.
-          else
-              local_start(3) = output_fields(out_num)%output_grid%l_start_indx(3)
-              local_end(3) = output_fields(out_num)%output_grid%l_end_indx(3)
-              local_siz(3) = local_end(3) - local_start(3) + 1
-              allocate(output_fields(out_num)%buffer(siz(1),siz(2),local_siz(3), &
-                                                     output_fields(out_num)%n_diurnal_samples))
-              output_fields(out_num)%region_elements = siz(1)*siz(2)*local_siz(3)
-              output_fields(out_num)%reduced_k_unstruct = .false.
-          endif
+          local_start(3) = output_fields(out_num)%output_grid%l_start_indx(3)
+          local_end(3) = output_fields(out_num)%output_grid%l_end_indx(3)
+          local_siz(3) = local_end(3) - local_start(3) + 1
+          allocate(output_fields(out_num)%buffer(siz(1),siz(2),local_siz(3), &
+                                                 output_fields(out_num)%n_diurnal_samples))
+          output_fields(out_num)%region_elements = siz(1)*siz(2)*local_siz(3)
           output_fields(out_num)%total_elements = siz(1)*siz(2)*siz(3)
-!----------
 
           IF ( output_fields(out_num)%time_max ) THEN
              output_fields(out_num)%buffer = MAX_VALUE
@@ -1067,14 +1028,7 @@ CONTAINS
        END IF
 
        IF ( output_fields(out_num)%reduced_k_range ) THEN
-!----------
-!ug support
-          if (domain_type .eq. DIAG_AXIS_UGDOMAIN) then
-              output_fields(out_num)%axes(2) = output_fields(out_num)%output_grid%subaxes(2)
-          else
-              output_fields(out_num)%axes(3) = output_fields(out_num)%output_grid%subaxes(3)
-          endif
-!----------
+          output_fields(out_num)%axes(3) = output_fields(out_num)%output_grid%subaxes(3)
        END IF
 
        ! Initialize a time variable used in an error check
@@ -1098,20 +1052,11 @@ CONTAINS
        DO j = 1, input_fields(field)%num_output_fields
           out_num = input_fields(field)%output_fields(j)
           IF(output_fields(out_num)%time_average) THEN
-!----------
-!ug support
              !Send_data requires that the reduced k dimension be the 3rd dimension
              !of the counter array, so set it to be the correct size.  If the diagnostic
              !is unstructured, set the second dimension of the counter array to be 1.
-              if (output_fields(out_num)%reduced_k_range .and. &
-                  domain_type .eq. DIAG_AXIS_UGDOMAIN) then
-                  allocate(output_fields(out_num)%counter(siz(1),local_siz(2),siz(3), &
-                                                          output_fields(out_num)%n_diurnal_samples))
-              else
-                  allocate(output_fields(out_num)%counter(siz(1),siz(2),siz(3), &
-                                                          output_fields(out_num)%n_diurnal_samples))
-              endif
-!----------
+             allocate(output_fields(out_num)%counter(siz(1),siz(2),siz(3), &
+                                                   output_fields(out_num)%n_diurnal_samples))
              output_fields(out_num)%counter = 0.0
           END IF
        END DO
@@ -1858,15 +1803,8 @@ CONTAINS
 
        ! Get the vertical layer start and end index.
        IF ( reduced_k_range ) THEN
-!----------
-!ug support
-           if (output_fields(out_num)%reduced_k_unstruct) then
-               js = output_fields(out_num)%output_grid%l_start_indx(2)
-               je = output_fields(out_num)%output_grid%l_end_indx(2)
-           endif
            l_start(3) = output_fields(out_num)%output_grid%l_start_indx(3)
            l_end(3) = output_fields(out_num)%output_grid%l_end_indx(3)
-!----------
        END IF
        ksr= l_start(3)
        ker= l_end(3)
@@ -3722,7 +3660,6 @@ CONTAINS
     ! combine partitioned netcdf files into single file
     if ( auto_merge_nc ) call combine_files()
 
-    if (allocated(fileobjU)) deallocate(fileobjU)
     if (allocated(fileobj)) deallocate(fileobj)
     if (allocated(fileobjND)) deallocate(fileobjND)
     if (allocated(fnum_for_domain)) deallocate(fnum_for_domain)
@@ -4047,7 +3984,6 @@ CONTAINS
     END DO
     ALLOCATE(files(max_files))
     if (.not.use_mpp_io) then
-      ALLOCATE(fileobjU(max_files))
       ALLOCATE(fileobj(max_files))
       ALLOCATE(fileobjND(max_files))
       ALLOCATE(fnum_for_domain(max_files))

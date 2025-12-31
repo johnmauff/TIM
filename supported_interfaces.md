@@ -112,7 +112,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - data_override_init
 - data_override
 - data_override_unset_domains
-- data_override_UG
 
 ### diag_integral
 ##### Interfaces
@@ -158,9 +157,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - xgrid_init
 - get_ocean_model_area_elements
 - get_xmap_grid_area
-- put_to_xgrid_ug
-- get_from_xgrid_ug
-- set_frac_area_ug
 ##### Types
 - xmap_type
 - grid_box_type
@@ -299,7 +295,6 @@ Additional information for this module and others can be found in the Doxygen ge
 ##### Types
 - FmsNetcdfDomainFile_t
 - FmsNetcdfDomainFile_t
-- FmsNetcdfUnstructuredDomainFile_t
 - Valid_t
 
 ### horiz_interp
@@ -485,8 +480,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_get_boundary
 - mpp_update_domains_ad
 - mpp_get_boundary_ad
-- mpp_pass_SG_to_UG
-- mpp_pass_UG_to_SG
 - mpp_define_layout
 - mpp_define_domains
 - mpp_modify_domain
@@ -498,25 +491,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_deallocate_domain
 - mpp_compute_extent
 - mpp_compute_block_extent
-- mpp_define_unstruct_domain
-- mpp_get_UG_io_domain
-- mpp_get_UG_domain_npes
-- mpp_get_UG_compute_domain
-- mpp_get_UG_domain_tile_id
-- mpp_get_UG_domain_pelist
-- mpp_get_ug_domain_grid_index
-- mpp_get_UG_domain_ntiles
-- mpp_get_UG_global_domain
-- mpp_global_field_ug
-- mpp_get_ug_domain_tile_list
-- mpp_get_UG_compute_domains
-- mpp_define_null_UG_domain
-- mpp_get_UG_domains_index
-- mpp_get_UG_SG_domain
-- mpp_get_UG_domain_tile_pe_inf
-- mpp_domain_UG_is_tile_root_pe
-- mpp_deallocate_domainUG
-- mpp_get_io_domain_UG_layout
 - OPERATOR(.EQ.) for domain2D types
 - OPERATOR(.NE.) for domain2D types
 - mpp_create_super_grid_domain
@@ -526,7 +500,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - domain2D
 - DomainCommunicator2D
 - mpp_group_update_type
-- domainUG
 
 ### random_numbers
 ##### Interfaces

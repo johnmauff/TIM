@@ -54,7 +54,6 @@ use fms_mod, only: write_version_number, lowercase, check_nml_error
 use axis_utils2_mod,  only : nearest_index, axis_edges
 use mpp_domains_mod, only : domain2d, mpp_get_compute_domain, NULL_DOMAIN2D,operator(.NE.),operator(.EQ.)
 use mpp_domains_mod, only : mpp_get_global_domain, mpp_get_data_domain
-use mpp_domains_mod, only : domainUG, mpp_pass_SG_to_UG, mpp_get_UG_SG_domain, NULL_DOMAINUG
 use time_manager_mod, only: time_type
 use fms2_io_mod,     only : FmsNetcdfFile_t, open_file, close_file, &
                             read_data, fms2_io_init, variable_exists, &
@@ -109,13 +108,6 @@ interface data_override
      module procedure data_override_3d
 end interface
 
-!> Version of @ref data_override for unstructured grids
-!> @ingroup data_override_mod
-interface data_override_UG
-     module procedure data_override_UG_1d
-     module procedure data_override_UG_2d
-end interface
-
 !> @addtogroup data_override_mod
 !> @{
  integer, parameter :: max_table=100, max_array=100
@@ -124,7 +116,6 @@ end interface
  logical            :: module_is_initialized = .FALSE.
 
 type(domain2D),save :: ocn_domain,atm_domain,lnd_domain, ice_domain
-type(domainUG),save :: lnd_domainUG
 
 real, dimension(:,:), target, allocatable :: lon_local_ocn, lat_local_ocn
 real, dimension(:,:), target, allocatable :: lon_local_atm, lat_local_atm
@@ -153,7 +144,6 @@ namelist /data_override_nml/ debug_data_override, grid_center_bug, reproduce_nul
 
 
 public :: data_override_init, data_override, data_override_unset_domains
-public :: data_override_UG
 
 contains
 function count_ne_1(in_1, in_2, in_3)
@@ -177,11 +167,10 @@ end function count_ne_1
 !! Data_table is initialized here with default values. Users should provide "real" values
 !! that will override the default values. Real values can be given using data_table, each
 !! line of data_table contains one data_entry. Items of data_entry are comma separated.
-subroutine data_override_init(Atm_domain_in, Ocean_domain_in, Ice_domain_in, Land_domain_in, Land_domainUG_in)
+subroutine data_override_init(Atm_domain_in, Ocean_domain_in, Ice_domain_in, Land_domain_in)
   type (domain2d), intent(in), optional :: Atm_domain_in
   type (domain2d), intent(in), optional :: Ocean_domain_in, Ice_domain_in
   type (domain2d), intent(in), optional :: Land_domain_in
-  type(domainUG) , intent(in), optional :: Land_domainUG_in
 
   character(len=128)    :: grid_file = 'INPUT/grid_spec.nc'
   integer               :: is,ie,js,je,use_get_grid_version
@@ -209,19 +198,17 @@ endif
   ocn_on = PRESENT(Ocean_domain_in)
   lnd_on = PRESENT(Land_domain_in)
   ice_on = PRESENT(Ice_domain_in)
-  lndUG_on = PRESENT(Land_domainUG_in)
+  lndUG_on = .false.
   if(.not. module_is_initialized) then
     atm_domain = NULL_DOMAIN2D
     ocn_domain = NULL_DOMAIN2D
     lnd_domain = NULL_DOMAIN2D
     ice_domain = NULL_DOMAIN2D
-    lnd_domainUG = NULL_DOMAINUG
   end if
   if (atm_on) atm_domain = Atm_domain_in
   if (ocn_on) ocn_domain = Ocean_domain_in
   if (lnd_on) lnd_domain = Land_domain_in
   if (ice_on) ice_domain = Ice_domain_in
-  if (lndUG_on) lnd_domainUG = Land_domainUG_in
 
   if(.not. module_is_initialized) then
     call horiz_interp_init
@@ -562,26 +549,6 @@ subroutine get_domain(gridname, domain, comp_domain)
   if(present(comp_domain)) &
      call mpp_get_compute_domain(domain,comp_domain(1),comp_domain(2),comp_domain(3),comp_domain(4))
 end subroutine get_domain
-
-!> @brief Given a gridname, this routine returns the working domain associated with this gridname
-subroutine get_domainUG(gridname, UGdomain, comp_domain)
-  character(len=3), intent(in) :: gridname
-  type(domainUG), intent(inout) :: UGdomain
-  integer, intent(out), optional :: comp_domain(4) !< istart,iend,jstart,jend for compute domain
-  type(domain2D), pointer :: SGdomain => NULL()
-
-  UGdomain = NULL_DOMAINUG
-  select case (gridname)
-     case('LND')
-        UGdomain = lnd_domainUG
-     case default
-        call mpp_error(FATAL,'error in data_override get_domain')
-  end select
-!  if(UGdomain .EQ. NULL_DOMAINUG) call mpp_error(FATAL,'data_override: failure in get_domain')
-  if(present(comp_domain)) &
-     call mpp_get_UG_SG_domain(UGdomain,SGdomain)
-     call mpp_get_compute_domain(SGdomain,comp_domain(1),comp_domain(2),comp_domain(3),comp_domain(4))
-end subroutine get_domainUG
 !===============================================================================================
 
 !> @brief This routine performs data override for 2D fields; for usage, see data_override_3d.
@@ -1150,85 +1117,6 @@ subroutine data_override_0d(gridname,fieldname_code,data,time,override,data_inde
   if(PRESENT(override)) override = .true.
 
 end subroutine data_override_0d
-
-!> @brief Data override for 2D unstructured grids
-subroutine data_override_UG_1d(gridname,fieldname,data,time,override)
-  character(len=3),   intent(in) :: gridname !< model grid ID
-  character(len=*),   intent(in) :: fieldname !< field to override
-  real, dimension(:), intent(inout) :: data !< data returned by this call
-  type(time_type),    intent(in) :: time !<  model time
-  logical, intent(out), optional :: override !< true if the field has been overriden succesfully
-  !local vars
-  real, dimension(:,:), allocatable ::  data_SG
-  type(domainUG) :: UG_domain
-  integer       :: index1
-  integer       :: i
-  integer, dimension(4) :: comp_domain = 0  !< istart,iend,jstart,jend for compute domain
-
-  !1  Look  for the data file in data_table
-  if(PRESENT(override)) override = .false.
-  index1 = -1
-  do i = 1, table_size
-     if( trim(gridname) /= trim(data_table(i)%gridname)) cycle
-     if( trim(fieldname) /= trim(data_table(i)%fieldname_code)) cycle
-     index1 = i                               ! field found
-     exit
-  enddo
-  if(index1 .eq. -1) return  ! NO override was performed
-
-  call get_domainUG(gridname,UG_domain,comp_domain)
-  allocate(data_SG(comp_domain(1):comp_domain(2),comp_domain(3):comp_domain(4)))
-
-  call data_override_2d(gridname,fieldname,data_SG,time,override)
-
-  call mpp_pass_SG_to_UG(UG_domain, data_SG(:,:), data(:))
-
-  deallocate(data_SG)
-
-end subroutine data_override_UG_1d
-
-!> @brief Data override for 2D unstructured grids
-subroutine data_override_UG_2d(gridname,fieldname,data,time,override)
-  character(len=3),     intent(in) :: gridname !< model grid ID
-  character(len=*),     intent(in) :: fieldname !< field to override
-  real, dimension(:,:), intent(inout) :: data !< data returned by this call
-  type(time_type),      intent(in) :: time !<  model time
-  logical, intent(out), optional :: override !< true if the field has been overriden succesfully
-  !local vars
-  real, dimension(:,:,:), allocatable ::  data_SG
-  real, dimension(:,:),   allocatable ::  data_UG
-  type(domainUG) :: UG_domain
-  integer       :: index1
-  integer       :: i, nlevel, nlevel_max
-  integer, dimension(4) :: comp_domain = 0  !< istart,iend,jstart,jend for compute domain
-
-!1  Look  for the data file in data_table
-  if(PRESENT(override)) override = .false.
-  index1 = -1
-  do i = 1, table_size
-     if( trim(gridname) /= trim(data_table(i)%gridname)) cycle
-     if( trim(fieldname) /= trim(data_table(i)%fieldname_code)) cycle
-     index1 = i                               ! field found
-     exit
-  enddo
-  if(index1 .eq. -1) return  ! NO override was performed
-
-  nlevel = size(data,2)
-  nlevel_max = nlevel
-  call mpp_max(nlevel_max)
-
-  call get_domainUG(gridname,UG_domain,comp_domain)
-  allocate(data_SG(comp_domain(1):comp_domain(2),comp_domain(3):comp_domain(4),nlevel_max))
-  allocate(data_UG(size(data,1), nlevel_max))
-  data_SG = 0.0
-  call data_override_3d(gridname,fieldname,data_SG,time,override)
-
-  call mpp_pass_SG_to_UG(UG_domain, data_SG(:,:,:), data_UG(:,:))
-  data(:,1:nlevel) = data_UG(:,1:nlevel)
-
-  deallocate(data_SG, data_UG)
-
-end subroutine data_override_UG_2d
 
 end module data_override_mod
 !> @}

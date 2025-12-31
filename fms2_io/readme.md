@@ -22,10 +22,6 @@ FMS2_io provides three new derived types, which target the different I/O paradig
 
 **2. FmsNetcdfDomainFile_t:** This type does everything that the FmsNetcdfFile_t type does and it adds support for “domain-decomposed” reads/writes. Here, "domain decomposed" refers to data that is on a user-defined mpp_domain and is decomposed in two dimensions, in which each MPI rank has its own section of the global data. This requires a [domain](https://github.com/NOAA-GFDL/FMS/blob/main/mpp/mpp_domains.F90#L379-L415) to be associated with the fileobj.
 
-**3. FmsNetcdfUnstructuredDomainFile_t:** This type does everything that the FmsNetcdfFile_t type does and it adds support for “domain-decomposed” reads/writes on a user defined mpp_domains **unstructured** grid. This requires a [unstructured domain](https://github.com/NOAA-GFDL/FMS/blob/3329625ea48bc3a10a5726c9f251d6d47b33516d/mpp/mpp_domains.F90#L267-L284) to be associated with the fileobj.
-
-*The FMS_io equivalent to these derived types is [restart_file_type](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms/fms_io.F90#L297-L323)*
-
 ### B. Writing Restarts
 
 #### 1. Domain Decomposed Restarts
@@ -111,60 +107,6 @@ endif
   - Writes the data to the file (a `nf90_put_var` call)
 - [close_file](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms2_io/fms_netcdf_domain_io.F90#L424)
   - Cleans up the fileobj (deallocates any arrays)
-  - Closes the netcdf file (a `nf90_close` call)
-
-#### 2. Unstructured Domain Restarts
-Restart files with domain decomposed variables in the unstructured domain can be written using the `FmsNetcdfUnstructuredDomainFile_t` fileobj.
-
-```F90
-use fms2_io_mod,        only: FmsNetcdfUnstructuredDomainFile_t, register_restart_field, register_axis, unlimited
-use fms2_io_mod,        only: open_file, close_file, write_restart
-use mpp_domains_mod,    only: domainug, center
-
-type(FmsNetcdfUnstructuredDomainFile_t) :: fileobj        !< Fms2_io domain decomposed fileobj
-real, dimension(:,:)        :: variable_data  !< Variable data in the unstructured domain
-type (domainug)             :: domain         !< 2d mpp domain
-character(len=8)            :: dim_names(3)   !< Array of dimension names
-
-dim_names(1) = "ucdim"
-dim_names(2) = "zaxis_1"
-dim_names(3) = "Time"
-
-!> Create domain !<
-!> Create an io_domain !<
-!> Create an unstructured domain !<
-
-if (open_file(fileobj, "filename", "overwrite", domain, is_restart=.true.)) then
-  call register_axis(fileobj, dim_names(1))
-  call register_axis(fileobj, dim_names(2), dimsize)
-  call register_axis(fileobj, dim_names(3), unlimited)
-
-  call register_restart_field(fileobj, 'variable_name', variable_data, dim_names)
-  call write_restart(fileobj)
-  call close_file(fileobj)
-endif
-```
-- [open_file](https://github.com/NOAA-GFDL/FMS/blob/main/fms2_io/fms_netcdf_unstructured_domain_io.F90#L69-L70)
-  -  a logical function, outputs .true. if the file was opened successfully and .false. if it failed.
-  -  Mangles the filename: (1) Adds ".tileXX" if you are on multiple tiles (2) Adds .XXXX to the end of the file if uncombined.
-  -  Opens the netcdf file to write (a `nf90_create` call)
-  -  Set ups the pelist for each io_domain
-  -  `is_restart` indicates that this is a restart file, so it adds ".res" to the filename and it allows user to use the `write_restart` and `register_restart_field` functionality
-  -  **NOTE**: The filename needs to include the full path to the file, including the directory.
-- [register_axis](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms2_io/fms_netcdf_unstructured_domain_io.F90#L155)
-  - writes the dimension metadata in the netcdf file (a `nf90_def_dim` call)
-  - The lack of the third argument in the `register_axis` calls indicates that this dimension is in the unstructured domain
-  - The "unlimited" indicates that the dimension is unlimited (`nf90_unlimited`)
-  - The integer "dimsize" indicates that this is a normal dimension of length equal to dimsize
-- [register_restart_field](https://github.com/NOAA-GFDL/FMS/blob/main/fms2_io/include/register_unstructured_domain_restart_variable.inc)
-  - Writes the variable metadata to the file (a `nf90_def_var` call)
-  - Saves the data as pointers, which will be written to the netcdf file later
-- [write_restart](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms2_io/fms_netcdf_unstructured_domain_io.F90#L193)
-  - Loops through the restart variables that were registered
-  - Calculates and writes a global checksum for each variables
-  - Writes the data to the file (a `nf90_put_var` call)
-- [close_file](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms2_io/fms_netcdf_unstructured_domain_io.F90#L146)
-  - Cleans up the fileobj and deallocated any variables
   - Closes the netcdf file (a `nf90_close` call)
 
 #### 3. Non-domain Decomposed Restarts
@@ -367,56 +309,6 @@ endif
 - `register_axis` is required for the domain decomposed dimensions so the code knows which dimensions and therefore variables are domain decomposed.
 - `register_field` is not required because the code can get the dimensions information from the file.
 - [read_data](https://github.com/NOAA-GFDL/FMS/blob/main/fms2_io/include/domain_read.inc)
-  - The io_root pe reads the data and sends it to the other pes.
-
-#### 2. Unstructured Domain non-restart read/writes
-
-```F90
-use fms2_io_mod,        only: FmsNetcdfUnstructuredDomainFile_t, register_field, register_axis, unlimited
-use fms2_io_mod,        only: open_file, close_file, write_data
-use mpp_domains_mod,    only: domainug, center
-
-type(FmsNetcdfUnstructuredDomainFile_t) :: fileobj        !< Fms2_io domain decomposed fileobj
-real, dimension(:,:)        :: variable_data  !< Variable data in the unstructured domain
-type (domainug)             :: domain         !< 2d mpp domain
-character(len=8)            :: dim_names(3)   !< Array of dimension names
-
-dim_names(1) = "ucdim"
-dim_names(2) = "zaxis_1"
-dim_names(3) = "Time"
-
-!> Create domain !<
-!> Create an io_domain !<
-!> Create an unstructured domain !<
-
-if (open_file(fileobj, "filename", "overwrite", domain, is_restart=.true.)) then
-  call register_axis(fileobj, dim_names(1))
-  call register_axis(fileobj, dim_names(2), dimsize)
-  call register_axis(fileobj, dim_names(3), unlimited)
-
-  call register_field(fileobj, 'variable_name', 'variable_type', dim_names)
-  call write_data(fileobj, 'variable_name', variable_data)
-  call close_file(fileobj)
-endif
-```
-Difference from writing restarts:
-- `open_file` does not have is_restart=.true., so the `write_restart` functionality cannot be used'
-- [register_field](https://github.com/NOAA-GFDL/FMS/blob/b9fc6515c7e729909e59a0f9a1efc6eb1d3e44d1/fms2_io/fms_netcdf_unstructured_domain_io.F90#L178-L179) is basically a wrapper for `nf90_def_var` which just adds the variable metadata to the file.
-  - "variable_type" is a string which indicates the type you want the variable to be written as. The acceptable values are "int", "int64", "double", "float", and "char"
-- [write_data](https://github.com/NOAA-GFDL/FMS/blob/main/fms2_io/include/unstructured_domain_write.inc)
-  - The ranks send their data to the io_root pe. The io_root pe receives the data and writes it to the file.
-
-Similarly for reads:
-```F90
-if (open_file(fileobj, "filename", "read", domain, is_restart=.true.)) then
-  call register_axis(fileobj, dim_names(1))
-  call write_data(fileobj, 'variable_name', variable_data)
-  call close_file(fileobj)
-endif
-```
-- `register_axis` is required for the dimensions that are on the unstructured domain, so the code knows which dimensions and therefore variables are in the unstructured domain
-- `register_field` is not required because the code can get the dimensions information from the file.
-- [read_data](https://github.com/NOAA-GFDL/FMS/blob/main/fms2_io/include/unstructured_domain_read.inc)
   - The io_root pe reads the data and sends it to the other pes.
 
 #### 3. Non-domain decomposed read/writes

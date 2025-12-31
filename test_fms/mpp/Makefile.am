@@ -62,7 +62,6 @@ check_PROGRAMS = test_mpp \
   test_mpp_transmit \
   test_mpp_alltoall \
   test_mpp_global_field \
-  test_mpp_global_field_ug \
   test_mpp_global_sum_ad \
   test_mpp_init_logfile \
   test_mpp_clock_begin_end_id \
@@ -118,10 +117,6 @@ test_mpp_global_field_SOURCES = \
   compare_data_checksums.F90 \
   compare_data_checksums_int.F90 \
   test_mpp_global_field.F90
-test_mpp_global_field_ug_SOURCES = \
-  compare_data_checksums.F90 \
-  compare_data_checksums_int.F90 \
-  test_mpp_global_field_ug.F90
 test_mpp_global_sum_ad_SOURCES = test_mpp_global_sum_ad.F90
 test_stdin_SOURCES=test_stdin.F90
 test_mpp_init_logfile_SOURCES=test_mpp_init_logfile.F90
@@ -160,7 +155,6 @@ TESTS = test_mpp_domains2.sh \
   test_mpp_transmit.sh \
   test_mpp_alltoall.sh \
   test_mpp_global_field.sh \
-  test_mpp_global_field_ug.sh \
   test_mpp_global_sum_ad.sh \
   test_mpp_init_logfile.sh \
   test_mpp_clock_begin_end_id.sh \
@@ -203,7 +197,6 @@ EXTRA_DIST = test_mpp_domains2.sh \
   test_mpp_transmit.sh \
   test_mpp_alltoall.sh \
   test_mpp_global_field.sh \
-  test_mpp_global_field_ug.sh \
   test_mpp_global_sum_ad.sh \
   test_mpp_init_logfile.sh \
   test_mpp_clock_begin_end_id.sh \
@@ -223,7 +216,6 @@ test_mpp_update_domains_int.$(OBJEXT): compare_data_checksums_int.mod fill_halo.
 test_mpp_update_domains_main.$(OBJEXT): test_mpp_update_domains_real.mod test_mpp_update_domains_int.mod
 test_update_domains_performance.$(OBJEXT): compare_data_checksums_int.mod compare_data_checksums.mod
 test_mpp_global_field.$(OBJEXT): compare_data_checksums_int.mod compare_data_checksums.mod
-test_mpp_global_field_ug.$(OBJEXT): compare_data_checksums_int.mod compare_data_checksums.mod
 test_mpp_domains.$(OBJEXT): compare_data_checksums.mod test_domains_utility_mod.mod
 
 # Clean up

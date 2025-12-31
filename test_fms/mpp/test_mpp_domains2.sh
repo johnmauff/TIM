@@ -72,7 +72,6 @@ test_boundary = .false.
 layout_tripolar = 0,0
 test_group = .false.
 test_global_sum = .false.
-test_unstruct = .false.
 test_nonsym_edge = .false.
 test_halosize_performance = .false.
 test_adjoint = .false.
@@ -120,10 +119,6 @@ test_expect_success "boundary" '
 '
 sed "s/test_adjoint = .false./test_adjoint = .true./" input_base.nml > input.nml
 test_expect_success "adjoint" '
-    mpirun -n 2 ../test_mpp_domains
-'
-sed "s/test_unstruct = .false./test_unstruct = .true./" input_base.nml > input.nml
-test_expect_success "unstruct" '
     mpirun -n 2 ../test_mpp_domains
 '
 sed "s/test_group = .false./test_group = .true./" input_base.nml > input.nml

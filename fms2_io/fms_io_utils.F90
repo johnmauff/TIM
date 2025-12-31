@@ -29,9 +29,8 @@ use, intrinsic :: iso_fortran_env, only: error_unit
 use omp_lib
 #endif
 use mpp_mod
-use mpp_domains_mod, only: domain2D, domainUG, mpp_get_ntile_count, &
-                           mpp_get_current_ntile, mpp_get_tile_id, &
-                           mpp_get_UG_domain_ntiles, mpp_get_UG_domain_tile_id
+use mpp_domains_mod, only: domain2D, mpp_get_ntile_count, &
+                           mpp_get_current_ntile, mpp_get_tile_id
 use platform_mod
 use fms_string_utils_mod, only: string_copy
 implicit none
@@ -82,7 +81,6 @@ end interface parse_mask_table
 !> @ingroup fms_io_utils_mod
 interface get_mosaic_tile_file
   module procedure get_mosaic_tile_file_sg
-  module procedure get_mosaic_tile_file_ug
 end interface get_mosaic_tile_file
 
 !> @ingroup fms_io_utils_mod
@@ -727,46 +725,6 @@ subroutine get_mosaic_tile_file_sg(file_in, file_out, is_no_domain, domain, tile
   d_ptr =>NULL()
 
 end subroutine get_mosaic_tile_file_sg
-
-!> @brief Determine tile_file for unstructured grid based on filename and current
-!! tile on mpp_domain (this is mostly used for ongrid data_overrides)
-subroutine get_mosaic_tile_file_ug(file_in, file_out, domain)
-  character(len=*), intent(in)           :: file_in !< name of base file
-  character(len=*), intent(out)          :: file_out !< name of tile file
-  type(domainUG),   intent(in), optional :: domain !< domain provided
-
-  character(len=256)                     :: basefile, tilename
-  character(len=2)                       :: my_tile_str
-  integer                                :: lens, ntiles, my_tile_id
-
-  if(index(file_in, '.nc', back=.true.)==0) then
-     basefile = trim(file_in)
-  else
-     lens = len_trim(file_in)
-     if(file_in(lens-2:lens) .NE. '.nc') call mpp_error(FATAL, &
-          'fms_io_mod: .nc should be at the end of file '//trim(file_in))
-     basefile = file_in(1:lens-3)
-  end if
-
-  !--- get the tile name
-  ntiles = 1
-  my_tile_id = 1
-  if(PRESENT(domain))then
-     ntiles = mpp_get_UG_domain_ntiles(domain)
-     my_tile_id = mpp_get_UG_domain_tile_id(domain)
-  endif
-
-  if(ntiles > 1 .or. my_tile_id > 1 )then
-     write(my_tile_str, '(I0)') my_tile_id
-     tilename = 'tile'//trim(my_tile_str)
-     if(index(basefile,'.'//trim(tilename),back=.true.) == 0)then
-        basefile = trim(basefile)//'.'//trim(tilename);
-     end if
-  end if
-
-  file_out = trim(basefile)//'.nc'
-
-end subroutine get_mosaic_tile_file_ug
 
 !> @brief Writes filename appendix to "string_out"
 subroutine get_filename_appendix(string_out)

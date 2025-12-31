@@ -50,10 +50,10 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
        & debug_diag_manager, flush_nc_files, output_field_type, max_field_attributes, max_file_attributes,&
        & file_type, prepend_date, region_out_use_alt_value, GLO_REG_VAL, GLO_REG_VAL_ALT,&
        & DIAG_FIELD_NOT_FOUND, diag_init_time, diag_atttype
-  USE diag_data_mod, ONLY: fileobjU, fileobj, fnum_for_domain, fileobjND, MAX_NAME_LENGTH, MAX_FILENAME_LENGTH
+  USE diag_data_mod, ONLY: fileobj, fnum_for_domain, fileobjND, MAX_NAME_LENGTH, MAX_FILENAME_LENGTH
   USE diag_axis_mod, ONLY: get_diag_axis_data, get_axis_global_length, get_diag_axis_cart,&
        & get_domain1d, get_domain2d, diag_subaxes_init, diag_axis_init, get_diag_axis, get_axis_aux,&
-       & get_axes_shift, get_diag_axis_name, get_diag_axis_domain_name, get_domainUG, &
+       & get_axes_shift, get_diag_axis_name, get_diag_axis_domain_name, &
        & get_axis_reqfld, axis_is_compressed, get_compressed_axes_ids
   USE diag_output_mod, ONLY: diag_output_init, write_axis_meta_data,&
        & write_field_meta_data, done_meta_data, diag_flush
@@ -62,8 +62,7 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
        & string, write_version_number
   USE mpp_domains_mod,ONLY: domain1d, domain2d, mpp_get_compute_domain, null_domain1d, null_domain2d,&
        & OPERATOR(.NE.), OPERATOR(.EQ.), mpp_modify_domain, mpp_get_domain_components,&
-       & mpp_get_ntile_count, mpp_get_current_ntile, mpp_get_tile_id, mpp_mosaic_defined, mpp_get_tile_npes,&
-       & domainUG, null_domainUG
+       & mpp_get_ntile_count, mpp_get_current_ntile, mpp_get_tile_id, mpp_mosaic_defined, mpp_get_tile_npes
   USE time_manager_mod,ONLY: time_type, OPERATOR(==), OPERATOR(>), NO_CALENDAR, increment_date,&
        & increment_time, get_calendar_type, get_date, get_time, leap_year, OPERATOR(-),&
        & OPERATOR(<), OPERATOR(>=), OPERATOR(<=), OPERATOR(==)
@@ -372,10 +371,7 @@ CONTAINS
     INTEGER, DIMENSION(3) :: gend_indx !< global start and end indices of output domain in 3 axes
     CHARACTER(len=1) :: cart
     CHARACTER(len=MAX_NAME_LENGTH) :: msg
-!----------
-!ug support
     integer :: vert_dim_num
-!----------
 
     !initilization for local output
     start = -1.e10
@@ -387,10 +383,7 @@ CONTAINS
     start= output_fields(outnum)%output_grid%start
     end = output_fields(outnum)%output_grid%end
 
-!----------
-!ug support
     vert_dim_num = 3
-!----------
     DO i = 1, SIZE(axes(:))
        global_axis_size = get_axis_global_length(axes(i))
        output_fields(outnum)%output_grid%subaxes(i) = -1
@@ -410,30 +403,12 @@ CONTAINS
           gstart_indx(i) = 1
           gend_indx(i) = global_axis_size
           output_fields(outnum)%output_grid%subaxes(i) = axes(i)
-!----------
-!ug support
-       case ("U")
-           if (i .ne. 1) then
-               call error_mesg("diag_util_mod::get_subfield_vert_size", &
-                               "the unstructured axis must be the first dimension.", &
-                               FATAL)
-           endif
-           gstart_indx(i) = 1
-           gend_indx(i) = global_axis_size
-           output_fields(outnum)%output_grid%subaxes(i) = axes(i)
-           vert_dim_num = 2
-           start(vert_dim_num) = start(3)
-           end(vert_dim_num) = end(3)
-!----------
        CASE ('Z')
-!----------
-!ug support
           if (i .ne. vert_dim_num) then
               call error_mesg("diag_util_mod::get_subfield_vert_size",&
                               "i should equal vert_dim_num for z axis", &
                               FATAL)
           endif
-!----------
           ! <ERROR STATUS="FATAL">wrong values in vertical axis of region</ERROR>
           IF( start(i)*END(i) < 0. ) CALL error_mesg('diag_util_mod::get_subfield_vert_size',&
                & 'wrong values in vertical axis of region',FATAL)
@@ -1676,7 +1651,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
     CHARACTER(len=24) :: start_date
     TYPE(domain1d) :: domain
     TYPE(domain2d) :: domain2
-    TYPE(domainUG) :: domainU
     INTEGER :: is, ie, last, ind
     class(FmsNetcdfFile_t), pointer    :: fileob
     integer :: actual_num_axes !< The actual number of axes to write including time
@@ -1733,37 +1707,25 @@ END SUBROUTINE check_bounds_are_exact_dynamic
     ! Loop through all fields with this file to output axes
     ! JWD: This is a klooge; need something more robust
     domain2 = NULL_DOMAIN2D
-    domainU = NULL_DOMAINUG
     DO j = 1, files(file)%num_fields
        field_num = files(file)%fields(j)
        if (output_fields(field_num)%local_output .AND. .NOT. output_fields(field_num)%need_compute) CYCLE
        num_axes = output_fields(field_num)%num_axes
        IF ( num_axes > 1 ) THEN
           domain2 = get_domain2d ( output_fields(field_num)%axes(1:num_axes) )
-          domainU = get_domainUG ( output_fields(field_num)%axes(1) )
           IF ( domain2 .NE. NULL_DOMAIN2D ) EXIT
-       ELSEIF (num_axes == 1) THEN
-          if (domainU .EQ. null_domainUG) then
-               domainU = get_domainUG ( output_fields(field_num)%axes(num_axes) )
-          endif
        END IF
     END DO
 
-    IF (domainU .NE. null_domainUG .AND. domain2 .NE. null_domain2D) THEN
-        CALL error_mesg('diag_util_mod::opening_file', &
-                        'Domain2 and DomainU are somehow both set.', &
-                            FATAL)
-    ENDIF
-
     IF ( allocated(files(file)%attributes) ) THEN
                 CALL diag_output_init(filename, global_descriptor,&
-                & files(file)%file_unit, domain2, domainU,&
-                & fileobj(file),fileobjU(file), fileobjND(file), fnum_for_domain(file),&
+                & files(file)%file_unit, domain2, &
+                & fileobj(file), fileobjND(file), fnum_for_domain(file),&
                 & attributes=files(file)%attributes(1:files(file)%num_attributes))
     ELSE
                 CALL diag_output_init(filename, global_descriptor,&
-                & files(file)%file_unit, domain2,domainU, &
-                & fileobj(file),fileobjU(file),fileobjND(file),fnum_for_domain(file))
+                & files(file)%file_unit, domain2, &
+                & fileobj(file),fileobjND(file),fnum_for_domain(file))
     END IF
     !> update fnum_for_domain with the correct domain
     files(file)%bytes_written = 0
@@ -1849,20 +1811,13 @@ END SUBROUTINE check_bounds_are_exact_dynamic
        elseif (fnum_for_domain(file) == "nd") then
           CALL write_axis_meta_data(files(file)%file_unit, axes(1:actual_num_axes),fileobjnd(file), time_ops=time_ops,&
                                    time_axis_registered=files(file)%is_time_axis_registered)
-       elseif (fnum_for_domain(file) == "ug") then
-          CALL write_axis_meta_data(files(file)%file_unit, axes(1:actual_num_axes),fileobjU(file), time_ops=time_ops, &
-                                   time_axis_registered=files(file)%is_time_axis_registered)
        endif
 
-       ! write metadata for axes used  in compression-by-gathering, e.g. for unstructured
-       ! grid
+       ! write metadata for axes used  in compression-by-gathering
        DO k = 1, num_axes
           IF (axis_is_compressed(axes(k))) THEN
              CALL get_compressed_axes_ids(axes(k), axesc) ! returns allocatable array
-             if (fnum_for_domain(file) == "ug") then
-                 CALL write_axis_meta_data(files(file)%file_unit, axesc,fileobjU(file), &
-                                   time_axis_registered=files(file)%is_time_axis_registered)
-             else
+             if (fnum_for_domain(file) /= "ug") then
                  CALL error_mesg('diag_util_mod::opening_file::'//trim(filename), "Compressed "//&
                      "dimensions are only allowed with axis in the unstructured dimension", FATAL)
              endif
@@ -1946,8 +1901,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
           fileob => fileobj (file)
        elseif (fnum_for_domain(file) == "nd") then
           fileob => fileobjND(file)
-       elseif (fnum_for_domain(file) == "ug") then
-          fileob => fileobjU(file)
        endif
        IF ( input_fields(input_field_num)%missing_value_present ) THEN
           IF ( LEN_TRIM(input_fields(input_field_num)%interp_method) > 0 ) THEN
@@ -1962,7 +1915,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
                   & interp_method = input_fields(input_field_num)%interp_method,&
                   & attributes=output_fields(field_num)%attributes,&
                   & num_attributes=output_fields(field_num)%num_attributes,&
-                  & use_UGdomain=files(file)%use_domainUG , &
                   & fileob=fileob)
           ELSE
              output_fields(field_num)%f_type = write_field_meta_data(files(file)%file_unit,&
@@ -1975,7 +1927,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
                   & standard_name = input_fields(input_field_num)%standard_name,&
                   & attributes=output_fields(field_num)%attributes,&
                   & num_attributes=output_fields(field_num)%num_attributes,&
-                  & use_UGdomain=files(file)%use_domainUG , &
                   & fileob=fileob)
 
           END IF
@@ -1993,7 +1944,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
                   & interp_method = input_fields(input_field_num)%interp_method,&
                   & attributes=output_fields(field_num)%attributes,&
                   & num_attributes=output_fields(field_num)%num_attributes,&
-                  & use_UGdomain=files(file)%use_domainUG , &
                   & fileob=fileob)
 
           ELSE
@@ -2007,7 +1957,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
                   & standard_name = input_fields(input_field_num)%standard_name,&
                   & attributes=output_fields(field_num)%attributes,&
                   & num_attributes=output_fields(field_num)%num_attributes,&
-                  & use_UGdomain=files(file)%use_domainUG , &
                   & fileob=fileob)
 
           END IF
@@ -2036,9 +1985,9 @@ END SUBROUTINE check_bounds_are_exact_dynamic
        time_axis_id(1) = files(file)%time_axis_id
        time_bounds_id(1) = files(file)%time_bounds_id
        CALL get_diag_axis( time_axis_id(1), time_name, time_units, time_longname,&
-            & cart_name, dir, edges, Domain, domainU, DATA)
+            & cart_name, dir, edges, Domain, DATA)
        CALL get_diag_axis( time_bounds_id(1), timeb_name, timeb_units, timeb_longname,&
-            & cart_name, dir, edges, Domain, domainU, DATA)
+            & cart_name, dir, edges, Domain, DATA)
        calendar = get_calendar_type()
        time_bounds_num_attributes = 1
        allocate(time_bounds_attributes(1))
@@ -2335,9 +2284,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
      if (fnum_for_domain(file) == "2d") then
           call diag_write_time (fileobj(file), files(file)%rtime_current, files(file)%time_index,   &
                                 time_name=fileobj(file)%time_name)
-     elseif (fnum_for_domain(file) == "ug") then
-          call diag_write_time (fileobjU(file), files(file)%rtime_current, files(file)%time_index,  &
-                                time_name=fileobjU(file)%time_name)
      elseif (fnum_for_domain(file) == "nd") then
           call diag_write_time (fileobjND(file), files(file)%rtime_current, files(file)%time_index, &
                                 time_name=fileobjND(file)%time_name)
@@ -2349,7 +2295,7 @@ END SUBROUTINE check_bounds_are_exact_dynamic
                     " has gone backwards. There may be missing values for some of the variables",NOTE)
     endif
 !> Write data
-    call diag_field_write (output_fields(field)%output_name, dat, static_write, file, fileobjU, &
+    call diag_field_write (output_fields(field)%output_name, dat, static_write, file, &
                          fileobj, fileobjND, fnum_for_domain(file), time_in=files(file)%time_index)
     ! record number of bytes written to this file
     files(file)%bytes_written = files(file)%bytes_written +&
@@ -2370,20 +2316,20 @@ END SUBROUTINE check_bounds_are_exact_dynamic
           ! Output the axes if this is first time-averaged field
           time_data(1, 1, 1, 1) = start_dif
           call diag_field_write (files(file)%f_avg_start%fieldname, time_data(1:1,:,:,:), static_write, file, &
-                                 fileobjU, fileobj, fileobjND, &
+                                 fileobj, fileobjND, &
                                  fnum_for_domain(file), time_in=files(file)%time_index)
           time_data(2, 1, 1, 1) = end_dif
           call diag_field_write (files(file)%f_avg_end%fieldname, time_data(2:2,:,:,:), static_write, file, &
-                                 fileobjU, fileobj, fileobjND, &
+                                 fileobj, fileobjND, &
                                  fnum_for_domain(file), time_in=files(file)%time_index)
           ! Compute the length of the average
           dt_time(1, 1, 1, 1) = end_dif - start_dif
           call diag_field_write (files(file)%f_avg_nitems%fieldname, dt_time(1:1,:,:,:), static_write, file, &
-                                 fileobjU, fileobj, fileobjND, &
+                                 fileobj, fileobjND, &
                                  fnum_for_domain(file), time_in=files(file)%time_index)
           ! Include boundary variable for CF compliance
           call diag_field_write (files(file)%f_bounds%fieldname, time_data(1:2,:,:,:), static_write, file, &
-                                 fileobjU, fileobj, fileobjND, &
+                                 fileobj, fileobjND, &
                                  fnum_for_domain(file), time_in=files(file)%time_index)
        END IF
     END IF
@@ -2395,7 +2341,7 @@ END SUBROUTINE check_bounds_are_exact_dynamic
        END IF
     ELSE
        IF ( time > files(file)%last_flush .AND. (flush_nc_files.OR.debug_diag_manager) ) THEN
-          call diag_flush(file, fileobjU, fileobj, fileobjND, fnum_for_domain(file))
+          call diag_flush(file, fileobj, fileobjND, fnum_for_domain(file))
           files(file)%last_flush = time
        END IF
     END IF
@@ -2472,8 +2418,6 @@ END SUBROUTINE check_bounds_are_exact_dynamic
           if (check_if_open(fileobjND(file)) ) then
                call close_file (fileobjND(file))
           endif
-      elseif (fnum_for_domain(file) == "ug") then
-          if (check_if_open(fileobjU(file))) call close_file (fileobjU(file))
       endif
       files(file)%file_unit = -1
   END SUBROUTINE write_static

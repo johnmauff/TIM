@@ -179,28 +179,11 @@ module mpp_domains_mod
   public :: mpp_get_boundary
   public :: mpp_update_domains_ad
   public :: mpp_get_boundary_ad
-  public :: mpp_pass_SG_to_UG, mpp_pass_UG_to_SG
   !--- public interface from mpp_domains_define.h
   public :: mpp_define_layout, mpp_define_domains, mpp_modify_domain, mpp_define_mosaic
   public :: mpp_define_mosaic_pelist, mpp_define_null_domain, mpp_mosaic_defined
   public :: mpp_define_io_domain, mpp_deallocate_domain
   public :: mpp_compute_extent, mpp_compute_block_extent
-
-  !--- public interface for unstruct domain
-  public :: mpp_define_unstruct_domain, domainUG, mpp_get_UG_io_domain
-  public :: mpp_get_UG_domain_npes, mpp_get_UG_compute_domain, mpp_get_UG_domain_tile_id
-  public :: mpp_get_UG_domain_pelist, mpp_get_ug_domain_grid_index
-  public :: mpp_get_UG_domain_ntiles, mpp_get_UG_global_domain
-  public :: mpp_global_field_ug, mpp_get_ug_domain_tile_list, mpp_get_UG_compute_domains
-  public :: mpp_define_null_UG_domain, NULL_DOMAINUG, mpp_get_UG_domains_index
-  public :: mpp_get_UG_SG_domain, mpp_get_UG_domain_tile_pe_inf
-
-!----------
-!ug support
-  public :: mpp_domain_UG_is_tile_root_pe
-  public :: mpp_deallocate_domainUG
-  public :: mpp_get_io_domain_UG_layout
-!----------
 
   integer, parameter :: NAME_LENGTH = 64
   integer, parameter :: MAXLIST = 100
@@ -212,64 +195,6 @@ module mpp_domains_mod
   !> @}
 
   ! data types used by mpp_domains_mod
-
-  !> @brief Private type for axis specification data for an unstructured grid
-  !> @ingroup mpp_domains_mod
-  type :: unstruct_axis_spec
-     private
-     integer :: begin, end, size, max_size
-     integer :: begin_index, end_index
-  end type unstruct_axis_spec
-
-  !> Private type for axis specification data for an unstructured domain
-  !> @ingroup mpp_domains_mod
-  type :: unstruct_domain_spec
-     private
-     type(unstruct_axis_spec) :: compute
-     integer :: pe
-     integer :: pos
-     integer :: tile_id
-  end type unstruct_domain_spec
-
-  !> Private type
-  !> @ingroup mpp_domains_mod
-  type :: unstruct_overlap_type
-     private
-     integer :: count = 0
-     integer :: pe
-     integer, pointer :: i(:)=>NULL()
-     integer, pointer :: j(:)=>NULL()
-  end type unstruct_overlap_type
-
-  !> Private type
-  !> @ingroup mpp_domains_mod
-  type :: unstruct_pass_type
-     private
-     integer :: nsend, nrecv
-     type(unstruct_overlap_type), pointer :: recv(:)=>NULL()
-     type(unstruct_overlap_type), pointer :: send(:)=>NULL()
-  end type unstruct_pass_type
-
-  !> Domain information for managing data on unstructured grids
-  !> @ingroup mpp_domains_mod
-  type :: domainUG
-     private
-     type(unstruct_axis_spec) :: compute, global !< axis specifications
-     type(unstruct_domain_spec), pointer :: list(:)=>NULL() !<
-     type(domainUG), pointer :: io_domain=>NULL() !<
-     type(unstruct_pass_type) :: SG2UG
-     type(unstruct_pass_type) :: UG2SG
-     integer, pointer :: grid_index(:) => NULL() !< index of grid on current pe
-     type(domain2d), pointer :: SG_domain => NULL()
-     integer :: pe
-     integer :: pos
-     integer :: ntiles
-     integer :: tile_id
-     integer :: tile_root_pe
-     integer :: tile_npes
-     integer :: npes_io_group
-     integer(i4_kind) :: io_layout
-  end type domainUG
 
   !> Used to specify index limits along an axis of a domain
   !> @ingroup mpp_domains_mod
@@ -580,7 +505,6 @@ module mpp_domains_mod
   integer              :: mpp_domains_stack_hwm=0
   type(domain1D),save  :: NULL_DOMAIN1D
   type(domain2D),save  :: NULL_DOMAIN2D
-  type(domainUG),save  :: NULL_DOMAINUG
   integer              :: current_id_update = 0
   integer                         :: num_update = 0
   integer                         :: num_nonblock_group_update = 0
@@ -1300,7 +1224,6 @@ module mpp_domains_mod
   interface mpp_broadcast_domain
     module procedure mpp_broadcast_domain_1
     module procedure mpp_broadcast_domain_2
-    module procedure mpp_broadcast_domain_ug
   end interface
 
 !--------------------------------------------------------------
@@ -1360,44 +1283,6 @@ module mpp_domains_mod
      module procedure mpp_do_check_i4_3d
   end interface
 
-  !> Passes data from a structured grid to an unstructured grid
-  !! <br>Example usage:
-  !!
-  !!            call mpp_pass_SG_to_UG(domain, sg_data, ug_data)
-  !> @ingroup mpp_domains_mod
-  interface mpp_pass_SG_to_UG
-     module procedure mpp_pass_SG_to_UG_r8_2d
-     module procedure mpp_pass_SG_to_UG_r8_3d
-     module procedure mpp_pass_SG_to_UG_r4_2d
-     module procedure mpp_pass_SG_to_UG_r4_3d
-     module procedure mpp_pass_SG_to_UG_i4_2d
-     module procedure mpp_pass_SG_to_UG_i4_3d
-     module procedure mpp_pass_SG_to_UG_l4_2d
-     module procedure mpp_pass_SG_to_UG_l4_3d
-  end interface
-
-  !> Passes a data field from a structured grid to an unstructured grid
-  !! <br>Example usage:
-  !!
-  !!            call mpp_pass_SG_to_UG(SG_domain, field_SG, field_UG)
-  !> @ingroup mpp_domains_mod
-  interface mpp_pass_UG_to_SG
-     module procedure mpp_pass_UG_to_SG_r8_2d
-     module procedure mpp_pass_UG_to_SG_r8_3d
-     module procedure mpp_pass_UG_to_SG_r4_2d
-     module procedure mpp_pass_UG_to_SG_r4_3d
-     module procedure mpp_pass_UG_to_SG_i4_2d
-     module procedure mpp_pass_UG_to_SG_i4_3d
-     module procedure mpp_pass_UG_to_SG_l4_2d
-     module procedure mpp_pass_UG_to_SG_l4_3d
-  end interface
-
-  !> Passes a data field from a unstructured grid to an structured grid
-  !! <br>Example usage:
-  !!
-  !!            call mpp_pass_UG_to_SG(UG_domain, field_UG, field_SG)
-  !!
-  !> @ingroup mpp_domains_mod
   interface mpp_do_update_ad
      module procedure mpp_do_update_ad_r8_3d
      module procedure mpp_do_update_ad_r8_3dv
@@ -1685,27 +1570,6 @@ module mpp_domains_mod
      module procedure mpp_do_global_field2D_a2a_l4_3d
   end interface
 
-!> Same functionality as @ref mpp_global_field but for unstructured domains
-!> @ingroup mpp_domains_mod
-  interface mpp_global_field_ug
-     module procedure mpp_global_field2D_ug_r8_2d
-     module procedure mpp_global_field2D_ug_r8_3d
-     module procedure mpp_global_field2D_ug_r8_4d
-     module procedure mpp_global_field2D_ug_r8_5d
-     module procedure mpp_global_field2D_ug_i8_2d
-     module procedure mpp_global_field2D_ug_i8_3d
-     module procedure mpp_global_field2D_ug_i8_4d
-     module procedure mpp_global_field2D_ug_i8_5d
-     module procedure mpp_global_field2D_ug_r4_2d
-     module procedure mpp_global_field2D_ug_r4_3d
-     module procedure mpp_global_field2D_ug_r4_4d
-     module procedure mpp_global_field2D_ug_r4_5d
-     module procedure mpp_global_field2D_ug_i4_2d
-     module procedure mpp_global_field2D_ug_i4_3d
-     module procedure mpp_global_field2D_ug_i4_4d
-     module procedure mpp_global_field2D_ug_i4_5d
-  end interface
-
 !> @ingroup mpp_domains_mod
   interface mpp_do_global_field_ad
      module procedure mpp_do_global_field2D_r8_3d_ad
@@ -1963,14 +1827,12 @@ module mpp_domains_mod
   interface operator(.EQ.)
      module procedure mpp_domain1D_eq
      module procedure mpp_domain2D_eq
-     module procedure mpp_domainUG_eq
   end interface
 
   !> @ingroup mpp_domains_mod
   interface operator(.NE.)
      module procedure mpp_domain1D_ne
      module procedure mpp_domain2D_ne
-     module procedure mpp_domainUG_ne
   end interface
 
   !> These routines retrieve the axis specifications associated with the compute domains.
@@ -2146,6 +2008,5 @@ contains
 #include <mpp_domains_define.inc>
 #include <mpp_domains_misc.inc>
 #include <mpp_domains_reduce.inc>
-#include <mpp_unstruct_domain.inc>
 
 end module mpp_domains_mod

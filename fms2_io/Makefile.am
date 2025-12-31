@@ -32,7 +32,6 @@ libfms2_io_la_SOURCES = \
   fms_io_utils.F90 \
   netcdf_io.F90 \
   fms_netcdf_domain_io.F90 \
-  fms_netcdf_unstructured_domain_io.F90 \
   include/array_utils_char.inc \
   include/compressed_read.inc \
   include/compute_global_checksum.inc \
@@ -41,8 +40,6 @@ libfms2_io_la_SOURCES = \
   include/get_variable_attribute.inc \
   include/netcdf_read_data.inc \
   include/register_domain_restart_variable.inc \
-  include/register_unstructured_domain_restart_variable.inc \
-  include/unstructured_domain_read.inc \
   include/array_utils.inc \
   include/compressed_write.inc \
   include/domain_read.inc \
@@ -51,13 +48,11 @@ libfms2_io_la_SOURCES = \
   include/netcdf_write_data.inc \
   include/register_global_attribute.inc \
   include/register_variable_attribute.inc \
-  include/unstructured_domain_write.inc \
   include/gather_data_bc.inc \
   include/scatter_data_bc.inc
 
 # Some mods are dependant on other mods in this dir.
-fms2_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) netcdf_io_mod.$(FC_MODEXT) fms_netcdf_domain_io_mod.$(FC_MODEXT) \
-                 fms_netcdf_unstructured_domain_io_mod.$(FC_MODEXT)
+fms2_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) netcdf_io_mod.$(FC_MODEXT) fms_netcdf_domain_io_mod.$(FC_MODEXT)
 fms_io_utils_mod.$(FC_MODEXT): include/array_utils.inc include/array_utils_char.inc \
                       include/get_data_type_string.inc
 netcdf_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) include/netcdf_add_restart_variable.inc include/netcdf_read_data.inc \
@@ -67,17 +62,13 @@ netcdf_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) include/netcdf_add_res
                    include/gather_data_bc.inc include/scatter_data_bc.inc
 fms_netcdf_domain_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) netcdf_io_mod.$(FC_MODEXT) include/register_domain_restart_variable.inc \
                               include/domain_read.inc include/domain_write.inc include/compute_global_checksum.inc
-fms_netcdf_unstructured_domain_io_mod.$(FC_MODEXT): fms_io_utils_mod.$(FC_MODEXT) netcdf_io_mod.$(FC_MODEXT) \
-                                           include/register_unstructured_domain_restart_variable.inc \
-                                           include/unstructured_domain_read.inc include/unstructured_domain_write.inc
 
 # Mod files are built and then installed as headers.
 MODFILES = \
   fms2_io_mod.$(FC_MODEXT) \
   fms_io_utils_mod.$(FC_MODEXT) \
   netcdf_io_mod.$(FC_MODEXT) \
-  fms_netcdf_domain_io_mod.$(FC_MODEXT) \
-  fms_netcdf_unstructured_domain_io_mod.$(FC_MODEXT)
+  fms_netcdf_domain_io_mod.$(FC_MODEXT)
 BUILT_SOURCES = $(MODFILES)
 nodist_include_HEADERS = $(MODFILES)
 

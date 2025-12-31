@@ -28,7 +28,6 @@ module fms2_io_mod
 use fms_io_utils_mod
 use netcdf_io_mod
 use fms_netcdf_domain_io_mod
-use fms_netcdf_unstructured_domain_io_mod
 use mpp_mod, only: mpp_init, input_nml_file, mpp_error, FATAL
 use mpp_domains_mod, only: mpp_domains_init
 implicit none
@@ -37,7 +36,6 @@ private
 public :: unlimited
 public :: FmsNetcdfFile_t
 public :: FmsNetcdfDomainFile_t
-public :: FmsNetcdfUnstructuredDomainFile_t
 public :: open_file
 public :: close_file
 public :: register_axis
@@ -109,16 +107,13 @@ public :: flush_file
 !!              io_success = open_file(fileobj, "filename", "overwrite", domain)
 !!
 !! Opens a domain netcdf file of type @ref fmsnetcdfdomainfile_t or
-!! @ref fmsnetcdfunstructureddomainfile_t at the given file path name and 2D or unstructured domain.
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface open_file
   module procedure netcdf_file_open_wrap
   module procedure open_domain_file
-  module procedure open_unstructured_domain_file
 end interface open_file
 
 
@@ -133,13 +128,11 @@ end interface open_file
 !!
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface close_file
   module procedure netcdf_file_close_wrap
   module procedure close_domain_file
-  module procedure close_unstructured_domain_file
 end interface close_file
 
 !> @brief Add a dimension to a given file
@@ -148,23 +141,16 @@ end interface close_file
 !!
 !!              call register_axis(fileobj, "lon", "x")
 !!
-!! Adds a dimension named "lon" associated with the x axis of the 2D domain file. For unstructured
-!! domains no x or y axis character is provided.
-!!
-!!              call register_axis(fileobj, "lon", n)
-!!
 !! Adds a dimension named "lon" with length n to a given netcdf file.<br>
 !!
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface register_axis
   module procedure netcdf_add_dimension
   module procedure register_compressed_dimension
   module procedure register_domain_decomposed_dimension
-  module procedure register_unstructured_dimension
 end interface register_axis
 
 !> @brief Defines a new field within the given file
@@ -179,13 +165,11 @@ end interface register_axis
 !!
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface register_field
   module procedure netcdf_add_variable_wrap
   module procedure register_domain_variable
-  module procedure register_unstructured_domain_variable
 end interface register_field
 
 !> @brief Similar to @ref register_field, but occupies the field with data for restarts
@@ -198,7 +182,6 @@ end interface register_field
 !!
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface register_restart_field
@@ -214,12 +197,6 @@ interface register_restart_field
   module procedure register_domain_restart_variable_3d
   module procedure register_domain_restart_variable_4d
   module procedure register_domain_restart_variable_5d
-  module procedure register_unstructured_domain_restart_variable_0d
-  module procedure register_unstructured_domain_restart_variable_1d
-  module procedure register_unstructured_domain_restart_variable_2d
-  module procedure register_unstructured_domain_restart_variable_3d
-  module procedure register_unstructured_domain_restart_variable_4d
-  module procedure register_unstructured_domain_restart_variable_5d
   module procedure register_restart_region_2d
   module procedure register_restart_region_3d
 end interface register_restart_field
@@ -245,12 +222,6 @@ interface write_data
   module procedure domain_write_3d
   module procedure domain_write_4d
   module procedure domain_write_5d
-  module procedure unstructured_domain_write_0d
-  module procedure unstructured_domain_write_1d
-  module procedure unstructured_domain_write_2d
-  module procedure unstructured_domain_write_3d
-  module procedure unstructured_domain_write_4d
-  module procedure unstructured_domain_write_5d
 end interface write_data
 
 !> @brief Read data from a defined field in a file
@@ -275,12 +246,6 @@ interface read_data
   module procedure domain_read_3d
   module procedure domain_read_4d
   module procedure domain_read_5d
-  module procedure unstructured_domain_read_0d
-  module procedure unstructured_domain_read_1d
-  module procedure unstructured_domain_read_2d
-  module procedure unstructured_domain_read_3d
-  module procedure unstructured_domain_read_4d
-  module procedure unstructured_domain_read_5d
 end interface read_data
 
 !> @brief Writes all restart fields registered within a given restart file
@@ -292,13 +257,11 @@ end interface read_data
 !!
 !! @note For individual documentation on the listed routines, please see the appropriate helper module.
 !! For netcdf files with a structured domain: @ref fms_netcdf_domain_io_mod.
-!! For netcdf files with an unstructured domain: @ref fms_netcdf_unstructured_domain_io_mod.
 !! For generic netcdf: @ref netcdf_io_mod.
 !> @ingroup fms2_io_mod
 interface write_restart
   module procedure netcdf_save_restart_wrap
   module procedure save_domain_restart
-  module procedure unstructured_write_restart
 end interface write_restart
 
 !> @brief Reads in restart variables from a given file

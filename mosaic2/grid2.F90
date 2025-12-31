@@ -33,7 +33,7 @@ use mosaic2_mod, only : get_mosaic_ntiles, get_mosaic_xgrid_size, get_mosaic_gri
 
 ! the following two use statement are only needed for define_cube_mosaic
 use mpp_domains_mod, only : domain2d, mpp_define_mosaic, mpp_get_compute_domain, &
-                            mpp_get_global_domain, domainUG, mpp_pass_SG_to_UG
+                            mpp_get_global_domain
 use mosaic2_mod, only : get_mosaic_ncontacts, get_mosaic_contact
 use platform_mod
 
@@ -67,14 +67,12 @@ end interface
 interface get_grid_cell_vertices
    module procedure get_grid_cell_vertices_1D
    module procedure get_grid_cell_vertices_2D
-   module procedure get_grid_cell_vertices_UG
 end interface
 
 !> Finds area of a grid cell
 !> @ingroup grid2_mod
 interface get_grid_cell_area
    module procedure get_grid_cell_area_SG
-   module procedure get_grid_cell_area_UG
 end interface get_grid_cell_area
 
 !> @addtogroup grid2_mod
@@ -734,24 +732,6 @@ subroutine get_grid_comp_area_SG(component,tile,area,domain)
   end select
 end subroutine get_grid_comp_area_SG
 
-!> @brief return grid cell area for the specified model component and tile on an
-!! unstructured domain
-subroutine get_grid_cell_area_UG(component, tile, cellarea, SG_domain, UG_domain)
-  character(len=*),   intent(in)    :: component !< Component model (atm, lnd, ocn)
-  integer         ,   intent(in)    :: tile !< Tile number
-  real            ,   intent(inout) :: cellarea(:) !< Cell area
-  type(domain2d)  ,   intent(in)    :: SG_domain !< Structured Domain
-  type(domainUG)  ,   intent(in)    :: UG_domain !< Unstructured Domain
-  integer :: is, ie, js, je
-  real, allocatable :: SG_area(:,:)
-
-  call mpp_get_compute_domain(SG_domain, is, ie, js, je)
-  allocate(SG_area(is:ie, js:je))
-  call get_grid_cell_area_SG(component, tile, SG_area, SG_domain)
-  call mpp_pass_SG_to_UG(UG_domain, SG_area, cellarea)
-  deallocate(SG_area)
-end subroutine get_grid_cell_area_UG
-
 !> @brief returns arrays of global grid cell boundaries for given model component and
 !! mosaic tile number.
 subroutine get_grid_cell_vertices_1D(component, tile, glonb, glatb)
@@ -1135,45 +1115,6 @@ subroutine get_grid_cell_vertices_2D(component, tile, lonb, latb, domain)
    end select ! end latb r8
   end select ! end lonb
 end subroutine get_grid_cell_vertices_2D
-
-!> @brief returns cell vertices for the specified model component and mosaic tile number for
-!! an unstructured domain
-subroutine get_grid_cell_vertices_UG(component, tile, lonb, latb, SG_domain, UG_domain)
-  character(len=*),         intent(in) :: component !< Component model (atm, lnd, ocn)
-  integer,                  intent(in) :: tile !< Tile number
-  real,                  intent(inout) :: lonb(:,:),latb(:,:) ! The second dimension is 4
-  type(domain2d)  ,   intent(in)       :: SG_domain !< Structured domain
-  type(domainUG)  ,   intent(in)       :: UG_domain !< Unstructured domain
-  integer :: is, ie, js, je, i, j
-  real, allocatable :: SG_lonb(:,:), SG_latb(:,:), tmp(:,:,:)
-
-  call mpp_get_compute_domain(SG_domain, is, ie, js, je)
-  allocate(SG_lonb(is:ie+1, js:je+1))
-  allocate(SG_latb(is:ie+1, js:je+1))
-  allocate(tmp(is:ie,js:je,4))
-  call get_grid_cell_vertices_2D(component, tile, SG_lonb, SG_latb, SG_domain)
-  do j = js, je
-     do i = is, ie
-        tmp(i,j,1) = SG_lonb(i,j)
-        tmp(i,j,2) = SG_lonb(i+1,j)
-        tmp(i,j,3) = SG_lonb(i+1,j+1)
-        tmp(i,j,4) = SG_lonb(i,j+1)
-     enddo
-  enddo
-  call mpp_pass_SG_to_UG(UG_domain, tmp, lonb)
-  do j = js, je
-     do i = is, ie
-        tmp(i,j,1) = SG_latb(i,j)
-        tmp(i,j,2) = SG_latb(i+1,j)
-        tmp(i,j,3) = SG_latb(i+1,j+1)
-        tmp(i,j,4) = SG_latb(i,j+1)
-     enddo
-  enddo
-  call mpp_pass_SG_to_UG(UG_domain, tmp, latb)
-
-
-  deallocate(SG_lonb, SG_latb, tmp)
-end subroutine get_grid_cell_vertices_UG
 
 !> @brief returns grid cell centers given model component and mosaic tile number
 subroutine get_grid_cell_centers_2D(component, tile, lon, lat, domain)

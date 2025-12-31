@@ -122,7 +122,6 @@ list(APPEND fms_fortran_src_files
   fms/fms.F90
   fms2_io/fms_io_utils.F90
   fms2_io/fms_netcdf_domain_io.F90
-  fms2_io/fms_netcdf_unstructured_domain_io.F90
   fms2_io/fms2_io.F90
   fms2_io/netcdf_io.F90
   horiz_interp/horiz_interp_bicubic.F90

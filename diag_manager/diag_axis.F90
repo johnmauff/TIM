@@ -31,8 +31,8 @@
 MODULE diag_axis_mod
 use platform_mod
 
-  USE mpp_domains_mod, ONLY: domainUG, domain1d, domain2d, mpp_get_compute_domain,&
-       & mpp_get_domain_components, null_domain1d, null_domain2d, null_domainUG,&
+  USE mpp_domains_mod, ONLY: domain1d, domain2d, mpp_get_compute_domain,&
+       & mpp_get_domain_components, null_domain1d, null_domain2d,&
        & NORTH, EAST, CENTER, &
        & OPERATOR(.NE.), mpp_get_global_domain, mpp_get_domain_name
   USE fms_mod, ONLY: error_mesg, write_version_number, lowercase, uppercase,&
@@ -52,7 +52,7 @@ use platform_mod
        & get_diag_axis_cart, get_diag_axis_data, max_axes, get_axis_aux,&
        & get_tile_count, get_axes_shift, get_diag_axis_name,&
        & get_axis_num, get_diag_axis_domain_name,&
-       & get_domainUG, axis_compatible_check, axis_is_compressed, &
+       & axis_compatible_check, axis_is_compressed, &
        & get_compressed_axes_ids, get_axis_reqfld, &
        & NORTH, EAST, CENTER
 
@@ -60,9 +60,8 @@ use platform_mod
 #include<file_version.h>
 
 !----------
-  integer(I4_KIND),parameter,public :: DIAG_AXIS_NODOMAIN = 0 !< For unstructured grid support
-  integer(I4_KIND),parameter,public :: DIAG_AXIS_2DDOMAIN = 1 !< For unstructured grid support
-  integer(I4_KIND),parameter,public :: DIAG_AXIS_UGDOMAIN = 2 !< For unstructured grid support
+  integer(I4_KIND),parameter,public :: DIAG_AXIS_NODOMAIN = 0
+  integer(I4_KIND),parameter,public :: DIAG_AXIS_2DDOMAIN = 1
 !----------
 
   INTEGER, DIMENSION(:), ALLOCATABLE :: num_subaxes !< counter of number of axes defined
@@ -89,7 +88,7 @@ CONTAINS
   !!
   !! @return integer axis ID
   INTEGER FUNCTION diag_axis_init(name, DATA, units, cart_name, long_name, direction,&
-       & set_name, edges, Domain, Domain2, DomainU, aux, req, tile_count, domain_position )
+       & set_name, edges, Domain, Domain2, aux, req, tile_count, domain_position )
     CHARACTER(len=*), INTENT(in) :: name !< Short name for axis
     CLASS(*), DIMENSION(:), INTENT(in) :: DATA !< Array of coordinate values
     CHARACTER(len=*), INTENT(in) :: units !< Units for the axis
@@ -100,7 +99,6 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: edges !< Axis ID for the previously defined "edges axis"
     TYPE(domain1d), INTENT(in), OPTIONAL :: Domain
     TYPE(domain2d), INTENT(in), OPTIONAL :: Domain2
-    TYPE(domainUG), INTENT(in), OPTIONAL :: DomainU
     CHARACTER(len=*), INTENT(in), OPTIONAL :: aux !< Auxiliary name, can only be <TT>geolon_t</TT> or <TT>geolat_t</TT>
     CHARACTER(len=*), INTENT(in), OPTIONAL :: req !< Required field names.
     INTEGER, INTENT(in), OPTIONAL :: tile_count
@@ -266,13 +264,7 @@ CONTAINS
        Axes(diag_axis_init)%direction = 0
     END IF
 
-    !---- Handle the DomainU check
-    IF (present(DomainU) .AND. (PRESENT(Domain2) .OR. PRESENT(Domain)) ) THEN
-       ! <ERROR STATUS="FATAL">Presence of DomainU and another Domain at the same time is prohibited</ERROR>
-       CALL error_mesg('diag_axis_mod::diag_axis_init',&
-            & 'Presence of DomainU and another Domain at the same time is prohibited', FATAL)
-    !---- domain2d type ----
-    ELSE IF ( PRESENT(Domain2) .AND. PRESENT(Domain)) THEN
+    IF ( PRESENT(Domain2) .AND. PRESENT(Domain)) THEN
        ! <ERROR STATUS="FATAL">Presence of both Domain and Domain2 at the same time is prohibited</ERROR>
        CALL error_mesg('diag_axis_mod::diag_axis_init',&
             & 'Presence of both Domain and Domain2 at the same time is prohibited', FATAL)
@@ -282,9 +274,6 @@ CONTAINS
           CALL error_mesg('diag_axis_mod::diag_axis_init',&
                & 'A Structured Domain must not be present for an axis which is not in the X or Y direction', FATAL)
        END IF
-    ELSE IF (present(DomainU) .AND. Axes(diag_axis_init)%cart_name /= 'U') THEN
-          CALL error_mesg('diag_axis_mod::diag_axis_init',&
-               & 'In the unstructured domain, the axis cart_name must be U', FATAL)
     END IF
 
     Axes(diag_axis_init)%tile_count = tile
@@ -294,20 +283,13 @@ CONTAINS
        CALL mpp_get_domain_components(Domain2, domain_x, domain_y, tile_count=tile_count)
        IF ( Axes(diag_axis_init)%cart_name == 'X' ) Axes(diag_axis_init)%Domain = domain_x
        IF ( Axes(diag_axis_init)%cart_name == 'Y' ) Axes(diag_axis_init)%Domain = domain_y
-       Axes(diag_axis_init)%DomainUG = null_DomainUG
     ELSE IF ( PRESENT(Domain)) THEN
        !---- domain1d type ----
        Axes(diag_axis_init)%Domain2 = null_domain2d ! needed since not 2-D domain
        Axes(diag_axis_init)%Domain = Domain
-       Axes(diag_axis_init)%DomainUG = null_DomainUG
-    ELSE IF (present(DomainU)) THEN
-       Axes(diag_axis_init)%Domain2 = null_domain2d
-       Axes(diag_axis_init)%Domain = null_domain1d
-       Axes(diag_axis_init)%DomainUG = DomainU
     ELSE
        Axes(diag_axis_init)%Domain2 = null_domain2d
        Axes(diag_axis_init)%Domain = null_domain1d
-       Axes(diag_axis_init)%DomainUG = null_domainUG
     END IF
 
     !--- set up the shift value for x-y axis
@@ -438,11 +420,10 @@ CONTAINS
   END FUNCTION diag_subaxes_init
   !> @brief Return information about the axis with index ID
   SUBROUTINE get_diag_axis(id, name, units, long_name, cart_name,&
-       & direction, edges, Domain, DomainU, DATA, num_attributes, attributes, domain_position)
+       & direction, edges, Domain, DATA, num_attributes, attributes, domain_position)
     CHARACTER(len=*), INTENT(out) :: name, units, long_name, cart_name
     INTEGER, INTENT(in) :: id !< Axis ID
     TYPE(domain1d), INTENT(out) :: Domain
-    TYPE(domainUG), INTENT(out) :: DomainU
     INTEGER, INTENT(out) :: direction !< Direction of data. (See <TT>@ref diag_axis_init</TT> for a description of
                                       !! allowed values)
     INTEGER, INTENT(out) :: edges !< Axis ID for the previously defined "edges axis".
@@ -461,7 +442,6 @@ CONTAINS
     direction = Axes(id)%direction
     edges     = Axes(id)%edges
     Domain    = Axes(id)%Domain
-    DomainU   = Axes(id)%DomainUG
     if (present(domain_position)) domain_position = Axes(id)%domain_position
     IF ( Axes(id)%length > SIZE(DATA(:)) ) THEN
        ! <ERROR STATUS="FATAL">array data is too small.</ERROR>
@@ -685,20 +665,6 @@ CONTAINS
     END DO
   END FUNCTION get_domain2d
 
-  !> @brief Retrun the 1D domain for the axis ID given.
-  !! @return 1D domain for the axis ID given
-  TYPE(domainUG) FUNCTION get_domainUG(id)
-    INTEGER, INTENT(in) :: id !< Axis ID
-
-    CALL valid_id_check(id, 'get_domainUG')
-    IF (Axes(id)%DomainUG .NE. NULL_DOMAINUG) THEN
-       get_domainUG = Axes(id)%DomainUG
-    ELSE
-       get_domainUG = NULL_DOMAINUG
-    ENDIF
-  END FUNCTION get_domainUG
-
-!ug support
   !> @brief Checks if the axes are compatible
   !! @return integer domain_type
   function axis_compatible_check(id,varname) result(domain_type)
@@ -708,20 +674,15 @@ CONTAINS
     character(*),intent(in),optional :: varname     !<The name of the variable
     integer(I4_KIND)                :: domain_type !<DIAG_AXIS_NODOMAIN = no domain.
                                                     !<DIAG_AXIS_2DDOMAIN = structured domain.
-                                                    !<DIAG_AXIS_UGDOMAIN = unstructured domain.
 
    !Local variables
     logical :: XorY          !<XorY set to true if X or Y is found as a cart_name.
-    logical :: UG            !<UG set to true if U is found as a cart_name.
     integer :: n             !<Looping index.
     logical :: uses_domain2D !<True if an axis is associated with a 2D domain.
-    logical :: uses_domainUG !<True if an axis is associated with an unstructured domain.
 
    !Initialize flags.
     XorY = .false.
-    UG = .false.
     uses_domain2D = .false.
-    uses_domainUG = .false.
 
    !Make sure that valid set of axes was passed, and determine the domain-type
    !associated with the axes.
@@ -731,46 +692,13 @@ CONTAINS
         if (Axes(id(n))%cart_name .eq. "X" .or. &
             Axes(id(n))%cart_name .eq. "Y") then
             XorY = .true.
-        elseif (Axes(id(n))%cart_name .eq. "U") then
-            UG = .true.
         endif
         if (Axes(id(n))%Domain2 .ne. null_domain2d) then
             uses_domain2D = .true.
-        elseif (Axes(id(n))%DomainUG .ne. null_domainUG) then
-            uses_domainUG = .true.
         endif
     enddo
-    if (UG .and. XorY) then
-        if (present(varname)) then
-            call error_mesg("axis_compatible_check", &
-                            "Can not use an unstructured grid with a "// &
-                            "horizontal cartesian coordinate for the field " &
-                            //trim(varname), &
-                            FATAL)
-        else
-            call error_mesg("axis_compatible_check", &
-                            "Can not use an unstructured grid with a horizontal "// &
-                            "cartesian coordinate", &
-                            FATAL)
-        endif
-    endif
-    if (uses_domain2D .and. uses_domainUG) then
-        if (present(varname)) then
-            call error_mesg("axis_compatible_check", &
-                            "Can not use an unstructured grid with a"// &
-                            "structured grid for the field "//trim(varname), &
-                            FATAL)
-        else
-            call error_mesg("axis_compatible_check", &
-                            "Can not use an unstructured grid with a"// &
-                            "structured grid.", &
-                            FATAL)
-        endif
-    endif
     if (uses_domain2D) then
         domain_type = DIAG_AXIS_2DDOMAIN
-    elseif (uses_domainUG) then
-        domain_type = DIAG_AXIS_UGDOMAIN
     else
         domain_type = DIAG_AXIS_NODOMAIN
     endif

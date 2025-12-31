@@ -33,13 +33,13 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
                                       c_int32_t,c_int16_t,c_intptr_t
   USE mpp_domains_mod, ONLY: domain1d, domain2d, mpp_define_domains, mpp_get_pelist,&
        &  mpp_get_global_domain, mpp_get_compute_domains, null_domain1d, null_domain2d,&
-       & domainUG, null_domainUG, CENTER, EAST, NORTH, mpp_get_compute_domain,&
+       & CENTER, EAST, NORTH, mpp_get_compute_domain,&
        & OPERATOR(.NE.), mpp_get_layout, OPERATOR(.EQ.), mpp_get_io_domain, &
        & mpp_get_compute_domain, mpp_get_global_domain
   USE mpp_mod, ONLY: mpp_npes, mpp_pe, mpp_root_pe, mpp_get_current_pelist
   USE diag_axis_mod, ONLY: diag_axis_init, get_diag_axis, get_axis_length,&
        & get_axis_global_length, get_domain1d, get_domain2d, get_axis_aux, get_tile_count,&
-       & get_domainUG, get_diag_axis_name
+       & get_diag_axis_name
   USE diag_data_mod, ONLY: pack_size, diag_fieldtype, diag_global_att_type, CMOR_MISSING_VALUE, diag_atttype, files
   USE time_manager_mod, ONLY: get_calendar_type, valid_calendar_types
   USE fms_mod, ONLY: error_mesg, write_version_number, fms_error_handler, FATAL, note
@@ -48,9 +48,6 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
   USE netcdf, ONLY: NF90_INT, NF90_FLOAT, NF90_CHAR
 #endif
 
-  use mpp_domains_mod, only: mpp_get_UG_io_domain
-  use mpp_domains_mod, only: mpp_get_UG_domain_npes
-  use mpp_domains_mod, only: mpp_get_UG_domain_pelist
   use mpp_mod,         only: mpp_gather
   use mpp_mod,         only: uppercase,lowercase
   use fms2_io_mod
@@ -87,7 +84,7 @@ CONTAINS
 
   !> @brief Opens the output file.
   SUBROUTINE diag_output_init (file_name, file_title, file_unit,&
-       & domain, domainU, fileobj, fileobjU, fileobjND, fnum_domain, &
+       & domain, fileobj, fileobjND, fnum_domain, &
        & attributes)
     CHARACTER(len=*), INTENT(in)  :: file_name  !< Output file name
     CHARACTER(len=*), INTENT(in)  :: file_title !< Descriptive title for the file
@@ -95,13 +92,10 @@ CONTAINS
                                                 !! Needed for subsuquent calls to
                                                 !! diag_output_mod
     TYPE(domain2d)  , INTENT(in)  :: domain  !< Domain associated with file, if domain decomposed
-    TYPE(domainUG)  , INTENT(in)  :: domainU !< The unstructure domain
     type(FmsNetcdfDomainFile_t),intent(inout),target :: fileobj !< Domain decomposed fileobj
-    type(FmsNetcdfUnstructuredDomainFile_t),intent(inout),target :: fileobjU !< Unstructured domain fileobj
     type(FmsNetcdfFile_t),intent(inout),target :: fileobjND !< Non domain decomposed fileobj
     character(*),intent(out) :: fnum_domain !< String indicating the type of fileobj was used:
                                             !! "2d" domain decomposed
-                                            !! "ug" unstrucuted domain decomposed
                                             !! "nd" no domain
     TYPE(diag_atttype), INTENT(in), OPTIONAL :: attributes(:) !< Array of global attributes to be written to file
 
@@ -116,11 +110,6 @@ CONTAINS
        module_is_initialized = .TRUE.
        CALL write_version_number("DIAG_OUTPUT_MOD", version)
     END IF
-
-!> Checks to make sure that only domain2D or domainUG is used.  If both are not null, then FATAL
-    if (domain .NE. NULL_DOMAIN2D .AND. domainU .NE. NULL_DOMAINUG)&
-          & CALL error_mesg('diag_output_init', "Domain2D and DomainUG can not be used at the same time in "//&
-          & trim(file_name), FATAL)
 
     !---- open output file (return file_unit id) -----
     IF ( domain .NE. NULL_DOMAIN2D ) THEN
@@ -145,12 +134,6 @@ CONTAINS
        fnum_domain = "nd" ! no domain
        if (file_unit < 0) file_unit = 10
      endiF
-    ELSE IF (domainU .NE. NULL_DOMAINUG) THEN
-       fileob => fileobjU
-       if (.not.check_if_open(fileob)) call open_check(open_file(fileobjU, trim(file_name)//".nc", "overwrite", &
-                            domainU, is_restart=.false.))
-       fnum_domain = "ug" ! unstructured grid
-       file_unit=3
     ELSE
        fileob => fileobjND
         allocate(current_pelist(mpp_npes()))
@@ -210,7 +193,6 @@ CONTAINS
                                                               !! written to the file
 
     TYPE(domain1d)       :: Domain
-    TYPE(domainUG)       :: domainU
 
     CHARACTER(len=mxch)  :: axis_name, axis_units, axis_name_current
     CHARACTER(len=mxchl) :: axis_long_name
@@ -279,7 +261,7 @@ CONTAINS
        ALLOCATE(axis_data(length))
 
        CALL get_diag_axis(id_axis, axis_name, axis_units, axis_long_name,&
-            & axis_cart_name, axis_direction, axis_edges, Domain, DomainU, axis_data,&
+            & axis_cart_name, axis_direction, axis_edges, Domain, axis_data,&
             & num_attributes, attributes, domain_position=axis_pos)
 
        IF ( Domain .NE. null_domain1d ) THEN
@@ -307,17 +289,6 @@ CONTAINS
                 call register_field(fileob, axis_name, type_str, (/axis_name/) )
           end select
 
-       ELSE IF ( DomainU .NE. null_domainUG) THEN
-          select type(fileob)
-             type is (FmsNetcdfUnstructuredDomainFile_t)
-               !> If the axis is in unstructured domain and the type is FmsNetcdfUnstructuredDomainFile_t,
-               !! this is an unstrucutred axis
-               !! so register it as one
-               call register_axis(fileob, axis_name )
-          end select
-          call register_field(fileob, axis_name, type_str, (/axis_name/) )
-          istart = lbound(axis_data,1)
-          iend = ubound(axis_data,1)
        ELSE
           !> If the axis is not in a domain, register it as a normal dimension
           call register_axis(fileob, axis_name, dimension_length=size(axis_data))
@@ -418,7 +389,7 @@ CONTAINS
        length = get_axis_global_length ( id_axis )
        ALLOCATE(axis_data(length))
        CALL get_diag_axis(id_axis, axis_name, axis_units, axis_long_name, axis_cart_name,&
-            & axis_direction, axis_edges, Domain, DomainU, axis_data)
+            & axis_direction, axis_edges, Domain, axis_data)
 
        !  ---- write edges attribute to original axis ----
        call register_variable_attribute(fileob, axis_name_current, "edges",trim(axis_name), &
@@ -458,7 +429,7 @@ CONTAINS
   !! @details The meta data for the field is written to the file indicated by file_unit
   FUNCTION write_field_meta_data ( file_unit, name, axes, units, long_name, range, pack, mval,&
        & avg_name, time_method, standard_name, interp_method, attributes, num_attributes,     &
-       & use_UGdomain, fileob) result ( Field )
+       & fileob) result ( Field )
     INTEGER, INTENT(in) :: file_unit !< Output file unit number
     INTEGER, INTENT(in) :: axes(:) !< Array of axis IDs
     CHARACTER(len=*), INTENT(in) :: name !< Field name
@@ -480,7 +451,6 @@ CONTAINS
     CHARACTER(len=*), OPTIONAL, INTENT(in) :: interp_method
     TYPE(diag_atttype), DIMENSION(:), allocatable, OPTIONAL, INTENT(in) :: attributes
     INTEGER, OPTIONAL, INTENT(in) :: num_attributes
-    LOGICAL, OPTIONAL, INTENT(in) :: use_UGdomain
 class(FmsNetcdfFile_t), intent(inout)     :: fileob
 
     logical :: is_time_bounds !< Flag indicating if the variable is time_bounds
@@ -496,7 +466,6 @@ character(len=128),dimension(size(axes)) :: axis_names
     INTEGER :: i, indexx, num, ipack, np
     LOGICAL :: use_range
     INTEGER :: axis_indices(SIZE(axes))
-    logical :: use_UGdomain_local
     !---- Initialize err_msg to bank ----
     err_msg = ''
 
@@ -507,9 +476,6 @@ character(len=128),dimension(size(axes)) :: axis_names
     ELSE
        standard_name2 = 'none'
     END IF
-
-    use_UGdomain_local = .false.
-    if(present(use_UGdomain)) use_UGdomain_local = use_UGdomain
 
     num = SIZE(axes(:))
     ! <ERROR STATUS="FATAL">number of axes < 1</ERROR>
@@ -541,7 +507,7 @@ character(len=128),dimension(size(axes)) :: axis_names
     END DO
 
     !  Create coordinate attribute
-    IF ( num >= 2 .OR. (num==1 .and. use_UGdomain_local) ) THEN
+    IF ( num >= 2 ) THEN
        coord_att = ' '
        DO i = 1, num
           aux_axes(i) = get_axis_aux(axes(i))
@@ -713,7 +679,6 @@ character(len=128),dimension(size(axes)) :: axis_names
     !---- get axis domain ----
     Field%Domain = get_domain2d ( axes )
     Field%tile_count = get_tile_count ( axes )
-    Field%DomainU = get_domainUG ( axes(1) )
 
   END FUNCTION write_field_meta_data
 
@@ -790,18 +755,16 @@ character(len=128),dimension(size(axes)) :: axis_names
   END SUBROUTINE done_meta_data
 
   !> \brief Writes diagnostic data out using fms2_io routine.
-  subroutine diag_field_write (varname, buffer, static, file_num, fileobjU, fileobj, fileobjND, &
+  subroutine diag_field_write (varname, buffer, static, file_num, fileobj, fileobjND, &
                               &  fnum_for_domain, time_in)
     CHARACTER(len=*), INTENT(in)    :: varname                             !< Variable name
     REAL ,            INTENT(inout) :: buffer(:,:,:,:)                     !< Buffer containing the variable data
     logical,          intent(in)    :: static                              !< Flag indicating if a variable is static
     integer,          intent(in)    :: file_num                            !< Index in the fileobj* types array
-    type(FmsNetcdfUnstructuredDomainFile_t), intent(inout) :: fileobjU(:)  !< Array of non domain decomposed fileobj
     type(FmsNetcdfDomainFile_t),             intent(inout) :: fileobj(:)   !< Array of domain decomposed fileobj
     type(FmsNetcdfFile_t),                   intent(inout) :: fileobjND(:) !< Array of unstructured domain fileobj
     character(len=2), intent(in) :: fnum_for_domain                        !< String indicating the type of domain
                                                                            !! "2d" domain decomposed
-                                                                           !! "ug" unstructured domain decomposed
                                                                            !! "nd" no domain
     INTEGER, OPTIONAL, INTENT(in) :: time_in !< Time index
 
@@ -841,12 +804,8 @@ character(len=128),dimension(size(axes)) :: axis_names
         if (check_if_open(fileobjND (file_num)) ) then
            call write_data (fileobjND (file_num), trim(varname), local_buffer, unlim_dim_level=time)
         endif
-     elseif (fnum_for_domain == "ug") then
-        if (check_if_open(fileobjU(file_num))) then
-           call write_data (fileobjU(file_num), trim(varname), local_buffer, unlim_dim_level=time)
-        endif
      else
-         call error_mesg("diag_field_write","fnum_for_domain must be '2d', 'nd', or 'ug'",fatal)
+         call error_mesg("diag_field_write","fnum_for_domain must be '2d', or, 'nd'",fatal)
      endif
 
      deallocate(local_buffer)
@@ -918,21 +877,17 @@ character(len=128),dimension(size(axes)) :: axis_names
   END SUBROUTINE set_diag_global_att
 
   !> @brief Flushes the file into disk
-  subroutine diag_flush(file_num, fileobjU, fileobj, fileobjND, fnum_for_domain)
+  subroutine diag_flush(file_num, fileobj, fileobjND, fnum_for_domain)
     integer,                                   intent(in) :: file_num        !< Index in the fileobj* types array
-    type(FmsNetcdfUnstructuredDomainFile_t),intent(inout) :: fileobjU(:)     !< Array of non domain decomposed fileobj
     type(FmsNetcdfDomainFile_t),            intent(inout) :: fileobj(:)      !< Array of domain decomposed fileobj
     type(FmsNetcdfFile_t),                  intent(inout) :: fileobjND(:)    !< Array of unstructured domain fileobj
     character(len=2),                          intent(in) :: fnum_for_domain !< String indicating the type of domain
                                                                              !! "2d" domain decomposed
-                                                                             !! "ug" unstructured domain decomposed
                                                                              !! "nd" no domain
     if (fnum_for_domain == "2d" ) then
        call flush_file (fileobj (file_num))
     elseif (fnum_for_domain == "nd") then
        call flush_file (fileobjND (file_num))
-    elseif (fnum_for_domain == "ug") then
-       call flush_file (fileobjU(file_num))
     else
        call error_mesg("diag_field_write","No file object is associated with this file number",fatal)
     endif

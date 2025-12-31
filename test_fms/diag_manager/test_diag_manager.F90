@@ -193,22 +193,6 @@
 !  "test_diag_manager_mod", "dat2", "dat2",     "diag_test2", "all", .true., "none", 2,
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
-!> diag_table for test 23 (unstructured grid)
-!!
-!test_diag_manager_23
-!1990 1 1 0 0 0
-!#output files
-!"unstructured_diag_test", 2, "days", 2, "days", "time",
-!#output variables
-!"UG_unit_test", "unstructured_real_scalar_field_data", "rsf_diag_1", "unstructured_diag_test", "all", .TRUE., "none",
-! 1,
-!"UG_unit_test", "unstructured_real_1D_field_data", "unstructured_real_1D_field_data", "unstructured_diag_test",
-!"all", .TRUE., "none", 1,
-!"UG_unit_test", "unstructured_real_2D_field_data", "unstructured_real_2D_field_data", "unstructured_diag_test",
-!"all", .TRUE., "none", 1,
-!"UG_unit_test", "lon", "grid_xt", "unstructured_diag_test", "all", .TRUE., "none", 1,
-!"UG_unit_test", "lat", "grid_yt", "unstructured_diag_test", "all", .TRUE., "none", 1,
-!--------------------------------------------------------------------------------------------------
 PROGRAM test
   ! This program runs only one of many possible tests with each execution.
   ! Each test ends with an intentional fatal error.
@@ -288,43 +272,13 @@ PROGRAM test
 
   ! Variables needed for test 22
   INTEGER :: id_nv, id_nv_init
-
-!!!!!! Stuff for unstrctured grid
-    integer(kind=i4_kind)              :: nx = 8                               !<Total number of grid points in the
-                                                                               !! x-dimension (longitude?)
-    integer(kind=i4_kind)              :: ny = 8           !<Total number of grid points in the y-dimension (latitude?)
-    integer(kind=i4_kind)              :: nz = 2           !<Total number of grid points in the z-dimension (height)
-    integer(kind=i4_kind)              :: nt = 2                               !<Total number of time grid points.
-    integer(kind=i4_kind)              :: io_tile_factor = 1                   !< The IO tile factor
-    integer(kind=i4_kind)              :: halo = 2                             !<Number of grid points in the halo???
-    integer(kind=i4_kind)              :: ntiles_x = 1     !<Number of tiles in the x-direction
-                                                           !! (A 2D grid of tiles is used in this test.)
-    integer(kind=i4_kind)              :: ntiles_y = 2     !<Number of tiles in the y-direction (A 2D grid of tiles is
-                                                           !! used in this test.)
-    integer(kind=i4_kind)              :: total_num_tiles  !<The total number of tiles for the run (=ntiles_x*ntiles_y)
-    integer(kind=i4_kind)              :: stackmax = 1500000 !<Default size to which the mpp stack will be set.
-    integer(kind=i4_kind)              :: stackmaxd = 500000 !<Default size to which the mpp_domains stack will be set.
-    logical(kind=l4_kind)              :: debug = .false.                      !<Flag to print debugging information.
-    character(len=64)              :: test_file = "test_unstructured_grid" !<Base filename for the unit tests.
-    character(len=64)              :: iospec = '-F cachea'                 !<Something cray related ???
-    integer(kind=i4_kind)              :: pack_size = 1    !<(Number of bits in real(kind=r8_kind))/(Number of bits
-                                                           !! in real)
-    integer(kind=i4_kind)              :: npes             !<Total number of ranks in the current pelist.
-    integer(kind=i4_kind)              :: io_status                            !<Namelist read error code.
-    real(kind=r8_kind)              :: doubledata = 0.0    !<Used to determine pack_size.  This must be kind=r8_kind.
-    real                           :: realdata = 0.0   !<Used to determine pack_size.  Do not specify a kind parameter.
-    integer(kind=i4_kind)              :: funit = 7                            !<File unit.
-    logical(kind=l4_kind)              :: fopened      !<Flag telling if a file is already open.
-    type(time_type)                :: diag_time
-
-    integer(kind=i4_kind)              :: output_unit=6
+  integer(kind=i4_kind)              :: npes             !<Total number of ranks in the current pelist.
 !!!!!!
 
 
 
   NAMELIST /test_diag_manager_nml/ layout, test_number, nlon, nlat, nlev, io_layout, numthreads, &
                                    dt_step, months, days
-  NAMELIST /utest_nml/nx,ny,nz,nt,ntiles_x,ntiles_y,io_tile_factor
   ! Initialize all id* vars to be -1
   id_nv = -1
   id_nv_init = -1
@@ -353,7 +307,6 @@ PROGRAM test
   CALL set_calendar_type(JULIAN)
   npes = mpp_npes()
   READ (input_nml_file, NML=test_diag_manager_nml, IOSTAT=ierr)
-  READ (input_nml_file, NML=utest_nml, IOSTAT=i)
   ! Check the status of reading the diag_manager_nml
   IF ( check_nml_error(IOSTAT=ierr, NML_NAME='DIAG_MANAGER_NML') < 0 ) THEN
      IF ( mpp_pe() == mpp_root_pe() ) THEN
@@ -364,58 +317,6 @@ PROGRAM test
   WRITE (log_unit,test_diag_manager_nml)
 
 SELECT CASE ( test_number ) ! Closes just before the CONTAINS block.
-  ! If the test_number == 23, then call the unstrcutured grid unit test and skip everything else.
-  CASE ( 23 )
-   !Initialize the mpp_domains module
-    if (debug) then
-        call mpp_domains_init(MPP_DEBUG)
-    else
-        call mpp_domains_init()
-    endif
-
-   !Initialize the mpp_io module.
-    if (debug) then
-        call mpp_io_init(MPP_DEBUG)
-    else
-        call mpp_io_init()
-    endif
-
-   !Initialize the fms_io module.
-    call fms_io_init()
-
-   !Set the mpp and mpp_domains stack sizes.
-    call mpp_set_stack_size(stackmax)
-    call mpp_domains_set_stack_size(stackmaxd)
-
-   !Write out test configuration parameters.
-    if (mpp_pe() .eq. mpp_root_pe()) then
-        write(output_unit,*)
-        write(output_unit,*) "Performing unstructured_io unit test with:"
-        write(output_unit,*) "Total number of ranks:                          ", &
-                             npes
-        write(output_unit,*) "Total number of grid points in the x-dimension: ", &
-                             nx
-        write(output_unit,*) "Total number of grid points in the y-dimension: ", &
-                             ny
-        write(output_unit,*) "Total number of grid points in the z-dimension: ", &
-                             nz
-        write(output_unit,*) "Total number of grid points in the t-dimension: ", &
-                             nt
-        write(output_unit,*) "Halo width (# of grid points):                  ", &
-                             halo
-        write(output_unit,*) "Using Unstructured domaintypes and calls..."
-    endif
-
-   !Add a suffix to the test file.
-    write(test_file,'(a,i3.3)') trim(test_file),npes
-
-   !Initialize the diag manager module.
-    call diag_manager_init()
-
-   !Set the diag_time variable to be 01/01/1990 at 00:00:00 (midnight).
-    call set_calendar_type(JULIAN)
-    time = set_date(1990,1,1,0,0,0)
-
    ! If the test_number == 12, check for the correct error and skip everything else.
    CASE ( 12 )
      CALL diag_manager_init(err_msg=err_msg)

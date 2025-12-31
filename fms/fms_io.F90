@@ -106,7 +106,6 @@ use mpp_domains_mod, only: mpp_get_domain_components, mpp_get_compute_domain, mp
 use mpp_domains_mod, only: mpp_get_domain_shift, mpp_get_global_domain, mpp_global_field, mpp_domain_is_tile_root_pe
 use mpp_domains_mod, only: mpp_get_ntile_count, mpp_get_current_ntile, mpp_get_tile_id
 use mpp_domains_mod, only: mpp_get_pelist, mpp_get_io_domain, mpp_get_domain_npes
-use mpp_domains_mod, only: domainUG, mpp_pass_SG_to_UG, mpp_get_UG_domain_ntiles, mpp_get_UG_domain_tile_id
 use mpp_mod,         only: mpp_error, FATAL, NOTE, WARNING, mpp_pe, mpp_root_pe, mpp_npes, stdlog, stdout
 use mpp_mod,         only: mpp_broadcast, ALL_PES, mpp_chksum, mpp_get_current_pelist, mpp_npes, lowercase
 use mpp_mod,         only: input_nml_file, mpp_get_current_pelist_name, uppercase
@@ -114,18 +113,6 @@ use mpp_mod,         only: mpp_gather, mpp_scatter, mpp_send, mpp_recv, mpp_sync
 use mpp_mod,         only: MPP_FILL_DOUBLE,MPP_FILL_INT
 
 use platform_mod, only: r8_kind
-
-!----------
-!ug support
-use mpp_parameter_mod, only: COMM_TAG_2
-use mpp_domains_mod,   only: mpp_get_UG_io_domain
-use mpp_domains_mod,   only: mpp_domain_UG_is_tile_root_pe
-use mpp_domains_mod,   only: mpp_get_UG_domain_npes
-use mpp_domains_mod,   only: mpp_get_UG_domain_pelist
-use mpp_io_mod,        only: mpp_io_unstructured_write
-use mpp_io_mod,        only: mpp_io_unstructured_read
-use mpp_io_mod,        only: mpp_file_is_opened
-!----------
 
 implicit none
 private
@@ -145,8 +132,6 @@ integer, parameter          :: max_axis_size=10000
 ! in any order but a check can be performed
 ! to ensure no registration of duplicate axis
 
-!----------
-!ug support
 integer(INT_KIND),parameter,public :: XIDX = 1
 integer(INT_KIND),parameter,public :: YIDX = 2
 integer(INT_KIND),parameter,public :: CIDX = 3
@@ -155,7 +140,6 @@ integer(INT_KIND),parameter,public :: HIDX = 5
 integer(INT_KIND),parameter,public :: TIDX = 6
 integer(INT_KIND),parameter,public :: UIDX = 7
 integer(INT_KIND),parameter,public :: CCIDX = 8
-!---------
 
 integer, parameter, private :: NIDX=8
 
@@ -195,13 +179,6 @@ type, private :: ax_type
    real, pointer      :: data(:) =>NULL()    !< real axis values (not used if time axis)
    type(domain2d),pointer :: domain =>NULL() !< domain associated with compressed axis
 
-!----------
-!ug support
-   type(domainUG),pointer :: domain_ug => null()     !< A pointer to an unstructured mpp domain.
-   integer(INT_KIND)      :: nelems_for_current_rank !< The number of grid points registered
-                                                     !! to the current rank (used for error checking).
-!----------
-
 end type ax_type
 
 !> @ingroup fms_io_mod
@@ -234,13 +211,9 @@ type, private :: var_type
    integer                                :: ishift, jshift !< can be used to shift indices when no_domain=T
    integer                                :: x_halo, y_halo !< can be used to indicate halo size when no_domain=T
 
-!----------
-!ug support
-    type(domainUG),pointer            :: domain_ug => null()   !< A pointer to an unstructured mpp domain.
     integer(INT_KIND),dimension(5)    :: field_dimension_order !< Array telling the ordering
                                                                !! of the dimensions for the field.
     integer(INT_KIND),dimension(NIDX) :: field_dimension_sizes !< Array of sizes of the dimensions for the field.
-!----------
 
 end type var_type
 
@@ -334,7 +307,6 @@ interface read_data
    module procedure read_data_4d_new
    module procedure read_data_3d_new
    module procedure read_data_2d_new
-   module procedure read_data_2d_UG
    module procedure read_data_1d_new
    module procedure read_data_scalar_new
    module procedure read_data_i3d_new
@@ -495,7 +467,6 @@ end interface
 !> @ingroup fms_io_mod
 interface get_mosaic_tile_file
   module procedure get_mosaic_tile_file_sg
-  module procedure get_mosaic_tile_file_ug
 end interface
 
 !> @addtogroup fms_io_mod
@@ -533,7 +504,7 @@ public  :: open_namelist_file, open_restart_file, open_ieee32_file, close_file
 public  :: set_domain, nullify_domain, get_domain_decomp, return_domain
 public  :: open_file, open_direct_file
 public  :: get_restart_io_mode, get_tile_string, string
-public  :: get_mosaic_tile_grid, get_mosaic_tile_file, get_file_name, get_mosaic_tile_file_ug
+public  :: get_mosaic_tile_grid, get_mosaic_tile_file, get_file_name
 public  :: get_global_att_value, get_var_att_value
 public  :: file_exist, field_exist
 public  :: register_restart_field, register_restart_axis, save_restart, restore_state
@@ -587,51 +558,6 @@ integer            :: pack_size  ! = 1 for double = 2 for float
 ! make version public so it can be written in fms_init()
 character(len=*), parameter, public :: fms_io_version = version
 
-!----------
-!ug support
-public :: fms_io_unstructured_register_restart_axis
-public :: fms_io_unstructured_register_restart_field
-public :: fms_io_unstructured_save_restart
-public :: fms_io_unstructured_read
-public :: fms_io_unstructured_get_field_size
-public :: fms_io_unstructured_file_unit
-public :: fms_io_unstructured_field_exist
-
-!> @}
-
-!> @ingroup fms_io_mod
-interface fms_io_unstructured_register_restart_axis
-    module procedure fms_io_unstructured_register_restart_axis_r1D
-    module procedure fms_io_unstructured_register_restart_axis_i1D
-    module procedure fms_io_unstructured_register_restart_axis_u
-end interface fms_io_unstructured_register_restart_axis
-
-!> @ingroup fms_io_mod
-interface fms_io_unstructured_register_restart_field
-    module procedure fms_io_unstructured_register_restart_field_r_0d
-    module procedure fms_io_unstructured_register_restart_field_r_1d
-    module procedure fms_io_unstructured_register_restart_field_r_2d
-    module procedure fms_io_unstructured_register_restart_field_r_3d
-#ifdef OVERLOAD_R8
-    module procedure fms_io_unstructured_register_restart_field_r8_2d
-    module procedure fms_io_unstructured_register_restart_field_r8_3d
-#endif
-    module procedure fms_io_unstructured_register_restart_field_i_0d
-    module procedure fms_io_unstructured_register_restart_field_i_1d
-    module procedure fms_io_unstructured_register_restart_field_i_2d
-end interface fms_io_unstructured_register_restart_field
-
-!> @ingroup fms_io_mod
-interface fms_io_unstructured_read
-    module procedure fms_io_unstructured_read_r_scalar
-    module procedure fms_io_unstructured_read_r_1D
-    module procedure fms_io_unstructured_read_r_2D
-    module procedure fms_io_unstructured_read_r_3D
-    module procedure fms_io_unstructured_read_i_scalar
-    module procedure fms_io_unstructured_read_i_1D
-    module procedure fms_io_unstructured_read_i_2D
-end interface fms_io_unstructured_read
-!----------
 
 !> @addtogroup fms_io_mod
 !> @{
@@ -6061,23 +5987,6 @@ subroutine read_data_4d_new(filename,fieldname,data,domain,timelevel,&
 
 end subroutine read_data_4d_new
 
-subroutine read_data_2d_UG(filename,fieldname,data,SG_domain,UG_domain,timelevel)
-  character(len=*), intent(in)                 :: filename, fieldname
-  real, dimension(:), intent(inout)            :: data     !2 dimensional data
-  type(domain2d), intent(in)                   :: SG_domain
-  type(domainUG), intent(in)                   :: UG_domain
-  integer, intent(in) , optional               :: timelevel
-  real, dimension(:,:), allocatable            :: data_2d
-  integer :: is, ie, js, je
-
-  call mpp_get_compute_domain(SG_domain, is, ie, js, je)
-  allocate(data_2d(is:ie,js:je))
-  call read_data_2d_new(filename,fieldname,data_2d, SG_domain, timelevel)
-  call mpp_pass_SG_to_UG(UG_domain, data_2d, data)
-  deallocate(data_2d)
-
-end subroutine read_data_2d_UG
-
 subroutine read_data_2d_new(filename,fieldname,data,domain,timelevel,&
                             no_domain,position,tile_count)
   character(len=*), intent(in)                 :: filename, fieldname
@@ -7922,42 +7831,6 @@ function open_file(file, form, action, access, threading, recl, dist) result(uni
 
   end subroutine get_mosaic_tile_file_sg
 
-  subroutine get_mosaic_tile_file_ug(file_in, file_out, domain)
-    character(len=*), intent(in)                   :: file_in
-    character(len=*), intent(out)                  :: file_out
-    type(domainUG),   intent(in), optional         :: domain
-    character(len=256)                             :: basefile, tilename
-    integer                                        :: lens, ntiles, my_tile_id
-
-    if(index(file_in, '.nc', back=.true.)==0) then
-       basefile = trim(file_in)
-    else
-       lens = len_trim(file_in)
-       if(file_in(lens-2:lens) .NE. '.nc') call mpp_error(FATAL, &
-            'fms_io_mod: .nc should be at the end of file '//trim(file_in))
-       basefile = file_in(1:lens-3)
-    end if
-
-    !--- get the tile name
-    ntiles = 1
-    my_tile_id = 1
-    if(PRESENT(domain))then
-       ntiles = mpp_get_UG_domain_ntiles(domain)
-       my_tile_id = mpp_get_UG_domain_tile_id(domain)
-    endif
-
-    if(ntiles > 1 .or. my_tile_id > 1 )then
-       tilename = 'tile'//string(my_tile_id)
-       if(index(basefile,'.'//trim(tilename),back=.true.) == 0)then
-          basefile = trim(basefile)//'.'//trim(tilename);
-       end if
-    end if
-
-    file_out = trim(basefile)//'.nc'
-
-  end subroutine get_mosaic_tile_file_ug
-
-
   !#############################################################################
   subroutine get_mosaic_tile_grid(grid_file, mosaic_file, domain, tile_count, custom_path)
     character(len=*), intent(out)          :: grid_file
@@ -8692,20 +8565,6 @@ function get_great_circle_algorithm()
 end function get_great_circle_algorithm
 
 ! </SUBROUTINE>
-
-!----------
-!ug support
-#include <fms_io_unstructured_register_restart_axis.inc>
-#include <fms_io_unstructured_setup_one_field.inc>
-#include <fms_io_unstructured_register_restart_field.inc>
-#include <fms_io_unstructured_save_restart.inc>
-#include <fms_io_unstructured_read.inc>
-#include <fms_io_unstructured_get_file_name.inc>
-#include <fms_io_unstructured_get_file_unit.inc>
-#include <fms_io_unstructured_file_unit.inc>
-#include <fms_io_unstructured_get_field_size.inc>
-#include <fms_io_unstructured_field_exist.inc>
-!----------
 
 end module fms_io_mod
 !> @}

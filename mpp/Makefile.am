@@ -77,7 +77,6 @@ libmpp_la_SOURCES = \
   include/mpp_get_boundary_ad.fh \
   include/mpp_global_field.fh \
   include/mpp_global_field_ad.fh \
-  include/mpp_global_field_ug.fh \
   include/mpp_global_reduce.fh \
   include/mpp_global_sum.fh \
   include/mpp_global_sum_ad.fh \
@@ -86,8 +85,6 @@ libmpp_la_SOURCES = \
   include/mpp_io_connect.inc \
   include/mpp_io_misc.inc \
   include/mpp_io_read.inc \
-  include/mpp_io_unstructured_read.inc \
-  include/mpp_io_unstructured_write.inc \
   include/mpp_io_util.inc \
   include/mpp_io_write.inc \
   include/mpp_read_2Ddecomp.fh \
@@ -108,8 +105,6 @@ libmpp_la_SOURCES = \
   include/mpp_transmit_nocomm.fh \
   include/mpp_type_mpi.fh \
   include/mpp_type_nocomm.fh \
-  include/mpp_unstruct_domain.inc \
-  include/mpp_unstruct_pass_data.fh \
   include/mpp_update_domains2D.fh \
   include/mpp_update_domains2D_ad.fh \
   include/mpp_update_domains2D_nonblock.fh \
@@ -196,10 +191,7 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_global_reduce.fh \
   include/mpp_global_sum.fh \
   include/mpp_global_sum_ad.fh \
-  include/mpp_global_sum_tl.fh \
-  include/mpp_unstruct_domain.inc \
-  include/mpp_global_field_ug.fh \
-  include/mpp_unstruct_pass_data.fh
+  include/mpp_global_sum_tl.fh
 mpp_io_mod.$(FC_MODEXT): \
   mpp_parameter_mod.$(FC_MODEXT) \
   mpp_mod.$(FC_MODEXT) \
@@ -216,9 +208,7 @@ mpp_io_mod.$(FC_MODEXT): \
   include/mpp_write.fh \
   include/mpp_write_2Ddecomp.fh \
   include/mpp_write_compressed.fh \
-  include/mpp_write_unlimited_axis.fh \
-  include/mpp_io_unstructured_write.inc \
-  include/mpp_io_unstructured_read.inc
+  include/mpp_write_unlimited_axis.fh
 mpp_memutils_mod.$(FC_MODEXT): mpp_mod.$(FC_MODEXT)
 
 # Mod files are built and then installed as headers.

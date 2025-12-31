@@ -56,7 +56,6 @@ integer, dimension(ntiles) :: pe_start
 integer, dimension(ntiles) :: pe_end
 type(domain2d) :: ocean_domain
 type(domain2d) :: atmosphere_domain
-type(domainug) :: land_domain
 integer :: i
 
 namelist / test_fms2_io_nml / nx, ny, nz
@@ -167,9 +166,7 @@ contains
 
 
 include "create_atmosphere_domain.inc"
-include "create_land_domain.inc"
 include "create_ocean_domain.inc"
-include "land_unstructured_restart_file_test.inc"
 include "land_compressed_restart_file_test.inc"
 include "ocean_restart_file_test.inc"
 
