@@ -72,7 +72,7 @@ module fms
 
   !> axis_utils
   use axis_utils2_mod, only: get_axis_cart, get_axis_modulo, lon_in_range, &
-                             frac_index, nearest_index, interp_1d, &
+                             frac_index, nearest_index, &
                              get_axis_modulo_times, axis_edges
 
   !>block_control

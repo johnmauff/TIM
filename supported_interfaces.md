@@ -44,7 +44,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - lon_in_range
 - frac_index
 - nearest_index
-- interp_1d
 - get_axis_modulo_times
 - axis_edges
 
