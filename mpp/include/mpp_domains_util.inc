@@ -835,23 +835,6 @@ end subroutine mpp_get_domain_shift
 
   end function mpp_get_tile_id
 
-  !#######################################################################
-  !> Return the tile_id on current pelist. one-tile-per-pe is assumed.
-  subroutine mpp_get_tile_list(domain, tiles)
-     type(domain2d), intent(in) :: domain
-     integer,     intent(inout) :: tiles(:)
-     integer                    :: i
-
-    if( size(tiles(:)).NE.size(domain%list(:)) ) &
-         call mpp_error( FATAL, 'mpp_get_tile_list: tiles array size does not match domain.' )
-    do i = 1, size(tiles(:))
-       if(size(domain%list(i-1)%tile_id(:)) > 1) call mpp_error( FATAL,  &
-               'mpp_get_tile_list: only support one-tile-per-pe now, contact developer');
-       tiles(i) = domain%list(i-1)%tile_id(1)
-    end do
-
-  end subroutine mpp_get_tile_list
-
   !########################################################################
   !> Returns number of tiles in mosaic
   function mpp_get_ntile_count(domain)
@@ -907,72 +890,6 @@ end subroutine mpp_get_domain_shift
 
   end function mpp_get_tile_npes
 
-  !########################################################################
-  !> Get the processors list used on current tile.
-  subroutine mpp_get_tile_pelist(domain, pelist)
-    type(domain2d), intent(in)  :: domain
-    integer,      intent(inout) :: pelist(:)
-    integer                     :: npes_on_tile
-    integer                     :: i, tile, pos
-
-    npes_on_tile = mpp_get_tile_npes(domain)
-    if(size(pelist(:)) .NE. npes_on_tile) call mpp_error(FATAL, &
-           "mpp_domains_util.inc(mpp_get_tile_pelist): size(pelist) does not equal npes on current tile")
-    tile = domain%tile_id(1)
-    pos = 0
-    do i = 0, size(domain%list(:))-1
-       if(tile == domain%list(i)%tile_id(1)) then
-          pos = pos+1
-          pelist(pos) = domain%list(i)%pe
-       endif
-    enddo
-
-    return
-
-  end subroutine mpp_get_tile_pelist
-
-!#####################################################################
-subroutine mpp_get_tile_compute_domains( domain, xbegin, xend, ybegin, yend, position )
- type(domain2D),         intent(in) :: domain
- integer, intent(out), dimension(:) :: xbegin, xend, ybegin, yend
- integer, intent(in ), optional     :: position
-
- integer :: i, ishift, jshift
- integer :: npes_on_tile, pos, tile
-
- call mpp_get_domain_shift( domain, ishift, jshift, position )
-
-
- if( .NOT.module_is_initialized ) &
-      call mpp_error( FATAL, 'mpp_get_compute_domains2D: must first call mpp_domains_init.' )
-
- npes_on_tile = mpp_get_tile_npes(domain)
- if(size(xbegin(:)) .NE. npes_on_tile) call mpp_error(FATAL, &
-       "mpp_domains_util.inc(mpp_get_compute_domains2D): size(xbegin) does not equal npes on current tile")
- if(size(xend(:)) .NE. npes_on_tile) call mpp_error(FATAL, &
-       "mpp_domains_util.inc(mpp_get_compute_domains2D): size(xend) does not equal npes on current tile")
- if(size(ybegin(:)) .NE. npes_on_tile) call mpp_error(FATAL, &
-       "mpp_domains_util.inc(mpp_get_compute_domains2D): size(ybegin) does not equal npes on current tile")
- if(size(yend(:)) .NE. npes_on_tile) call mpp_error(FATAL, &
-       "mpp_domains_util.inc(mpp_get_compute_domains2D): size(yend) does not equal npes on current tile")
-
- tile = domain%tile_id(1)
- pos = 0
- do i = 0, size(domain%list(:))-1
-    if(tile == domain%list(i)%tile_id(1)) then
-       pos = pos+1
-       xbegin(pos) = domain%list(i)%x(1)%compute%begin
-       xend  (pos) = domain%list(i)%x(1)%compute%end + ishift
-       ybegin(pos) = domain%list(i)%y(1)%compute%begin
-       yend  (pos) = domain%list(i)%y(1)%compute%end + jshift
-    endif
- enddo
-
- return
-
-end subroutine mpp_get_tile_compute_domains
-
-
 
   !#############################################################################
   function mpp_get_num_overlap(domain, action, p, position)
@@ -1013,129 +930,6 @@ end subroutine mpp_get_tile_compute_domains
 
   end function mpp_get_num_overlap
 
-  !#############################################################################
-  subroutine mpp_get_update_size(domain, nsend, nrecv, position)
-    type(domain2d),      intent(in) :: domain
-    integer,            intent(out) :: nsend, nrecv
-    integer, optional,   intent(in) :: position
-    integer                         :: pos
-
-    pos = CENTER
-    if(present(position)) pos = position
-    select case(pos)
-    case (CENTER)
-       nsend = domain%update_T%nsend
-       nrecv = domain%update_T%nrecv
-    case (CORNER)
-       nsend = domain%update_C%nsend
-       nrecv = domain%update_C%nrecv
-    case (EAST)
-       nsend = domain%update_E%nsend
-       nrecv = domain%update_E%nrecv
-    case (NORTH)
-       nsend = domain%update_N%nsend
-       nrecv = domain%update_N%nrecv
-    case default
-       call mpp_error( FATAL, "mpp_domains_mod(mpp_get_update_size): invalid option of position")
-    end select
-
-  end subroutine mpp_get_update_size
-
-  !#############################################################################
-  subroutine mpp_get_update_pelist(domain, action, pelist, position)
-    type(domain2d),       intent(in) :: domain
-    integer,              intent(in) :: action
-    integer,           intent(inout) :: pelist(:)
-    integer, optional,    intent(in) :: position
-    type(overlapSpec), pointer    :: update => NULL()
-    integer                       :: pos, p
-
-    pos = CENTER
-    if(present(position)) pos = position
-    select case(pos)
-    case (CENTER)
-       update => domain%update_T
-    case (CORNER)
-       update => domain%update_C
-    case (EAST)
-       update => domain%update_E
-    case (NORTH)
-       update => domain%update_N
-    case default
-       call mpp_error( FATAL, "mpp_domains_mod(mpp_get_update_pelist): invalid option of position")
-    end select
-
-    if(action == EVENT_SEND) then
-       if(size(pelist) .NE. update%nsend) call mpp_error( FATAL,  &
-             "mpp_domains_mod(mpp_get_update_pelist): size of pelist does not match update%nsend")
-       do p = 1, update%nsend
-          pelist(p) = update%send(p)%pe
-       enddo
-    else if(action == EVENT_RECV) then
-       if(size(pelist) .NE. update%nrecv) call mpp_error( FATAL,  &
-             "mpp_domains_mod(mpp_get_update_pelist): size of pelist does not match update%nrecv")
-       do p = 1, update%nrecv
-          pelist(p) = update%recv(p)%pe
-       enddo
-    else
-       call mpp_error( FATAL, "mpp_domains_mod(mpp_get_update_pelist): invalid option of action")
-    end if
-
-  end subroutine mpp_get_update_pelist
-
-  !#############################################################################
-  subroutine mpp_get_overlap(domain, action, p, is, ie, js, je, dir, rot, position)
-    type(domain2d),         intent(in) :: domain
-    integer,                intent(in) :: action
-    integer,                intent(in) :: p
-    integer, dimension(:), intent(out) :: is, ie, js, je
-    integer, dimension(:), intent(out) :: dir, rot
-    integer, optional,      intent(in) :: position
-    type(overlapSpec),      pointer    :: update => NULL()
-    type(overlap_type),     pointer    :: overlap => NULL()
-    integer                            :: count, pos
-
-    pos = CENTER
-    if(present(position)) pos = position
-    select case(pos)
-    case (CENTER)
-       update => domain%update_T
-    case (CORNER)
-       update => domain%update_C
-    case (EAST)
-       update => domain%update_E
-    case (NORTH)
-       update => domain%update_N
-    case default
-       call mpp_error( FATAL, "mpp_domains_mod(mpp_get_overlap): invalid option of position")
-    end select
-
-    if(action == EVENT_SEND) then
-       overlap => update%send(p)
-    else if(action == EVENT_RECV) then
-       overlap => update%recv(p)
-    else
-       call mpp_error( FATAL, "mpp_domains_mod(mpp_get_overlap): invalid option of action")
-    end if
-
-    count = overlap%count
-    if(size(is(:)) .NE. count .OR. size(ie (:)) .NE. count .OR. size(js (:)) .NE. count .OR.  &
-       size(je(:)) .NE. count .OR. size(dir(:)) .NE. count .OR. size(rot(:)) .NE. count ) &
-       call mpp_error( FATAL, &
-                      &  "mpp_domains_mod(mpp_get_overlap): size mismatch between number of overlap and array size")
-
-    is  = overlap%is      (1:count)
-    ie  = overlap%ie      (1:count)
-    js  = overlap%js      (1:count)
-    je  = overlap%je      (1:count)
-    dir = overlap%dir     (1:count)
-    rot = overlap%rotation(1:count)
-
-    update  => NULL()
-    overlap => NULL()
-
-  end subroutine mpp_get_overlap
-
   !##################################################################
   function mpp_get_domain_name(domain)
      type(domain2d),    intent(in) :: domain
@@ -1163,24 +957,6 @@ end subroutine mpp_get_tile_compute_domains
      return
 
   end function mpp_get_domain_npes
-
-  !################################################################
-  subroutine mpp_get_domain_pelist(domain, pelist)
-     type(domain2d),    intent(in) :: domain
-     integer,          intent(out) :: pelist(:)
-     integer :: p
-
-     if(size(pelist(:)) .NE. size(domain%list(:)) ) then
-        call mpp_error(FATAL, "mpp_get_domain_pelist: size(pelist(:)) .NE. size(domain%list(:)) ")
-     endif
-
-     do p = 0, size(domain%list(:))-1
-        pelist(p+1) = domain%list(p)%pe
-     enddo
-
-     return
-
-  end subroutine mpp_get_domain_pelist
 
   !#################################################################
   function mpp_get_io_domain_layout(domain)
@@ -1426,15 +1202,6 @@ end subroutine mpp_get_tile_compute_domains
    end do
 
   end function get_mesgsize
-
-  !#############################################################################
-  subroutine mpp_set_domain_symmetry(domain, symmetry)
-    type(domain2D), intent(inout) :: domain
-    logical,        intent(in   ) :: symmetry
-
-    domain%symmetry = symmetry
-
-  end subroutine mpp_set_domain_symmetry
 
   !> @brief Copies input 1d domain to the output 1d domain
   recursive subroutine mpp_copy_domain1D(domain_in, domain_out)

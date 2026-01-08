@@ -260,14 +260,13 @@ module fms
                      mpp_get_memory_domain, mpp_get_domain_shift, &
                      mpp_domain_is_tile_root_pe, mpp_get_tile_id, &
                      mpp_get_domain_extents, mpp_get_current_ntile, &
-                     mpp_get_ntile_count, mpp_get_tile_list, mpp_get_tile_npes, &
-                     mpp_get_domain_root_pe, mpp_get_tile_pelist, &
-                     mpp_get_tile_compute_domains, mpp_get_num_overlap, &
-                     mpp_get_overlap, mpp_get_io_domain, mpp_get_domain_pe, &
+                     mpp_get_ntile_count, mpp_get_tile_npes, &
+                     mpp_get_domain_root_pe, &
+                     mpp_get_num_overlap, &
+                     mpp_get_io_domain, mpp_get_domain_pe, &
                      mpp_get_domain_tile_root_pe, mpp_get_domain_name, &
-                     mpp_get_io_domain_layout, mpp_copy_domain, mpp_set_domain_symmetry, &
-                     mpp_get_update_pelist, mpp_get_update_size, &
-                     mpp_get_domain_npes, mpp_get_domain_pelist, &
+                     mpp_get_io_domain_layout, mpp_copy_domain, &
+                     mpp_get_domain_npes, &
                      mpp_clear_group_update, mpp_group_update_initialized, &
                      mpp_group_update_is_set, &
                      mpp_global_field, mpp_global_max, mpp_global_min, mpp_global_sum, &
