@@ -256,7 +256,6 @@ module fms
                      mpp_get_global_domain, mpp_get_domain_components, &
                      mpp_get_layout, mpp_get_pelist, operator(.EQ.), operator(.NE.), &
                      mpp_domain_is_symmetry, mpp_domain_is_initialized, &
-                     mpp_get_neighbor_pe, mpp_nullify_domain_list, &
                      mpp_set_compute_domain, mpp_set_data_domain, mpp_set_global_domain, &
                      mpp_get_memory_domain, mpp_get_domain_shift, &
                      mpp_domain_is_tile_root_pe, mpp_get_tile_id, &
@@ -270,7 +269,7 @@ module fms
                      mpp_get_update_pelist, mpp_get_update_size, &
                      mpp_get_domain_npes, mpp_get_domain_pelist, &
                      mpp_clear_group_update, mpp_group_update_initialized, &
-                     mpp_group_update_is_set, mpp_get_global_domains, &
+                     mpp_group_update_is_set, &
                      mpp_global_field, mpp_global_max, mpp_global_min, mpp_global_sum, &
                      mpp_global_sum_tl, mpp_global_sum_ad, mpp_broadcast_domain, &
                      mpp_domains_init, mpp_domains_exit, mpp_redistribute, &
@@ -285,8 +284,7 @@ module fms
                      mpp_define_null_domain, mpp_mosaic_defined, &
                      mpp_define_io_domain, mpp_deallocate_domain, &
                      mpp_compute_extent, mpp_compute_block_extent, &
-                     NULL_DOMAIN1D, NULL_DOMAIN2D, &
-                     mpp_create_super_grid_domain
+                     NULL_DOMAIN1D, NULL_DOMAIN2D
 
   !> platform
   use platform_mod, only: r8_kind, r4_kind, i8_kind, i4_kind, c8_kind, c4_kind, &

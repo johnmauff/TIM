@@ -32,7 +32,7 @@ program test_mpp_redistribute
   use mpp_domains_mod, only : mpp_domains_init, mpp_domains_exit, mpp_broadcast_domain
   use mpp_domains_mod, only : mpp_update_domains, mpp_check_field, mpp_redistribute, mpp_get_memory_domain
   use mpp_domains_mod, only : mpp_define_layout, mpp_define_domains, mpp_deallocate_domain
-  use mpp_domains_mod, only : mpp_define_mosaic, mpp_nullify_domain_list
+  use mpp_domains_mod, only : mpp_define_mosaic
   use platform_mod
 
   implicit none
@@ -71,8 +71,8 @@ contains
     integer                                      :: k, j, i, layout(2), id
     integer                                      :: is, ie, js, je, isd, ied, jsd, jed
     ! nullify domain list otherwise it retains memory between calls.
-    call mpp_nullify_domain_list(domainx)
-    call mpp_nullify_domain_list(domainy)
+    !call mpp_nullify_domain_list(domainx)
+    !call mpp_nullify_domain_list(domainy)
 
     !fill in glbl array with kiiijjj
     allocate( gcheck(nx,ny,nz), glbl(nx,ny,nz) )
@@ -196,8 +196,8 @@ contains
     integer                                      :: k, j, i, layout(2), id
     integer                                      :: is, ie, js, je, isd, ied, jsd, jed
     ! nullify domain list otherwise it retains memory between calls.
-    call mpp_nullify_domain_list(domainx)
-    call mpp_nullify_domain_list(domainy)
+    !call mpp_nullify_domain_list(domainx)
+    !call mpp_nullify_domain_list(domainy)
 
     !fill in glbl array with kiiijjj
     allocate( gcheck(nx,ny,nz), glbl(nx,ny,nz) )

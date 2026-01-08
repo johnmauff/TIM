@@ -501,7 +501,7 @@ type(domain1d), dimension(max_domains), save       :: domain_x, domain_y
 public  :: read_data, read_compressed, write_data, read_distributed
 public  :: fms_io_init, fms_io_exit, field_size, get_field_size
 public  :: open_namelist_file, open_restart_file, open_ieee32_file, close_file
-public  :: set_domain, nullify_domain, get_domain_decomp, return_domain
+public  :: set_domain, get_domain_decomp, return_domain
 public  :: open_file, open_direct_file
 public  :: get_restart_io_mode, get_tile_string, string
 public  :: get_mosaic_tile_grid, get_mosaic_tile_file, get_file_name
@@ -7429,22 +7429,6 @@ subroutine set_domain (Domain2)
   call mpp_get_global_domain  (Current_domain,isg,ieg,jsg,jeg)
 end subroutine set_domain
 !#######################################################################
-! </SUBROUTINE>
-
-! <SUBROUTINE NAME="nullify_domain">
-subroutine nullify_domain ()
-!   <DESCRIPTION>
-! Use to nulify domain that has been assigned by set_domain.
-!   </DESCRIPTION>
-  if (.NOT.module_is_initialized) call fms_io_init ( )
-
-!  --- set_domain must be called before a read_data or write_data ---
-
-  if (associated(Current_domain)) nullify (Current_domain)
-  is=0;ie=0;js=0;je=0
-  isd=0;ied=0;jsd=0;jed=0
-  isg=0;ieg=0;jsg=0;jeg=0
-end subroutine nullify_domain
 ! </SUBROUTINE>
 
 ! <SUBROUTINE NAME="return_domain">

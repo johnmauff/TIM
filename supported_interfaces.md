@@ -421,8 +421,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_get_pelist
 - mpp_domain_is_symmetry
 - mpp_domain_is_initialized
-- mpp_get_neighbor_pe
-- mpp_nullify_domain_list
 - mpp_set_compute_domain
 - mpp_set_data_domain
 - mpp_set_global_domain
@@ -454,7 +452,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_clear_group_update
 - mpp_group_update_initialized
 - mpp_group_update_is_set
-- mpp_get_global_domains
 - mpp_global_field
 - mpp_global_max
 - mpp_global_min
@@ -490,7 +487,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_compute_block_extent
 - OPERATOR(.EQ.) for domain2D types
 - OPERATOR(.NE.) for domain2D types
-- mpp_create_super_grid_domain
 ##### Types
 - domain_axis_spec
 - domain1D

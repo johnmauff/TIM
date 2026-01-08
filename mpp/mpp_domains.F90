@@ -149,7 +149,6 @@ module mpp_domains_mod
   public :: mpp_get_data_domain, mpp_get_global_domain, mpp_get_domain_components
   public :: mpp_get_layout, mpp_get_pelist, operator(.EQ.), operator(.NE.)
   public :: mpp_domain_is_symmetry, mpp_domain_is_initialized
-  public :: mpp_get_neighbor_pe, mpp_nullify_domain_list
   public :: mpp_set_compute_domain, mpp_set_data_domain, mpp_set_global_domain
   public :: mpp_get_memory_domain, mpp_get_domain_shift, mpp_domain_is_tile_root_pe
   public :: mpp_get_tile_id, mpp_get_domain_extents, mpp_get_current_ntile, mpp_get_ntile_count
@@ -163,8 +162,6 @@ module mpp_domains_mod
   public :: mpp_get_domain_npes, mpp_get_domain_pelist
   public :: mpp_clear_group_update
   public :: mpp_group_update_initialized, mpp_group_update_is_set
-  public :: mpp_get_global_domains
-  public :: mpp_create_super_grid_domain
 
   !--- public interface from mpp_domains_reduce.h
   public :: mpp_global_field, mpp_global_max, mpp_global_min, mpp_global_sum
@@ -1780,32 +1777,6 @@ module mpp_domains_mod
 !
 !            public interface from mpp_domain_util.h
 !
-!***********************************************************************
-  !> @brief Retrieve PE number of a neighboring domain.
-  !!
-  !> Given a 1-D or 2-D domain decomposition, this call allows users to retrieve
-  !! the PE number of an adjacent PE-domain while taking into account that the
-  !! domain may have holes (masked) and/or have cyclic boundary conditions and/or a
-  !! folded edge. Which PE-domain will be retrived will depend on "direction":
-  !! +1 (right) or -1 (left) for a 1-D domain decomposition and either NORTH, SOUTH,
-  !! EAST, WEST, NORTH_EAST, SOUTH_EAST, SOUTH_WEST, or NORTH_WEST for a 2-D
-  !! decomposition. If no neighboring domain exists (masked domain), then the
-  !! returned "pe" value will be set to NULL_PE.<br>
-  !! <br>Example usage:
-  !!
-  !!                    call mpp_get_neighbor_pe( domain1d, direction=+1   , pe)
-  !!
-  !! Set pe to the neighbor pe number that is to the right of the current pe
-  !!
-  !!                    call mpp_get_neighbor_pe( domain2d, direction=NORTH, pe)
-  !!
-  !! Get neighbor pe number that's above/north of the current pe
-  !> @ingroup mpp_domains_mod
-  interface mpp_get_neighbor_pe
-     module procedure mpp_get_neighbor_pe_1d
-     module procedure mpp_get_neighbor_pe_2d
-  end interface
-
   !> Equality/inequality operators for domaintypes. <br>
   !!
   !! <br>The module provides public operators to check for
@@ -1862,12 +1833,6 @@ module mpp_domains_mod
   interface mpp_get_compute_domains
      module procedure mpp_get_compute_domains1D
      module procedure mpp_get_compute_domains2D
-  end interface
-
-  !> @ingroup mpp_domains_mod
-  interface mpp_get_global_domains
-     module procedure mpp_get_global_domains1D
-     module procedure mpp_get_global_domains2D
   end interface
 
   !> These routines retrieve the axis specifications associated with the data domains.
@@ -1984,16 +1949,6 @@ module mpp_domains_mod
   interface mpp_get_layout
      module procedure mpp_get_layout1D
      module procedure mpp_get_layout2D
-  end interface
-
-  !> Nullify domain list. This interface is needed in mpp_domains_test.
-  !! 1-D case can be added in if needed.
-  !! <br>Example usage:
-  !!
-  !!                    call mpp_nullify_domain_list(domain)
-  !> @ingroup mpp_domains_mod
-  interface mpp_nullify_domain_list
-     module procedure nullify_domain2d_list
   end interface
 
   ! Include variable "version" to be written to log file.

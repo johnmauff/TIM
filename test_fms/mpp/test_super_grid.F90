@@ -18,16 +18,14 @@
 !***********************************************************************
 
 !> @brief  This programs tests mpp_copy_domains and makes sure the domain was
-!>         copied correctly tests mpp_create_super_grid_domain and makes sure the
-!>         domain is correct
+!>         copied correctly
 program test_super_grid
 use   fms_mod,            only: fms_init, fms_end
 use   mpp_mod,            only: mpp_error, mpp_pe, mpp_root_pe, mpp_npes, FATAL
 use   mpp_domains_mod,    only: domain2d, mpp_define_domains, mpp_copy_domain
 use   mpp_domains_mod,    only: mpp_get_data_domain
 use   mpp_domains_mod,    only: mpp_get_compute_domain, mpp_get_compute_domains
-use   mpp_domains_mod,    only: mpp_get_global_domain, mpp_get_global_domains
-use   mpp_domains_mod,    only: mpp_create_super_grid_domain
+use   mpp_domains_mod,    only: mpp_get_global_domain
 
 implicit none
 
@@ -45,9 +43,6 @@ nlat = 90
 call mpp_define_domains( (/1,nlon,1,nlat/), layout, Domain, xhalo=2, yhalo=2, name='test_supergrid')
 call mpp_copy_domain(Domain, Domain2)
 call compare_domains(Domain, Domain2, supergrid=.false.)
-
-call mpp_create_super_grid_domain(Domain2)
-call compare_domains(Domain, Domain2, supergrid=.true.)
 
 call fms_end()
 
@@ -112,17 +107,6 @@ subroutine compare_domains(Domain, Domain2, supergrid)
                                      & ybegin=pes_indices2(:,3), yend=pes_indices2(:,4), &
                                      & xsize =pes_indices2(:,5), ysize=pes_indices2(:,6))
  call compare_pe_indices(pes_indices, pes_indices2, "compute domains")
-
- !> Global Domains (get the indices for all of the ranks)
- call mpp_get_global_domains(Domain,  xbegin=pes_indices (:,1), xend=pes_indices (:,2), &
-                                     & ybegin=pes_indices (:,3), yend=pes_indices (:,4), &
-                                     & xsize =pes_indices (:,5), ysize=pes_indices(:,6))
- if(supergrid) call get_expected_indices(pes_indices)
-
- call mpp_get_global_domains(Domain2, xbegin=pes_indices2(:,1), xend=pes_indices2(:,2), &
-                                     & ybegin=pes_indices2(:,3), yend=pes_indices2(:,4), &
-                                     & xsize =pes_indices2(:,5), ysize=pes_indices2(:,6))
- call compare_pe_indices(pes_indices, pes_indices2, "global domains")
 
 end subroutine compare_domains
 

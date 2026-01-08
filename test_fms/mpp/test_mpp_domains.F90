@@ -34,7 +34,7 @@ program test_mpp_domains
   use mpp_domains_mod, only : mpp_domains_init, mpp_domains_exit, mpp_broadcast_domain
   use mpp_domains_mod, only : mpp_update_domains, mpp_check_field, mpp_redistribute, mpp_get_memory_domain
   use mpp_domains_mod, only : mpp_define_layout, mpp_define_domains, mpp_modify_domain
-  use mpp_domains_mod, only : mpp_get_neighbor_pe, mpp_define_mosaic, mpp_nullify_domain_list
+  use mpp_domains_mod, only : mpp_define_mosaic
   use mpp_domains_mod, only : NORTH, NORTH_EAST, EAST, SOUTH_EAST, CORNER, CENTER
   use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST, mpp_define_mosaic_pelist
   use mpp_domains_mod, only : mpp_get_global_domain, ZERO, NINETY, MINUS_NINETY
@@ -267,16 +267,8 @@ program test_mpp_domains
 !!$!Balaji adding openMP tests
 !!$  call test_openmp()
 !!$! Alewxander.Pletzer get_neighbor tests
-  if( test_get_nbr ) then
-      if (mpp_pe() == mpp_root_pe())  print *, '--------------------> Calling test_get_nbr <-------------------'
-     call test_get_neighbor_1d
-     call test_get_neighbor_non_cyclic
-     call test_get_neighbor_cyclic
-     call test_get_neighbor_folded_north
-     call test_get_neighbor_mask
-     call mpp_sync()
-      if (mpp_pe() == mpp_root_pe())  print *, '--------------------> Finish test_get_nbr <-------------------'
-  endif
+  !if( test_get_nbr ) then
+  !endif
 
   call mpp_exit()
 
@@ -349,8 +341,8 @@ contains
 
     pemax = npes/2              !the partial pelist will run from 0...pemax
     !--- nullify domain list otherwise it retains memory between calls.
-    call mpp_nullify_domain_list(domainx)
-    call mpp_nullify_domain_list(domainy)
+    !call mpp_nullify_domain_list(domainx)
+    !call mpp_nullify_domain_list(domainy)
 
     allocate( gcheck(nx,ny,nz), global(nx,ny,nz) )
     !fill in global array: with k.iiijjj
@@ -5914,134 +5906,6 @@ end subroutine test_halosize_update
     end if
 
   end subroutine compare_data_scalar
-
-  subroutine test_get_neighbor_1d
-    type(domain1d) :: dmn1d
-    integer npes, peN, peS
-    npes = mpp_npes()
-    call mpp_define_domains((/1,npes/), npes, dmn1d)
-    call mpp_get_neighbor_pe(dmn1d, direction=+1, pe=peN)
-    call mpp_get_neighbor_pe(dmn1d, direction=-1, pe=peS)
-    print '(a,i2,a,2i3)', 'PE: ', mpp_pe(), ' R/L pes: ', peN, peS
-  end subroutine test_get_neighbor_1d
-
-  subroutine test_get_neighbor_non_cyclic
-    type(domain2d) :: domain
-    integer nx, ny,layout(2), halo, peN, peS, peE, peW, peNE, peNW, peSE, peSW, npes
-    nx = 10
-    ny = 20
-    halo = 2
-    npes = mpp_npes()
-    if( npes .NE. 8 ) then
-       call mpp_error(NOTE, 'test_mpp_domains: test_get_neighbor_non_cyclic '// &
-                            ' will be performed only when npes = 8')
-      return
-    end if
-    call mpp_define_layout( (/1,nx, 1,ny/), npes, layout )
-    call mpp_define_domains((/1,nx, 1,ny/), layout, domain, xhalo=halo, yhalo=halo)
-    call mpp_get_neighbor_pe(domain, direction=NORTH, pe=peN)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH, pe=peS)
-    call mpp_get_neighbor_pe(domain, direction=EAST, pe=peE)
-    call mpp_get_neighbor_pe(domain, direction=WEST, pe=peW)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_EAST, pe=peNE)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_WEST, pe=peNW)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_EAST, pe=peSE)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_WEST, pe=peSW)
-    print '(a,i2,a,2i2,a,8i3)','PE: ', mpp_pe(), ' layout (non-cyclic): ', layout,  &
-         & ' N/S/E/W/NE/SE/SW/NW pes: ', peN, peS, peE, peW, peNE, peSE, peSW, peNW
-  end subroutine test_get_neighbor_non_cyclic
-
-  subroutine test_get_neighbor_cyclic
-    type(domain2d) :: domain
-    integer nx, ny,layout(2), halo, peN, peS, peE, peW, peNE, peNW, peSE, peSW, npes
-    nx = 10
-    ny = 20
-    halo = 2
-    npes = mpp_npes()
-    if( npes .NE. 8 ) then
-       call mpp_error(NOTE, 'test_mpp_domains: test_get_neighbor_cyclic '// &
-                            ' will be performed only when npes = 8')
-      return
-    end if
-    call mpp_define_layout( (/1,nx, 1,ny/), npes, layout )
-    call mpp_define_domains((/1,nx, 1,ny/), layout, domain, xhalo=halo, yhalo=halo, &
-         xflags=CYCLIC_GLOBAL_DOMAIN, yflags=CYCLIC_GLOBAL_DOMAIN)
-    call mpp_get_neighbor_pe(domain, direction=NORTH, pe=peN)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH, pe=peS)
-    call mpp_get_neighbor_pe(domain, direction=EAST, pe=peE)
-    call mpp_get_neighbor_pe(domain, direction=WEST, pe=peW)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_EAST, pe=peNE)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_WEST, pe=peNW)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_EAST, pe=peSE)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_WEST, pe=peSW)
-    print '(a,i2,a,2i2,a,8i3)','PE: ', mpp_pe(), ' layout (cyclic)    : ', layout, &
-         & ' N/S/E/W/NE/SE/SW/NW pes: ', peN, peS, peE, peW, peNE, peSE, peSW, peNW
-  end subroutine test_get_neighbor_cyclic
-
-  subroutine test_get_neighbor_folded_north
-    type(domain2d) :: domain
-    integer nx, ny,layout(2), halo, peN, peS, peE, peW, peNE, peNW, peSE, peSW, npes
-    nx = 10
-    ny = 20
-    halo = 2
-    npes = mpp_npes()
-    if( npes .NE. 8 ) then
-       call mpp_error(NOTE, 'test_mpp_domains: test_get_neighbor_folded_north '// &
-                            ' will be performed only when npes = 8')
-      return
-    end if
-    call mpp_define_layout( (/1,nx, 1,ny/), npes, layout )
-    call mpp_define_domains((/1,nx, 1,ny/), layout, domain, xhalo=halo, yhalo=halo, &
-         xflags=CYCLIC_GLOBAL_DOMAIN, yflags=FOLD_NORTH_EDGE)
-    call mpp_get_neighbor_pe(domain, direction=NORTH, pe=peN)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH, pe=peS)
-    call mpp_get_neighbor_pe(domain, direction=EAST, pe=peE)
-    call mpp_get_neighbor_pe(domain, direction=WEST, pe=peW)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_EAST, pe=peNE)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_WEST, pe=peNW)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_EAST, pe=peSE)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_WEST, pe=peSW)
-    print '(a,i2,a,2i2,a,8i3)','PE: ', mpp_pe(), ' layout (folded N)  : ', layout, &
-         & ' N/S/E/W/NE/SE/SW/NW pes: ', peN, peS, peE, peW, peNE, peSE, peSW, peNW
-  end subroutine test_get_neighbor_folded_north
-
-  subroutine test_get_neighbor_mask
-    logical, allocatable ::  mask(:,:)
-    integer :: im, jm, n_remove
-    type(domain2d) :: domain
-    integer nx, ny,layout(2), halo, peN, peS, peE, peW, peNE, peNW, peSE, peSW, npes
-    nx = 10
-    ny = 20
-    halo = 2
-    npes = mpp_npes()
-
-    n_remove = 2
-    if( npes .NE. 8 ) then
-       call mpp_error(NOTE, 'test_mpp_domains: test_get_neighbor_mask '// &
-                            ' will be performed only when npes = 8')
-      return
-    end if
-    call mpp_define_layout( (/1,nx, 1,ny/), npes+n_remove, layout )
-    allocate(mask(layout(1), layout(2)))
-    mask = .TRUE.  ! activate domains
-    im = min(layout(1), ceiling(layout(1)/2.0))
-    jm = min(layout(2), ceiling(layout(2)/2.0))
-    mask(im  ,jm  ) = .FALSE. ! deactivate domain
-    mask(im  ,jm-1) = .FALSE. ! deactivate domain
-    print '(a,2i3,a,2i3)', 'Masked out domains ', im, jm, ' and ', im,jm-1
-    call mpp_define_domains((/1,nx, 1,ny/), layout, domain, xhalo=halo, yhalo=halo, &
-         maskmap=mask)
-    call mpp_get_neighbor_pe(domain, direction=NORTH, pe=peN)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH, pe=peS)
-    call mpp_get_neighbor_pe(domain, direction=EAST, pe=peE)
-    call mpp_get_neighbor_pe(domain, direction=WEST, pe=peW)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_EAST, pe=peNE)
-    call mpp_get_neighbor_pe(domain, direction=NORTH_WEST, pe=peNW)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_EAST, pe=peSE)
-    call mpp_get_neighbor_pe(domain, direction=SOUTH_WEST, pe=peSW)
-    print '(a,i3,a,2i3,a,8i3)','PE: ', mpp_pe(), ' layout (mask   )  : ', layout, &
-         & ' N/S/E/W/NE/SE/SW/NW pes: ', peN, peS, peE, peW, peNE, peSE, peSW, peNW
-  end subroutine test_get_neighbor_mask
 
   subroutine test_define_mosaic_pelist(type, ntile)
     character(len=*),       intent(in) :: type
