@@ -1397,28 +1397,12 @@ end subroutine init_nonblock_type
 #include <mpp_do_get_boundary.fh>
 
 #undef MPP_TYPE_
-#define MPP_TYPE_ real(r8_kind)
-#undef MPP_DO_GET_BOUNDARY_AD_3D_
-#define MPP_DO_GET_BOUNDARY_AD_3D_ mpp_do_get_boundary_ad_r8_3d
-#undef MPP_DO_GET_BOUNDARY_AD_3DV_
-#define MPP_DO_GET_BOUNDARY_AD_3D_V_ mpp_do_get_boundary_ad_r8_3dv
-#include <mpp_do_get_boundary_ad.fh>
-
-#undef MPP_TYPE_
 #define MPP_TYPE_ real(r4_kind)
 #undef MPP_DO_GET_BOUNDARY_3D_
 #define MPP_DO_GET_BOUNDARY_3D_ mpp_do_get_boundary_r4_3d
 #undef MPP_DO_GET_BOUNDARY_3D_V_
 #define MPP_DO_GET_BOUNDARY_3D_V_ mpp_do_get_boundary_r4_3dv
 #include <mpp_do_get_boundary.fh>
-
-#undef MPP_TYPE_
-#define MPP_TYPE_ real(r4_kind)
-#undef MPP_DO_GET_BOUNDARY_AD_3D_
-#define MPP_DO_GET_BOUNDARY_AD_3D_ mpp_do_get_boundary_ad_r4_3d
-#undef MPP_DO_GET_BOUNDARY_AD_3D_V_
-#define MPP_DO_GET_BOUNDARY_AD_3D_V_ mpp_do_get_boundary_ad_r4_3dv
-#include <mpp_do_get_boundary_ad.fh>
 
 #undef MPP_TYPE_
 #define MPP_TYPE_ real(r8_kind)

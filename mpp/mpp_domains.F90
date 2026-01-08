@@ -1288,14 +1288,6 @@ module mpp_domains_mod
      module procedure mpp_do_get_boundary_r4_3dv
   end interface
 
-  !> @ingroup mpp_domains_mod
-  interface mpp_do_get_boundary_ad
-     module procedure mpp_do_get_boundary_ad_r8_3d
-     module procedure mpp_do_get_boundary_ad_r8_3dv
-     module procedure mpp_do_get_boundary_ad_r4_3d
-     module procedure mpp_do_get_boundary_ad_r4_3dv
-  end interface
-
 !> Reorganization of distributed global arrays.<br>
 !! \e mpp_redistribute is used to reorganize a distributed array.
 !! \e MPP_TYPE_can be of type \e integer, \e complex, or \e real;

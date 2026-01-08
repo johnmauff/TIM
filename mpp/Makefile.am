@@ -53,7 +53,6 @@ libmpp_la_SOURCES = \
   include/mpp_do_check.fh \
   include/mpp_do_checkV.fh \
   include/mpp_do_get_boundary.fh \
-  include/mpp_do_get_boundary_ad.fh \
   include/mpp_do_global_field.fh \
   include/mpp_do_global_field_ad.fh \
   include/mpp_do_redistribute.fh \
@@ -163,7 +162,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_do_check.fh \
   include/mpp_do_checkV.fh \
   include/mpp_do_get_boundary.fh \
-  include/mpp_do_get_boundary_ad.fh \
   include/mpp_do_redistribute.fh \
   include/mpp_do_update.fh \
   include/mpp_do_updateV.fh \
