@@ -470,7 +470,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_define_domains
 - mpp_modify_domain
 - mpp_define_mosaic
-- mpp_define_mosaic_pelist
 - mpp_define_null_domain
 - mpp_mosaic_defined
 - mpp_define_io_domain

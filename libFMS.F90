@@ -279,7 +279,7 @@ module fms
                      mpp_get_boundary, &
                      mpp_update_domains_ad, mpp_get_boundary_ad, &
                      mpp_define_layout, mpp_define_domains, &
-                     mpp_modify_domain, mpp_define_mosaic, mpp_define_mosaic_pelist, &
+                     mpp_modify_domain, mpp_define_mosaic, &
                      mpp_define_null_domain, mpp_mosaic_defined, &
                      mpp_define_io_domain, mpp_deallocate_domain, &
                      mpp_compute_extent, mpp_compute_block_extent, &

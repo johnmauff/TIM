@@ -36,7 +36,7 @@ program test_mpp_domains
   use mpp_domains_mod, only : mpp_define_layout, mpp_define_domains, mpp_modify_domain
   use mpp_domains_mod, only : mpp_define_mosaic
   use mpp_domains_mod, only : NORTH, NORTH_EAST, EAST, SOUTH_EAST, CORNER, CENTER
-  use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST, mpp_define_mosaic_pelist
+  use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST
   use mpp_domains_mod, only : mpp_get_global_domain, ZERO, NINETY, MINUS_NINETY
   use mpp_domains_mod, only : mpp_get_boundary, mpp_start_update_domains, mpp_complete_update_domains
   use mpp_domains_mod, only : mpp_get_domain_shift, EDGEUPDATE, mpp_deallocate_domain
@@ -247,13 +247,6 @@ program test_mpp_domains
       call test_redistribute( 'Complete pelist' )
       call test_redistribute( 'Overlap  pelist' )
       call test_redistribute( 'Disjoint pelist' )
-      if(.not. wide_halo) then
-         call test_define_mosaic_pelist('One tile', 1)
-         call test_define_mosaic_pelist('Two uniform tile', 2)
-         call test_define_mosaic_pelist('Two nonuniform tile', 2)
-         call test_define_mosaic_pelist('Ten tile', 10)
-         call test_define_mosaic_pelist('Ten tile with nonuniform cost', 10)
-      endif
       if (mpp_pe() == mpp_root_pe())  print *, '--------------------> Finish test_interface  <-------------------'
   endif
 
@@ -5906,87 +5899,6 @@ end subroutine test_halosize_update
     end if
 
   end subroutine compare_data_scalar
-
-  subroutine test_define_mosaic_pelist(type, ntile)
-    character(len=*),       intent(in) :: type
-    integer,                intent(in) :: ntile
-    integer                            :: npes, root_pe, start_pe, n, ntile_per_pe
-    integer, dimension(:), allocatable :: pe1_start, pe1_end, pe2_start, pe2_end
-    integer, dimension(:), allocatable :: sizes, costpertile
-
-    root_pe = mpp_root_pe()
-    npes = mpp_npes()
-
-    allocate(sizes(ntile), pe1_start(ntile), pe1_end(ntile), pe2_start(ntile), pe2_end(ntile),costpertile(ntile) )
-    costpertile = 1
-    sizes = nx*ny
-    if(npes ==1) then
-       pe1_start = root_pe; pe1_end = root_pe
-    end if
-    select case(type)
-    case('One tile')
-       pe1_start = root_pe; pe1_end = npes+root_pe-1
-    case('Two uniform tile')
-       if(mod(npes,2) .NE. 0 .AND. npes .NE. 1) then
-          call mpp_error(NOTE, 'test_define_mosaic_pelist: npes can not be divided by 2, no test for '//type )
-          return
-       end if
-       if(npes .NE. 1) then
-          pe1_start(1) = root_pe;        pe1_end(1) = npes/2+root_pe-1
-          pe1_start(2) = npes/2+root_pe; pe1_end(2) = npes+root_pe-1
-       end if
-    case('Two nonuniform tile')
-       if(mod(npes,3) .NE. 0 .AND. npes .NE. 1) then
-          call mpp_error(NOTE, 'test_define_mosaic_pelist: npes can not be divided by 3, no test for '//type )
-          return
-       end if
-       sizes(1) = 2*nx*ny
-       if(npes .NE. 1) then
-          pe1_start(1) = root_pe;          pe1_end(1) = npes/3*2+root_pe-1
-          pe1_start(2) = npes/3*2+root_pe; pe1_end(2) = npes+root_pe-1
-       end if
-    case('Ten tile')
-       if(mod(npes,10) .NE. 0 .AND. npes .NE. 1 .AND. mod(10,npes) .NE. 0) then
-          call mpp_error(NOTE, 'test_define_mosaic_pelist: npes can not be divided by 10(or reverse), no test for '// &
-                         & type )
-          return
-       end if
-       if(mod(10, npes)==0) then
-          ntile_per_pe = ntile/npes
-          do n = 1, ntile
-             pe1_start(n) = root_pe+(n-1)/ntile_per_pe; pe1_end(n) = pe1_start(n)
-          end do
-       else if(mod(npes,10) == 0) then
-          do n = 1, ntile
-             pe1_start(n) = npes/10*(n-1)+root_pe; pe1_end(n) = npes/10*n+root_pe-1
-          end do
-       end if
-    case('Ten tile with nonuniform cost')
-       if(mod(npes,15) .NE. 0 .AND. npes .NE. 1) then
-          call mpp_error(NOTE, 'test_define_mosaic_pelist: npes can not be divided by 15, no test for '//type )
-          return
-       end if
-       costpertile(1:5) = 2; costpertile(6:ntile) = 1
-       if(npes .NE. 1) then
-          start_pe = root_pe
-          do n = 1, ntile
-             pe1_start(n) = start_pe
-             pe1_end(n)   = start_pe + npes/15*costpertile(n)-1
-             start_pe = pe1_end(n) + 1
-          end do
-       end if
-    case default
-       call mpp_error(FATAL,"test_define_mosaic_pelist: "//type//" is an invalid type")
-    end select
-
-    call mpp_define_mosaic_pelist( sizes, pe2_start, pe2_end, costpertile=costpertile)
-    if( ANY(pe1_start .NE. pe2_start) .OR. ANY(pe1_end .NE. pe2_end) ) then
-       call mpp_error(FATAL,"test_define_mosaic_pelist: test failed for "//trim(type) )
-    else
-       call mpp_error(NOTE,"test_define_mosaic_pelist: test successful for "//trim(type) )
-    end if
-
-  end subroutine test_define_mosaic_pelist
 
   !############################################################################
 

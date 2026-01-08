@@ -176,7 +176,7 @@ module mpp_domains_mod
   public :: mpp_get_boundary_ad
   !--- public interface from mpp_domains_define.h
   public :: mpp_define_layout, mpp_define_domains, mpp_modify_domain, mpp_define_mosaic
-  public :: mpp_define_mosaic_pelist, mpp_define_null_domain, mpp_mosaic_defined
+  public :: mpp_define_null_domain, mpp_mosaic_defined
   public :: mpp_define_io_domain, mpp_deallocate_domain
   public :: mpp_compute_extent, mpp_compute_block_extent
 

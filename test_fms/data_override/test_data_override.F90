@@ -73,7 +73,7 @@ program test
   use mpp_domains_mod, only : mpp_define_layout, mpp_define_domains, mpp_modify_domain
   use mpp_domains_mod, only : mpp_define_mosaic
   use mpp_domains_mod, only : NORTH, NORTH_EAST, EAST, SOUTH_EAST, CORNER, CENTER
-  use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST, mpp_define_mosaic_pelist
+  use mpp_domains_mod, only : SOUTH, SOUTH_WEST, WEST, NORTH_WEST
   use mpp_domains_mod, only : mpp_get_global_domain, ZERO, NINETY, MINUS_NINETY
   use mpp_domains_mod, only : mpp_get_boundary, mpp_start_update_domains, mpp_complete_update_domains
   use mpp_domains_mod, only : mpp_get_domain_shift, EDGEUPDATE, mpp_deallocate_domain

@@ -452,24 +452,6 @@
     end subroutine mpp_redistribute_free_comm
 
 
-    subroutine mpp_global_field_free_comm(domain,l_addr,ksize,l_addr2,flags)
-    ! Since initialization of the d_comm type is expensive, freeing should be a rare
-    ! event. Thus no attempt is made to salvage freed d_comm's.
-      type(domain2D),             intent(in)    :: domain
-      integer(i8_kind),         intent(in)    :: l_addr
-      integer,                    intent(in)    :: ksize
-      integer(i8_kind),optional,intent(in)    :: l_addr2
-      integer,           optional,intent(in)    :: flags
-
-      integer :: update_flags
-      integer(i8_kind) :: domain_id
-
-      update_flags=0; if(PRESENT(flags))update_flags=flags
-      domain_id=set_domain_id(domain%id,ksize,update_flags)
-      call free_comm(domain_id,l_addr,l_addr2)
-    end subroutine mpp_global_field_free_comm
-
-
     subroutine free_comm(domain_id,l_addr,l_addr2)
     ! Since initialization of the d_comm type is expensive, freeing should be a rare
     ! event. Thus no attempt is made to salvage freed d_comm's.
