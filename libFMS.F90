@@ -270,7 +270,7 @@ module fms
                      mpp_clear_group_update, mpp_group_update_initialized, &
                      mpp_group_update_is_set, &
                      mpp_global_field, mpp_global_max, mpp_global_min, mpp_global_sum, &
-                     mpp_global_sum_tl, mpp_broadcast_domain, &
+                     mpp_broadcast_domain, &
                      mpp_domains_init, mpp_domains_exit, mpp_redistribute, &
                      mpp_update_domains, mpp_check_field, mpp_start_update_domains, &
                      mpp_complete_update_domains, mpp_create_group_update, &

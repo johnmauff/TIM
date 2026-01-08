@@ -163,7 +163,6 @@ module mpp_domains_mod
 
   !--- public interface from mpp_domains_reduce.h
   public :: mpp_global_field, mpp_global_max, mpp_global_min, mpp_global_sum
-  public :: mpp_global_sum_tl
   !--- public interface from mpp_domains_misc.h
   public :: mpp_broadcast_domain, mpp_domains_init, mpp_domains_exit, mpp_redistribute
   public :: mpp_update_domains, mpp_check_field
@@ -1649,40 +1648,6 @@ module mpp_domains_mod
      module procedure mpp_global_sum_i4_4d
      module procedure mpp_global_sum_i4_5d
   end interface
-
-!gag
-!> @ingroup mpp_domains_mod
-  interface mpp_global_sum_tl
-     module procedure mpp_global_sum_tl_r8_2d
-     module procedure mpp_global_sum_tl_r8_3d
-     module procedure mpp_global_sum_tl_r8_4d
-     module procedure mpp_global_sum_tl_r8_5d
-#ifdef OVERLOAD_C8
-     module procedure mpp_global_sum_tl_c8_2d
-     module procedure mpp_global_sum_tl_c8_3d
-     module procedure mpp_global_sum_tl_c8_4d
-     module procedure mpp_global_sum_tl_c8_5d
-#endif
-     module procedure mpp_global_sum_tl_r4_2d
-     module procedure mpp_global_sum_tl_r4_3d
-     module procedure mpp_global_sum_tl_r4_4d
-     module procedure mpp_global_sum_tl_r4_5d
-#ifdef OVERLOAD_C4
-     module procedure mpp_global_sum_tl_c4_2d
-     module procedure mpp_global_sum_tl_c4_3d
-     module procedure mpp_global_sum_tl_c4_4d
-     module procedure mpp_global_sum_tl_c4_5d
-#endif
-     module procedure mpp_global_sum_tl_i8_2d
-     module procedure mpp_global_sum_tl_i8_3d
-     module procedure mpp_global_sum_tl_i8_4d
-     module procedure mpp_global_sum_tl_i8_5d
-     module procedure mpp_global_sum_tl_i4_2d
-     module procedure mpp_global_sum_tl_i4_3d
-     module procedure mpp_global_sum_tl_i4_4d
-     module procedure mpp_global_sum_tl_i4_5d
-  end interface
-!gag
 
 !***********************************************************************
 !
