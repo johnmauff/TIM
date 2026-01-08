@@ -114,10 +114,10 @@ module fms
                            diag_axis_init, get_base_time, get_base_date, need_data, &
                            DIAG_ALL, DIAG_OCEAN, DIAG_OTHER, get_date_dif, DIAG_SECONDS,&
                            DIAG_MINUTES, DIAG_HOURS, DIAG_DAYS, DIAG_MONTHS, DIAG_YEARS, &
-                           get_diag_global_att, set_diag_global_att, diag_field_add_attribute, &
+                           get_diag_global_att, diag_field_add_attribute, &
                            diag_field_add_cell_measures, get_diag_field_id, &
                            diag_manager_set_time_end, diag_send_complete, &
-                           diag_send_complete_instant, DIAG_FIELD_NOT_FOUND, &
+                           DIAG_FIELD_NOT_FOUND, &
                            CMOR_MISSING_VALUE, null_axis_id
 
   !> field manager

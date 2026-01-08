@@ -233,7 +233,7 @@ use platform_mod
        & use_mpp_io, use_refactored_send, auto_merge_nc
   USE diag_data_mod, ONLY:  fileobj, fnum_for_domain, fileobjND
   USE diag_table_mod, ONLY: parse_diag_table
-  USE diag_output_mod, ONLY: get_diag_global_att, set_diag_global_att
+  USE diag_output_mod, ONLY: get_diag_global_att
   USE constants_mod, ONLY: SECONDS_PER_DAY
   USE fms_diag_outfield_mod, ONLY: fmsDiagOutfieldIndex_type, fmsDiagOutfield_type
   USE fms_diag_fieldbuff_update_mod, ONLY: fieldbuff_update, fieldbuff_copy_missvals, &
@@ -258,13 +258,12 @@ use, intrinsic :: iso_c_binding, only: c_int, c_char
        & register_diag_field, register_static_field, diag_axis_init, get_base_time, get_base_date,&
        & need_data, DIAG_ALL, DIAG_OCEAN, DIAG_OTHER, get_date_dif, DIAG_SECONDS,&
        & DIAG_MINUTES, DIAG_HOURS, DIAG_DAYS, DIAG_MONTHS, DIAG_YEARS, get_diag_global_att,&
-       & set_diag_global_att, diag_field_add_attribute, diag_field_add_cell_measures,&
+       & diag_field_add_attribute, diag_field_add_cell_measures,&
        & get_diag_field_id, CMOR_MISSING_VALUE, null_axis_id,&
        & exec_mppnccombine
   PUBLIC :: CENTER, NORTH, EAST !< Used for diag_axis_init
   ! Public interfaces from diag_grid_mod
   PUBLIC :: diag_manager_set_time_end, diag_send_complete
-  PUBLIC :: diag_send_complete_instant
   ! Public interfaces from diag_data_mod
   PUBLIC :: DIAG_FIELD_NOT_FOUND
 
@@ -3544,37 +3543,6 @@ CONTAINS
     Time_end = Time_end_in
 
   END SUBROUTINE diag_manager_set_time_end
-
-  !-----------------------------------------------------------------------
-  !> @brief The subroutine 'diag_send_complete_instant' allows the user to
-  !! save diagnostic data on variable intervals (user defined in code logic)
-  !! to the same file.  The argument (time_type) will be written to the
-  !! time axis correspondingly.
-  !!
-  !> The user is responsible for any averaging of accumulated data
-  !! as this routine is not designed for instantaneous values.  This routine
-  !! works only for send_data calls within OpenMP regions as they are buffered
-  !! until the complete signal is given.
-  SUBROUTINE diag_send_complete_instant(time)
-    TYPE (time_type), INTENT(in) :: time
-    !--- local variables
-    integer :: file, j, freq, in_num, file_num, out_num
-
-    DO file = 1, num_files
-      freq = files(file)%output_freq
-      IF (freq == 0) then
-        DO j = 1, files(file)%num_fields
-          out_num = files(file)%fields(j)
-          in_num = output_fields(out_num)%input_field
-          IF ( (input_fields(in_num)%numthreads == 1) .AND.&
-               & (input_fields(in_num)%active_omp_level.LE.1) ) CYCLE
-          file_num = output_fields(out_num)%output_file
-          CALL diag_data_out(file_num, out_num, &
-               & output_fields(out_num)%buffer, time)
-        END DO
-      END IF
-    END DO
-  END SUBROUTINE diag_send_complete_instant
 
   !-----------------------------------------------------------------------
   !> @brief Saves diagnostic data for the given time value.

@@ -134,7 +134,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - need_data
 - get_date_dif
 - get_diag_global_att
-- set_diag_global_att
 - diag_field_add_attribute
 - diag_field_add_cell_measures
 - get_diag_field_id
@@ -142,7 +141,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - diag_grid_end
 - diag_manager_set_time_end
 - diag_send_complete
-- diag_send_complete_instant
 
 ### xgrid
 ##### Interfaces

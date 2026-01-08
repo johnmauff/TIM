@@ -56,7 +56,7 @@ use,intrinsic :: iso_c_binding, only: c_double,c_float,c_int64_t, &
 
   PRIVATE
   PUBLIC :: diag_output_init, write_axis_meta_data, write_field_meta_data, done_meta_data,&
-       & diag_fieldtype, get_diag_global_att, set_diag_global_att
+       & diag_fieldtype, get_diag_global_att
   PUBLIC :: diag_field_write, diag_write_time, diag_flush
   TYPE(diag_global_att_type), SAVE :: diag_global_att
 
@@ -859,22 +859,6 @@ character(len=128),dimension(size(axes)) :: axis_names
 
     gAtt=diag_global_att
   END SUBROUTINE get_diag_global_att
-
-  !> @brief Set the global attribute type.
-  SUBROUTINE set_diag_global_att(component, gridType, tileName)
-    CHARACTER(len=*),INTENT(in) :: component, gridType, tileName
-
-    ! The following two lines are set to remove compile time warnings
-    ! about 'only used once'.
-    CHARACTER(len=64) :: component_tmp
-    component_tmp = component
-    ! Don't know how to set these for specific component
-    ! Want to be able to say
-    ! if(output_file has component) then
-    diag_global_att%grid_type = gridType
-    diag_global_att%tile_name = tileName
-    ! endif
-  END SUBROUTINE set_diag_global_att
 
   !> @brief Flushes the file into disk
   subroutine diag_flush(file_num, fileobj, fileobjND, fnum_for_domain)
