@@ -172,7 +172,6 @@ module mpp_domains_mod
   public :: mpp_start_group_update, mpp_complete_group_update
   public :: mpp_reset_group_update_field
   public :: mpp_get_boundary
-  public :: mpp_update_domains_ad
   !--- public interface from mpp_domains_define.h
   public :: mpp_define_layout, mpp_define_domains, mpp_modify_domain, mpp_define_mosaic
   public :: mpp_define_null_domain, mpp_mosaic_defined
@@ -1220,30 +1219,6 @@ module mpp_domains_mod
     module procedure mpp_broadcast_domain_2
   end interface
 
-!--------------------------------------------------------------
-! for adjoint update
-!--------------------------------------------------------------
-  !> Similar to @ref mpp_update_domains , updates adjoint domains
-  !> @ingroup mpp_domains_mod
-  interface mpp_update_domains_ad
-     module procedure mpp_update_domains_ad_2D_r8_2d
-     module procedure mpp_update_domains_ad_2D_r8_3d
-     module procedure mpp_update_domains_ad_2D_r8_4d
-     module procedure mpp_update_domains_ad_2D_r8_5d
-     module procedure mpp_update_domains_ad_2D_r8_2dv
-     module procedure mpp_update_domains_ad_2D_r8_3dv
-     module procedure mpp_update_domains_ad_2D_r8_4dv
-     module procedure mpp_update_domains_ad_2D_r8_5dv
-     module procedure mpp_update_domains_ad_2D_r4_2d
-     module procedure mpp_update_domains_ad_2D_r4_3d
-     module procedure mpp_update_domains_ad_2D_r4_4d
-     module procedure mpp_update_domains_ad_2D_r4_5d
-     module procedure mpp_update_domains_ad_2D_r4_2dv
-     module procedure mpp_update_domains_ad_2D_r4_3dv
-     module procedure mpp_update_domains_ad_2D_r4_4dv
-     module procedure mpp_update_domains_ad_2D_r4_5dv
-  end interface
-!
   !> Private interface used for @ref mpp_update_domains
   !> @ingroup mpp_domains_mod
   interface mpp_do_update
@@ -1275,13 +1250,6 @@ module mpp_domains_mod
      module procedure mpp_do_check_c4_3d
 #endif
      module procedure mpp_do_check_i4_3d
-  end interface
-
-  interface mpp_do_update_ad
-     module procedure mpp_do_update_ad_r8_3d
-     module procedure mpp_do_update_ad_r8_3dv
-     module procedure mpp_do_update_ad_r4_3d
-     module procedure mpp_do_update_ad_r4_3dv
   end interface
 
 !> Get the boundary data for symmetric domain when the data is at C, E, or N-cell center.<br>

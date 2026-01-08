@@ -277,7 +277,6 @@ module fms
                      mpp_do_group_update, mpp_start_group_update, &
                      mpp_complete_group_update, mpp_reset_group_update_field, &
                      mpp_get_boundary, &
-                     mpp_update_domains_ad, &
                      mpp_define_layout, mpp_define_domains, &
                      mpp_modify_domain, mpp_define_mosaic, &
                      mpp_define_null_domain, mpp_mosaic_defined, &

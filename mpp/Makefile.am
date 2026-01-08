@@ -59,9 +59,7 @@ libmpp_la_SOURCES = \
   include/mpp_do_redistribute.fh \
   include/mpp_do_update.fh \
   include/mpp_do_updateV.fh \
-  include/mpp_do_updateV_ad.fh \
   include/mpp_do_updateV_nonblock.fh \
-  include/mpp_do_update_ad.fh \
   include/mpp_do_update_nonblock.fh \
   include/mpp_domains_comm.inc \
   include/mpp_domains_define.inc \
@@ -105,7 +103,6 @@ libmpp_la_SOURCES = \
   include/mpp_type_mpi.fh \
   include/mpp_type_nocomm.fh \
   include/mpp_update_domains2D.fh \
-  include/mpp_update_domains2D_ad.fh \
   include/mpp_update_domains2D_nonblock.fh \
   include/mpp_util.inc \
   include/mpp_util_mpi.inc \
@@ -170,16 +167,13 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_do_redistribute.fh \
   include/mpp_do_update.fh \
   include/mpp_do_updateV.fh \
-  include/mpp_do_updateV_ad.fh \
   include/mpp_do_updateV_nonblock.fh \
-  include/mpp_do_update_ad.fh \
   include/mpp_do_update_nonblock.fh \
   include/mpp_get_boundary.fh \
   include/mpp_group_update.fh \
   include/group_update_pack.inc \
   include/group_update_unpack.inc \
   include/mpp_update_domains2D.fh \
-  include/mpp_update_domains2D_ad.fh \
   include/mpp_update_domains2D_nonblock.fh \
   include/mpp_domains_reduce.inc \
   include/mpp_do_global_field.fh \

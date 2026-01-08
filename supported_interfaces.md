@@ -464,7 +464,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_complete_group_update
 - mpp_reset_group_update_field
 - mpp_get_boundary
-- mpp_update_domains_ad
 - mpp_define_layout
 - mpp_define_domains
 - mpp_modify_domain
