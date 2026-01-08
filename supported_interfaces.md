@@ -449,7 +449,6 @@ Additional information for this module and others can be found in the Doxygen ge
 - mpp_global_min
 - mpp_global_sum
 - mpp_global_sum_tl
-- mpp_global_sum_ad
 - mpp_broadcast_domain
 - mpp_domains_init
 - mpp_domains_exit

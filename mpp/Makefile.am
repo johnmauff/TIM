@@ -75,7 +75,6 @@ libmpp_la_SOURCES = \
   include/mpp_global_field_ad.fh \
   include/mpp_global_reduce.fh \
   include/mpp_global_sum.fh \
-  include/mpp_global_sum_ad.fh \
   include/mpp_global_sum_tl.fh \
   include/mpp_group_update.fh \
   include/mpp_io_connect.inc \
@@ -180,7 +179,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_global_field_ad.fh \
   include/mpp_global_reduce.fh \
   include/mpp_global_sum.fh \
-  include/mpp_global_sum_ad.fh \
   include/mpp_global_sum_tl.fh
 mpp_io_mod.$(FC_MODEXT): \
   mpp_parameter_mod.$(FC_MODEXT) \

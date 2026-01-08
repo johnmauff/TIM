@@ -61,7 +61,6 @@ check_PROGRAMS = test_mpp \
   test_mpp_transmit \
   test_mpp_alltoall \
   test_mpp_global_field \
-  test_mpp_global_sum_ad \
   test_mpp_init_logfile \
   test_mpp_clock_begin_end_id \
   test_mpp_chksum
@@ -115,7 +114,6 @@ test_mpp_global_field_SOURCES = \
   compare_data_checksums.F90 \
   compare_data_checksums_int.F90 \
   test_mpp_global_field.F90
-test_mpp_global_sum_ad_SOURCES = test_mpp_global_sum_ad.F90
 test_stdin_SOURCES=test_stdin.F90
 test_mpp_init_logfile_SOURCES=test_mpp_init_logfile.F90
 test_mpp_clock_begin_end_id_SOURCES=test_mpp_clock_begin_end_id.F90
@@ -152,7 +150,6 @@ TESTS = test_mpp_domains2.sh \
   test_mpp_transmit.sh \
   test_mpp_alltoall.sh \
   test_mpp_global_field.sh \
-  test_mpp_global_sum_ad.sh \
   test_mpp_init_logfile.sh \
   test_mpp_clock_begin_end_id.sh \
   test_super_grid.sh \
@@ -193,7 +190,6 @@ EXTRA_DIST = test_mpp_domains2.sh \
   test_mpp_transmit.sh \
   test_mpp_alltoall.sh \
   test_mpp_global_field.sh \
-  test_mpp_global_sum_ad.sh \
   test_mpp_init_logfile.sh \
   test_mpp_clock_begin_end_id.sh \
   test_super_grid.sh \
