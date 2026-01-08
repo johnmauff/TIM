@@ -74,7 +74,6 @@ libmpp_la_SOURCES = \
   include/mpp_error_s_s.fh \
   include/mpp_gather.fh \
   include/mpp_get_boundary.fh \
-  include/mpp_get_boundary_ad.fh \
   include/mpp_global_field.fh \
   include/mpp_global_field_ad.fh \
   include/mpp_global_reduce.fh \
@@ -176,7 +175,6 @@ mpp_domains_mod.$(FC_MODEXT): \
   include/mpp_do_update_ad.fh \
   include/mpp_do_update_nonblock.fh \
   include/mpp_get_boundary.fh \
-  include/mpp_get_boundary_ad.fh \
   include/mpp_group_update.fh \
   include/group_update_pack.inc \
   include/group_update_unpack.inc \

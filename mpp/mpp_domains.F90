@@ -173,7 +173,6 @@ module mpp_domains_mod
   public :: mpp_reset_group_update_field
   public :: mpp_get_boundary
   public :: mpp_update_domains_ad
-  public :: mpp_get_boundary_ad
   !--- public interface from mpp_domains_define.h
   public :: mpp_define_layout, mpp_define_domains, mpp_modify_domain, mpp_define_mosaic
   public :: mpp_define_null_domain, mpp_mosaic_defined
@@ -1311,18 +1310,6 @@ module mpp_domains_mod
      module procedure mpp_get_boundary_r4_3dv
 !     module procedure mpp_get_boundary_r4_4dv
 !     module procedure mpp_get_boundary_r4_5dv
-  end interface
-
-  !> @ingroup mpp_domains_mod
-  interface mpp_get_boundary_ad
-     module procedure mpp_get_boundary_ad_r8_2d
-     module procedure mpp_get_boundary_ad_r8_3d
-     module procedure mpp_get_boundary_ad_r8_2dv
-     module procedure mpp_get_boundary_ad_r8_3dv
-     module procedure mpp_get_boundary_ad_r4_2d
-     module procedure mpp_get_boundary_ad_r4_3d
-     module procedure mpp_get_boundary_ad_r4_2dv
-     module procedure mpp_get_boundary_ad_r4_3dv
   end interface
 
   !> @ingroup mpp_domains_mod

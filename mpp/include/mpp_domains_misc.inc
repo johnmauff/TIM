@@ -1482,18 +1482,6 @@ end subroutine init_nonblock_type
 #include <mpp_get_boundary.fh>
 
 #undef MPP_TYPE_
-#define MPP_TYPE_ real(r8_kind)
-#undef MPP_GET_BOUNDARY_AD_2D_
-#define MPP_GET_BOUNDARY_AD_2D_ mpp_get_boundary_ad_r8_2d
-#undef MPP_GET_BOUNDARY_AD_3D_
-#define MPP_GET_BOUNDARY_AD_3D_ mpp_get_boundary_ad_r8_3d
-#undef MPP_GET_BOUNDARY_AD_2D_V_
-#define MPP_GET_BOUNDARY_AD_2D_V_ mpp_get_boundary_ad_r8_2dv
-#undef MPP_GET_BOUNDARY_AD_3D_V_
-#define MPP_GET_BOUNDARY_AD_3D_V_ mpp_get_boundary_ad_r8_3dv
-#include <mpp_get_boundary_ad.fh>
-
-#undef MPP_TYPE_
 #define MPP_TYPE_ real(r4_kind)
 #undef MPP_GET_BOUNDARY_2D_
 #define MPP_GET_BOUNDARY_2D_ mpp_get_boundary_r4_2d
@@ -1512,18 +1500,6 @@ end subroutine init_nonblock_type
 !#undef MPP_GET_BOUNDARY_5D_V_
 !#define MPP_GET_BOUNDARY_5D_V_ mpp_get_boundary_r4_5dv
 #include <mpp_get_boundary.fh>
-
-#undef MPP_TYPE_
-#define MPP_TYPE_ real(r4_kind)
-#undef MPP_GET_BOUNDARY_AD_2D_
-#define MPP_GET_BOUNDARY_AD_2D_ mpp_get_boundary_ad_r4_2d
-#undef MPP_GET_BOUNDARY_AD_3D_
-#define MPP_GET_BOUNDARY_AD_3D_ mpp_get_boundary_ad_r4_3d
-#undef MPP_GET_BOUNDARY_AD_2D_V_
-#define MPP_GET_BOUNDARY_AD_2D_V_ mpp_get_boundary_ad_r4_2dv
-#undef MPP_GET_BOUNDARY_AD_3D_V_
-#define MPP_GET_BOUNDARY_AD_3D_V_ mpp_get_boundary_ad_r4_3dv
-#include <mpp_get_boundary_ad.fh>
 
 #undef MPP_TYPE_
 #define MPP_TYPE_ real(r8_kind)
