@@ -3,6 +3,7 @@ on: [pull_request]
 
 jobs:
   coupler-build:
+    if: github.repository == 'ESCOMP/FMS'
     runs-on: ubuntu-latest
     container:
       image: ryanmulhall/hpc-me.ubuntu-minimal:coupler

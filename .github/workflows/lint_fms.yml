@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   lint:
+    if: github.repository == 'ESCOMP/FMS'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
