@@ -4,6 +4,8 @@
 #include <AMReX_Gpu.H>
 #include <AMReX_Array4.H>
 
+namespace A4 {
+
 struct A4Box
 {
     amrex::Box bx;
@@ -91,5 +93,6 @@ void copy_a4_to_f(const A4Box& a4, double* f)
         int idx = ii + nx*(jj + ny*kk);  // Fortran layout
         f[idx] = arr(i,j,k);
     });
+}
 }
 #endif
