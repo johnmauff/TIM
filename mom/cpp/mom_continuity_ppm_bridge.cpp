@@ -31,9 +31,9 @@ void ppm_limit_pos_f (Real* h_in_h,
     auto HR   = A4::make_a4(*i_max, *j_max, 1);
 
     // Copy from Fortran arrays to A4 container
-    A4::copy_f_to_a4(h_in_h,H_IN);
-    A4::copy_f_to_a4(h_L_h,HL);
-    A4::copy_f_to_a4(h_R_h,HR);
+    A4::copy_fh_to_a4(h_in_h,H_IN);
+    A4::copy_fh_to_a4(h_L_h,HL);
+    A4::copy_fh_to_a4(h_R_h,HR);
 
     // Launch kernel
     ppm_limit_pos(bx,H_IN.arr, HL.arr, HR.arr, *h_min);
@@ -42,8 +42,8 @@ void ppm_limit_pos_f (Real* h_in_h,
     Gpu::synchronize();
 
     // Copy device → host
-    A4::copy_a4_to_f(HL, h_L_h);
-    A4::copy_a4_to_f(HR, h_R_h);
+    A4::copy_a4_to_fh(HL, h_L_h);
+    A4::copy_a4_to_fh(HR, h_R_h);
 
     // Free device memory
     A4::free_a4(H_IN);
@@ -74,9 +74,9 @@ void ppm_limit_cw84_f (Real* h_in_h,
     auto HR   = A4::make_a4(*i_max, *j_max, 1);
 
     // Copy from Fortran arrays to A4 container
-    A4::copy_f_to_a4(h_in_h,H_IN);
-    A4::copy_f_to_a4(h_L_h,HL);
-    A4::copy_f_to_a4(h_R_h,HR);
+    A4::copy_fh_to_a4(h_in_h,H_IN);
+    A4::copy_fh_to_a4(h_L_h,HL);
+    A4::copy_fh_to_a4(h_R_h,HR);
 
     // Launch kernel
     ppm_limit_cw84(bx,H_IN.arr, HL.arr, HR.arr);
@@ -85,8 +85,8 @@ void ppm_limit_cw84_f (Real* h_in_h,
     Gpu::synchronize();
 
     // Copy device → host
-    A4::copy_a4_to_f(HL, h_L_h);
-    A4::copy_a4_to_f(HR, h_R_h);
+    A4::copy_a4_to_fh(HL, h_L_h);
+    A4::copy_a4_to_fh(HR, h_R_h);
 
     // Free device memory
     A4::free_a4(H_IN);

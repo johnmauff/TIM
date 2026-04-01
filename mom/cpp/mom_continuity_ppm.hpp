@@ -5,7 +5,6 @@
 
 #include <AMReX_Box.H>
 
-using namespace amrex;
 void ppm_limit_pos(Box const& bx,
                           Array4<Real> const& H_IN,
                           Array4<Real> & HL,
