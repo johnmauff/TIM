@@ -4,8 +4,9 @@
 #include <AMReX_Gpu.H>
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
+#include <AMReX_VisMF.H>
 
-#include <a4_helper.hpp>
+#include <tim_helper.hpp>
 
 namespace timh {
 
@@ -128,7 +129,7 @@ void copy_a4_to_fh(const A4Box& a4, double* f)
 
 }
 
-MultiFab make_mf_from_a4(const A4Box& a4)
+amrex::MultiFab make_mf_from_a4(const A4Box& a4)
 {
     using namespace amrex;
 
@@ -142,7 +143,7 @@ MultiFab make_mf_from_a4(const A4Box& a4)
     return mf;
 }
 
-void fill_mf_from_a4(MultiFab& mf, const A4Box& a4)
+void fill_mf_from_a4(amrex::MultiFab& mf, const A4Box& a4)
 {
     using namespace amrex;
 
