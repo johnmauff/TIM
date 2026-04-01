@@ -3,10 +3,11 @@
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
 #include <AMReX_Array4.H>
+#include <AMReX_MultiFab.H>
 
 #include <a4_helper.hpp>
 
-namespace A4 {
+namespace timh {
 
 struct A4Box
 {
@@ -101,6 +102,7 @@ void copy_a4_to_fh(const A4Box& a4, double* f)
     int nx = a4.nx;
     int ny = a4.ny;
     int nz = a4.nz;
+    int ncomp = a4.ncomp;
 
     auto arr = a4.arr;
     Real* d_f = a4.data_f;
@@ -125,5 +127,48 @@ void copy_a4_to_fh(const A4Box& a4, double* f)
     Gpu::streamSynchronize();
 
 }
+
+MultiFab make_mf_from_a4(const A4Box& a4)
+{
+    using namespace amrex;
+
+    BoxArray ba(a4.bx);
+    ba.maxSize(a4.bx.size());  // single box
+
+    DistributionMapping dm(ba);
+
+    MultiFab mf(ba, dm, a4.ncomp, 0);
+
+    return mf;
+}
+
+void fill_mf_from_a4(MultiFab& mf, const A4Box& a4)
+{
+    using namespace amrex;
+
+    for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+    {
+        auto mf_arr = mf.array(mfi);
+        auto a4_arr = a4.arr;
+        Box bx = mfi.validbox();
+
+        ParallelFor(bx, a4.ncomp,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n)
+        {
+            mf_arr(i,j,k,n) = a4_arr(i,j,k,n);
+        });
+    }
+}
+void write_a4_vismf(const A4Box& a4, const std::string& name)
+{
+    using namespace amrex;
+
+    MultiFab mf = make_mf_from_a4(a4);
+
+    fill_mf_from_a4(mf, a4);
+
+    VisMF::Write(mf, name);
+}
+
 }
 #endif

@@ -2,7 +2,7 @@
 #define A4_HELPER_H_
 #include <AMReX_Array4.H>
 
-namespace A4 {
+namespace timh {
 
 struct A4Box
 {
@@ -17,5 +17,8 @@ struct A4Box
    void free_a4(A4Box& a4);
    void copy_fh_to_a4(const double* f, A4Box& a4);
    void copy_a4_to_fh(const A4Box& a4, double* f);
-   }
+   MultiFab make_mf_from_a4(const A4Box& a4);
+   void fill_mf_from_a4(MultiFab& Mf, const A4Box& at);
+   void write_a4_vismf(const A4Box & a4, const std::string & name);
+}
 #endif
