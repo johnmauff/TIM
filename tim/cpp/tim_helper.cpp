@@ -1,5 +1,3 @@
-#ifndef A4_HELPER_H_
-#define A4_HELPER_H_
 #include <AMReX_Arena.H>
 #include <AMReX_Gpu.H>
 #include <AMReX_Array4.H>
@@ -12,17 +10,6 @@ namespace fs = std::filesystem;
 #include <tim_helper.hpp>
 
 namespace timh {
-
-struct A4Box
-{
-    amrex::Box bx;
-    amrex::Real* data = nullptr;     // Raw C-pointer on device C order
-    amrex::Array4<amrex::Real> arr;  //  AMReX view C order
-
-    amrex::Real* data_f = nullptr;  // Raw C-pointer on device Fortran order
-
-    int nx, ny, nz, ncomp;
-};
 
 A4Box make_a4(int nx, int ny, int nz, int ncomp)
 {
@@ -183,4 +170,3 @@ void write_a4_vismf(const A4Box& a4, const std::string& name)
 }
 
 }
-#endif

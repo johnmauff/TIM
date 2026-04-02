@@ -1,5 +1,6 @@
 module tim_helperF
 
+  implicit none
 !#include <timH.h>
   logical, parameter :: use_AMREX = .TRUE.
   !integer, parameter :: TIMH_runAMREX   = _TIMH_RUNAMREX, &
@@ -36,7 +37,7 @@ contains
       if (present(default)) then
         mode = default
       else
-        mode = MODE_FORTRAN   ! sensible fallback
+        mode = TIMH_runFORTRAN  ! sensible fallback
       end if
       return
     end if
