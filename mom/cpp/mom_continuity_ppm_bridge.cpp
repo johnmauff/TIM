@@ -4,7 +4,6 @@
 
 using namespace amrex;
 
-
 #include "mom_continuity_ppm.hpp"
 #include "tim_helper.hpp"
 extern "C"
@@ -19,18 +18,17 @@ void ppm_limit_pos_c (Real* h_in_h,
                       const int* i_min,
                       const int* i_max,
                       const int* j_min,
-                      const int* j_max)
+                      const int* j_max,
+		      const int* mode)
 {
     bool debug = std::getenv("PPM_LIMIT_POS_DEBUG") != nullptr;
 
     std::string tag = "debug_ppm_limit_pos/";
     std::ofstream meta( tag + "meta.txt");
 
-
     // Define Active domain (kernel launch only on real cells)
     Box bx(IntVect(*lo_i, *lo_j, 0),
 	       IntVect(*hi_i, *hi_j, 0));
-
 
     // Create A4 containers for the Fortran arrays
     auto H_IN = timh::make_a4(*i_max, *j_max, 1, 1);
@@ -42,32 +40,42 @@ void ppm_limit_pos_c (Real* h_in_h,
     timh::copy_fh_to_a4(h_L_h,HL);
     timh::copy_fh_to_a4(h_R_h,HR);
 
-    if (debug) { 
-       Gpu::streamSynchronize();
-       timh::write_a4_vismf(H_IN, tag + "_H_IN_before");
-       timh::write_a4_vismf(HL,   tag + "_HL_before");
-       timh::write_a4_vismf(HR,   tag + "_HR_before");
-       meta << "h_min = " << *h_min << "\n";
-       meta << "lo_i = " << *lo_i << "\n";
-       meta << "hi_i = " << *hi_i << "\n";
-       meta << "lo_j = " << *lo_j << "\n";
-       meta << "hi_j = " << *hi_j << "\n";
+    switch (*mode) {
+      case 101:  // FIXME: elimiate hardcoded constants
+         //-------------------------------------------------
+         // Capture input
+         //-------------------------------------------------
+         Gpu::streamSynchronize();
+         timh::write_a4_vismf(H_IN, tag + "_H_IN_before");
+         timh::write_a4_vismf(HL,   tag + "_HL_before");
+         timh::write_a4_vismf(HR,   tag + "_HR_before");
+         meta << "h_min = " << *h_min << "\n";
+         meta << "lo_i = " << *lo_i << "\n";
+         meta << "hi_i = " << *hi_i << "\n";
+         meta << "lo_j = " << *lo_j << "\n";
+         meta << "hi_j = " << *hi_j << "\n";
+         //-------------------------------------------------
+      case 103: // FIXME: eliminate hardcoded constants
+         //-------------------------------------------------
+         //  Execute kernel
+         //-------------------------------------------------
+         ppm_limit_pos(bx,H_IN.arr, HL.arr, HR.arr, *h_min);
+
+         // Ensure kernel is done before copying back
+         Gpu::synchronize();
+
+         // Copy device → host
+         timh::copy_a4_to_fh(HL, h_L_h);
+         timh::copy_a4_to_fh(HR, h_R_h);
+         //-------------------------------------------------
+      case 102: // FIXME: eliminate hardcode constants
+         //-------------------------------------------------
+         // Capture Output
+         //-------------------------------------------------
+         timh::write_a4_vismf(HL, tag + "_HL_after");
+         timh::write_a4_vismf(HR, tag + "_HR_after");
+         //-------------------------------------------------
     }
-
-    // Launch kernel
-    ppm_limit_pos(bx,H_IN.arr, HL.arr, HR.arr, *h_min);
-
-    // Ensure kernel is done before copying back
-    Gpu::synchronize();
-
-    if (debug) {
-       timh::write_a4_vismf(HL, tag + "_HL_after");
-       timh::write_a4_vismf(HR, tag + "_HR_after");
-    }
-
-    // Copy device → host
-    timh::copy_a4_to_fh(HL, h_L_h);
-    timh::copy_a4_to_fh(HR, h_R_h);
 
     // Free device memory
     timh::free_a4(H_IN);
