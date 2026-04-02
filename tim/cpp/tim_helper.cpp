@@ -5,6 +5,9 @@
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_VisMF.H>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #include <tim_helper.hpp>
 
@@ -163,6 +166,14 @@ void fill_mf_from_a4(amrex::MultiFab& mf, const A4Box& a4)
 void write_a4_vismf(const A4Box& a4, const std::string& name)
 {
     using namespace amrex;
+
+     // Create directory if needed
+    fs::path p(name);
+    fs::path dir = p.parent_path();
+
+    if (!dir.empty() && !fs::exists(dir)) {
+        fs::create_directories(dir);
+    }
 
     MultiFab mf = make_mf_from_a4(a4);
 
