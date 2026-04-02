@@ -4,16 +4,19 @@
 
 namespace timh {
 
+
 struct A4Box
 {
     amrex::Box bx;
-    amrex::Real* data = nullptr;
-    amrex::Array4<amrex::Real> arr;
+    amrex::Real* data = nullptr;     // Raw C-pointer on device C order
+    amrex::Array4<amrex::Real> arr;  //  AMReX view C order
+
+    amrex::Real* data_f = nullptr;  // Raw C-pointer on device Fortran order
 
     int nx, ny, nz, ncomp;
 };
 
-   A4Box make_a4(int nx, int ny, int nz, int ncomp=1);
+   A4Box make_a4(int nx, int ny, int nz, int ncomp);
    void free_a4(A4Box& a4);
    void copy_fh_to_a4(const double* f, A4Box& a4);
    void copy_a4_to_fh(const A4Box& a4, double* f);

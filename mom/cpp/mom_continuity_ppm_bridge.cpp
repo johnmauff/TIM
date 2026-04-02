@@ -21,25 +21,49 @@ void ppm_limit_pos_c (Real* h_in_h,
                       const int* j_min,
                       const int* j_max)
 {
+    bool debug = std::getenv("PPM_LIMIT_POS_DEBUG") != nullptr;
+
+    std::string tag = "debug_ppm_limit_pos/";
+    std::ofstream meta( tag + "meta.txt");
+
+
     // Define Active domain (kernel launch only on real cells)
     Box bx(IntVect(*lo_i, *lo_j, 0),
 	       IntVect(*hi_i, *hi_j, 0));
 
+
     // Create A4 containers for the Fortran arrays
-    auto H_IN = timh::make_a4(*i_max, *j_max, 1);
-    auto HL   = timh::make_a4(*i_max, *j_max, 1);
-    auto HR   = timh::make_a4(*i_max, *j_max, 1);
+    auto H_IN = timh::make_a4(*i_max, *j_max, 1, 1);
+    auto HL   = timh::make_a4(*i_max, *j_max, 1, 1);
+    auto HR   = timh::make_a4(*i_max, *j_max, 1, 1);
 
     // Copy from Fortran arrays to A4 container
     timh::copy_fh_to_a4(h_in_h,H_IN);
     timh::copy_fh_to_a4(h_L_h,HL);
     timh::copy_fh_to_a4(h_R_h,HR);
 
+    if (debug) { 
+       Gpu::streamSynchronize();
+       timh::write_a4_vismf(H_IN, tag + "_H_IN_before");
+       timh::write_a4_vismf(HL,   tag + "_HL_before");
+       timh::write_a4_vismf(HR,   tag + "_HR_before");
+       meta << "h_min = " << *h_min << "\n";
+       meta << "lo_i = " << *lo_i << "\n";
+       meta << "hi_i = " << *hi_i << "\n";
+       meta << "lo_j = " << *lo_j << "\n";
+       meta << "hi_j = " << *hi_j << "\n";
+    }
+
     // Launch kernel
     ppm_limit_pos(bx,H_IN.arr, HL.arr, HR.arr, *h_min);
 
     // Ensure kernel is done before copying back
     Gpu::synchronize();
+
+    if (debug) {
+       timh::write_a4_vismf(HL, tag + "_HL_after");
+       timh::write_a4_vismf(HR, tag + "_HR_after");
+    }
 
     // Copy device → host
     timh::copy_a4_to_fh(HL, h_L_h);
