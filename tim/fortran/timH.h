@@ -1,4 +1,0 @@
-
-#define _TIMH_CAPTURE_INPUT 101
-#define _TIMH_CAPTURE_OUTPUT 102
-#define _TIMH_RUN 103
