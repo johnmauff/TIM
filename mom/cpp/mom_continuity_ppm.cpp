@@ -6,11 +6,14 @@
 
 using namespace amrex;
 
+/**
+ * @brief Piecewise parabolic limiter
+ */
 void ppm_limit_pos(Box const& bx,
 			  Array4<Real> const& H_IN,
 			  Array4<Real> & HL,
 			  Array4<Real> & HR,
-                          Real hmin)
+                          Real const hmin)
 {
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
@@ -23,6 +26,9 @@ void ppm_limit_pos(Box const& bx,
     });
 }
 
+/**
+ * @brief Peacewise parabolic limiter of Colella and Woodward, 1984
+ */
 void ppm_limit_cw84(Box const& bx,
 			  Array4<Real> const& H_IN,
 			  Array4<Real> & HL,
