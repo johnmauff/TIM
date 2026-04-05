@@ -49,6 +49,7 @@ void ppm_limit_pos_bridge (const Real* h_in_h,
                       	   const int* i_max,
                       	   const int* j_min,
                       	   const int* j_max,
+			   const int* nz, 
 		      	   const int* mode)
 {
 
@@ -57,12 +58,12 @@ void ppm_limit_pos_bridge (const Real* h_in_h,
 
     /// Define Active domain (kernel launch only on real cells)
     Box bx(IntVect(*lo_i, *lo_j, 0),
-	       IntVect(*hi_i, *hi_j, 0));
+	       IntVect(*hi_i, *hi_j, *nz-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = timh::make_a4(*i_max, *j_max, 1, 1);
-    auto HL   = timh::make_a4(*i_max, *j_max, 1, 1);
-    auto HR   = timh::make_a4(*i_max, *j_max, 1, 1);
+    auto H_IN = timh::make_a4(*i_max, *j_max, *nz, 1);
+    auto HL   = timh::make_a4(*i_max, *j_max, *nz, 1);
+    auto HR   = timh::make_a4(*i_max, *j_max, *nz, 1);
 
     /// Copy from Fortran arrays to A4 container
     timh::copy_fh_to_a4(h_in_h,H_IN);
@@ -159,18 +160,19 @@ void ppm_limit_cw84_bridge (const Real* h_in_h,
                       	    const int* i_max,
                       	    const int* j_min,
                       	    const int* j_max,
+			    const int* nz,
 		      	    const int* mode)
 {
     /// Define the output directory for captured data
     std::string dir = "debug_ppm_limit_cw84/";
     /// Define Active domain (kernel launch only on real cells)
     Box bx(IntVect(*lo_i, *lo_j, 0),
-	       IntVect(*hi_i, *hi_j, 0));
+	       IntVect(*hi_i, *hi_j, *nz-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = timh::make_a4(*i_max, *j_max, 1, 1);
-    auto HL   = timh::make_a4(*i_max, *j_max, 1, 1);
-    auto HR   = timh::make_a4(*i_max, *j_max, 1, 1);
+    auto H_IN = timh::make_a4(*i_max, *j_max, *nz, 1);
+    auto HL   = timh::make_a4(*i_max, *j_max, *nz, 1);
+    auto HR   = timh::make_a4(*i_max, *j_max, *nz, 1);
 
     /// Copy from Fortran arrays to A4 container
     timh::copy_fh_to_a4(h_in_h,H_IN);
