@@ -361,8 +361,8 @@ void ppm_limit_cw84_bridge2 (const Box_C* bx_h,
     /// Define the output directory for captured data
     std::string dir = "debug/ppm_limit_cw842/";
     /// Define Active domain (kernel launch only on real cells)
-    Box bx(IntVect(bx_h->idxS[0], bx_h->idxS[1], 0),
-           IntVect(bx_h->idxE[0], bx_h->idxE[1], 0));
+    Box bx(IntVect(bx_h->idxS[0]-1, bx_h->idxS[1]-1, bx_h->idxS[2]-1),
+           IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
     auto H_IN = timh::make_a4(h_in_h->shape[0], h_in_h->shape[1], 1, 1);
