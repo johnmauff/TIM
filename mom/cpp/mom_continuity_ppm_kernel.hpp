@@ -11,7 +11,7 @@
 /**
  * @brief Piecewise parabolic limiter
  *
- *  This funciton limits the left/right edge values of the PPM reconstruction
+ *  This function limits the left/right edge values of the PPM reconstruction
  *  to give a reconstruction that is positive-definite.  Here this is
  *  reinterpreted as giving a constant thickness if the mean thickness is less
  *  than @p h_min, with a minimum of @p h_min otherwise.

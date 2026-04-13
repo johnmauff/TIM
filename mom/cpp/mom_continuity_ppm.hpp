@@ -25,7 +25,7 @@ void ppm_limit_cw84(const amrex::Box & bx,
                     amrex::Array4<amrex::Real> const& HR);
 
 /**
- * @brief Peicewise reconstruction in the y dimension
+ * @brief Piecewise reconstruction in the y dimension
  */
 void PPM_reconstruction_y(
     const amrex::Box&,

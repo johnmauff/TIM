@@ -115,7 +115,7 @@ void PPM_reconstruction_y(
 		amrex::Real dMn = h_in(i,j,k) - amrex::min(amrex::min(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k));
 
                 slp(i,j,k) = amrex::Math::copysign(
-                    amrex::min(std::abs(slope), 2.0 * amrex::min(dMx, dMn)),
+                    amrex::min(amrex::Math::abs(slope), 2.0 * amrex::min(dMx, dMn)),
                     slope
                 );
             }

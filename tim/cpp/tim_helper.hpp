@@ -2,6 +2,7 @@
 #define A4_HELPER_H_
 #include <AMReX_Array4.H>
 #include <AMReX_MultiFab.H>
+#include <string>
 
 namespace timh {
 
