@@ -289,7 +289,7 @@ void ppm_reconstruction_y_bridge(const Box_C* bx_h,
                               *h_min,
                               static_cast<bool>(*monotonic),
                               static_cast<bool>(*simple_2nd),
-                              nullptr);    // [FIXME: OBC are currently not supported]
+                              obc);
 
          /// Ensure kernel is done before copying back
          amrex::Gpu::synchronize();

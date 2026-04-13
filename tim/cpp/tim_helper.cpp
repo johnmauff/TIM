@@ -75,13 +75,13 @@ void copy_fh_to_a4(const double* f, A4Box& a4)
 
 
     // Tranpose array from Fortran to C
-    ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+    ParallelFor(bx, ncomp,  [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;
 	int jj = j - lo.y;
 	int kk = k - lo.z;
-        int idx = ii + nx*(jj + ny*kk);  // Fortran layout
-        arr(i,j,k) = d_f[idx];
+        int idx = ii + nx*(jj + ny*(kk + nz*nc));  // Fortran layout with component stride
+        arr(i,j,k,nc) = d_f[idx];
     });
     Gpu::streamSynchronize();
 }
@@ -103,13 +103,13 @@ void copy_a4_to_fh(const A4Box& a4, double* f)
 
     Long n = static_cast<Long>(nx) * ny * nz * ncomp;
 
-    ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+    ParallelFor(bx, ncomp, [=] AMREX_GPU_DEVICE (int i, int j, int k, int nc)
     {
         int ii = i - lo.x;
 	int jj = j - lo.y;
 	int kk = k - lo.z;
-        int idx = ii + nx*(jj + ny*kk);  // Fortran layout
-        d_f[idx] = arr(i,j,k);
+        int idx = ii + nx*(jj + ny*(kk + nz*nc));  // Fortran layout with component stride
+        d_f[idx] = arr(i,j,k,nc);
     });
 
 
