@@ -1,5 +1,6 @@
 // mom_continuity_ppm.cpp
-
+#define AMREX_ABORT_LOC(msg) \
+    amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include "mom_continuity_ppm.hpp"
 
 #include <AMReX_FArrayBox.H>
@@ -66,7 +67,7 @@ void PPM_reconstruction_y(
     // OceanOBC is forward-declared only.
     // All boundary-condition logic removed for initial port validation.
     if (OBC != nullptr) {
-       amrex::Print() << "WARNING: OBC provided but ignored in AMReX path\n";
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
     /*
     bool local_open_BC = false;

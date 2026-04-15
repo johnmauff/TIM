@@ -6,7 +6,6 @@
 
 namespace timh {
 
-
 struct A4Box
 {
     amrex::Box bx;
