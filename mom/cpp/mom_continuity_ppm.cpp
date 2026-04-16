@@ -20,10 +20,7 @@ void ppm_limit_pos(const amrex::Box & bx,
     {
         // This limiter prevents undershooting minima within the domain with
         //  values less than h_min.
-        ppm_limit_pos_cell(HL(i,j,k),
-                           HR(i,j,k),
-                           H_IN(i,j,k),
-                           hmin);
+        ppm_limit_pos_point(HL(i,j,k), HR(i,j,k), H_IN(i,j,k), hmin);
     });
 }
 
@@ -39,9 +36,7 @@ void ppm_limit_cw84(const amrex::Box & bx,
     {
         // This limiter monotonizes the parabola following
         // Colella and Woodward, 1984, Eq. 1.10
-        ppm_limit_cw84_cell(HL(i,j,k),
-                           HR(i,j,k),
-                           H_IN(i,j,k));
+        ppm_limit_cw84_point(HL(i,j,k), HR(i,j,k), H_IN(i,j,k));
     });
 }
 

@@ -19,7 +19,6 @@
  *  @pre H_IN >= 0
  *  @pre hmin > 0
  *
- *  @param bx Array box over which to compute.
  *  @param H_IN Layer thickness [H ~> m or kg m-2].
  *  @param HL  Left thickness in the reconstruction [H ~> m or kg m-2].
  *  @param HR Right thickness in the reconstruction [H ~> m or kg m-2].
@@ -29,11 +28,11 @@
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void ppm_limit_pos_cell(amrex::Real& h_L,
-                        amrex::Real& h_R,
-                        amrex::Real  h_in,
-                        amrex::Real  h_min 
-                        ) noexcept
+void ppm_limit_pos_point(amrex::Real& h_L,
+                         amrex::Real& h_R,
+                         amrex::Real  h_in,
+                         amrex::Real  h_min 
+                         ) noexcept
 {
     // Local variables
     amrex::Real curv;   ///< The grid-normalized curvature of the three thicknesses  [H ~> m or kg m-2]
@@ -72,7 +71,6 @@ void ppm_limit_pos_cell(amrex::Real& h_L,
  *
  *  @pre H_IN >= 0
  *
- *  @param bx Array box over which to compute.
  *  @param H_IN Layer thickness [H ~> m or kg m-2].
  *  @param HL  Left thickness in the reconstruction [H ~> m or kg m-2].
  *  @param HR Right thickness in the reconstruction [H ~> m or kg m-2].
@@ -81,10 +79,10 @@ void ppm_limit_pos_cell(amrex::Real& h_L,
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void ppm_limit_cw84_cell(amrex::Real& h_L,
-                         amrex::Real& h_R,
-                         amrex::Real  h_in
-			 ) noexcept
+void ppm_limit_cw84_point(amrex::Real& h_L,
+                          amrex::Real& h_R,
+                          amrex::Real  h_in
+			  ) noexcept
 {
     // Local variables
     amrex::Real h_i;      ///< A copy of the cell-average layer thickness                [H ~> m or kg m-2]
