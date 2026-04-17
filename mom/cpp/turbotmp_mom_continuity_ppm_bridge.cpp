@@ -1,6 +1,6 @@
 
 #include "mom_continuity_ppm.hpp"
-#include "tim_helper.hpp"
+#include "turbotmp_helper.hpp"
 #include <fstream>
 #include <string>
 
@@ -38,7 +38,7 @@ struct Box_C {
  * @return Modified thickness values @p h_L_h and @p h_R_h
  */
 extern "C"
-void ppm_limit_pos_bridge(const Box_C* bx_h,
+void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_h,
 		           const RealArray_C* h_in_h,
 			   RealArray_C* h_L_h,
 			   RealArray_C* h_R_h,
@@ -52,14 +52,14 @@ void ppm_limit_pos_bridge(const Box_C* bx_h,
 	   IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = timh::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
-    auto HL   = timh::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
-    auto HR   = timh::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
+    auto H_IN = turbotmp::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
+    auto HL   = turbotmp::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
+    auto HR   = turbotmp::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
 
     /// Copy from Fortran arrays to A4 container
-    timh::copy_fh_to_a4(h_in_h->data, H_IN);
-    timh::copy_fh_to_a4(h_L_h->data, HL);
-    timh::copy_fh_to_a4(h_R_h->data, HR);
+    turbotmp::copy_fh_to_a4(h_in_h->data, H_IN);
+    turbotmp::copy_fh_to_a4(h_L_h->data, HL);
+    turbotmp::copy_fh_to_a4(h_R_h->data, HR);
 
     ///-------------------------------------------------
     ///  Execute kernel
@@ -70,13 +70,13 @@ void ppm_limit_pos_bridge(const Box_C* bx_h,
     Gpu::synchronize();
 
     /// Copy device → host
-    timh::copy_a4_to_fh(HL, h_L_h->data);
-    timh::copy_a4_to_fh(HR, h_R_h->data);
+    turbotmp::copy_a4_to_fh(HL, h_L_h->data);
+    turbotmp::copy_a4_to_fh(HR, h_R_h->data);
 
     /// Free a4 container
-    timh::free_a4(H_IN);
-    timh::free_a4(HR);
-    timh::free_a4(HL);
+    turbotmp::free_a4(H_IN);
+    turbotmp::free_a4(HR);
+    turbotmp::free_a4(HL);
 }
 
 /**
@@ -98,7 +98,7 @@ void ppm_limit_pos_bridge(const Box_C* bx_h,
  * @return Modified thickness values @p h_L_h and @p h_R_h
  */
 extern "C"
-void ppm_limit_cw84_bridge(const Box_C* bx_h,
+void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_h,
 	                  const RealArray_C* h_in_h,
                           RealArray_C* h_L_h,
                           RealArray_C* h_R_h)
@@ -110,14 +110,14 @@ void ppm_limit_cw84_bridge(const Box_C* bx_h,
            IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = timh::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
-    auto HL   = timh::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
-    auto HR   = timh::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
+    auto H_IN = turbotmp::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
+    auto HL   = turbotmp::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
+    auto HR   = turbotmp::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
 
     /// Copy from Fortran arrays to A4 container
-    timh::copy_fh_to_a4(h_in_h->data, H_IN);
-    timh::copy_fh_to_a4(h_L_h->data, HL);
-    timh::copy_fh_to_a4(h_R_h->data, HR);
+    turbotmp::copy_fh_to_a4(h_in_h->data, H_IN);
+    turbotmp::copy_fh_to_a4(h_L_h->data, HL);
+    turbotmp::copy_fh_to_a4(h_R_h->data, HR);
 
     ///-------------------------------------------------
     ///  Execute kernel
@@ -128,13 +128,13 @@ void ppm_limit_cw84_bridge(const Box_C* bx_h,
     Gpu::synchronize();
 
     /// Copy device → host
-    timh::copy_a4_to_fh(HL, h_L_h->data);
-    timh::copy_a4_to_fh(HR, h_R_h->data);
+    turbotmp::copy_a4_to_fh(HL, h_L_h->data);
+    turbotmp::copy_a4_to_fh(HR, h_R_h->data);
 
     /// Free memory from a4 containers
-    timh::free_a4(H_IN);
-    timh::free_a4(HR);
-    timh::free_a4(HL);
+    turbotmp::free_a4(H_IN);
+    turbotmp::free_a4(HR);
+    turbotmp::free_a4(HL);
 }
 
 /**
@@ -157,7 +157,7 @@ void ppm_limit_cw84_bridge(const Box_C* bx_h,
  * @return Modified thickness values @p h_S_h and @p h_N_h
  */
 extern "C"
-void ppm_reconstruction_y_bridge(const Box_C* bx_h,
+void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_h,
                                  const RealArray_C* h_in_h,
                                  RealArray_C* h_S_h,
                                  RealArray_C* h_N_h,
@@ -175,16 +175,16 @@ void ppm_reconstruction_y_bridge(const Box_C* bx_h,
                   amrex::IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN    = timh::make_a4(h_in_h->shape[0],    h_in_h->shape[1],    h_in_h->shape[2],    1);
-    auto HS      = timh::make_a4(h_S_h->shape[0],     h_S_h->shape[1],     h_S_h->shape[2],     1);
-    auto HN      = timh::make_a4(h_N_h->shape[0],     h_N_h->shape[1],     h_N_h->shape[2],     1);
-    auto MASK2D  = timh::make_a4(mask2dT_h->shape[0], mask2dT_h->shape[1], 1,                    1);
+    auto H_IN    = turbotmp::make_a4(h_in_h->shape[0],    h_in_h->shape[1],    h_in_h->shape[2],    1);
+    auto HS      = turbotmp::make_a4(h_S_h->shape[0],     h_S_h->shape[1],     h_S_h->shape[2],     1);
+    auto HN      = turbotmp::make_a4(h_N_h->shape[0],     h_N_h->shape[1],     h_N_h->shape[2],     1);
+    auto MASK2D  = turbotmp::make_a4(mask2dT_h->shape[0], mask2dT_h->shape[1], 1,                    1);
 
     /// Copy from Fortran arrays to A4 container
-    timh::copy_fh_to_a4(h_in_h->data,     H_IN);
-    timh::copy_fh_to_a4(h_S_h->data,      HS);
-    timh::copy_fh_to_a4(h_N_h->data,      HN);
-    timh::copy_fh_to_a4(mask2dT_h->data,  MASK2D);
+    turbotmp::copy_fh_to_a4(h_in_h->data,     H_IN);
+    turbotmp::copy_fh_to_a4(h_S_h->data,      HS);
+    turbotmp::copy_fh_to_a4(h_N_h->data,      HN);
+    turbotmp::copy_fh_to_a4(mask2dT_h->data,  MASK2D);
 
     ///-------------------------------------------------
     /// Execute kernel
@@ -204,12 +204,12 @@ void ppm_reconstruction_y_bridge(const Box_C* bx_h,
     amrex::Gpu::synchronize();
 
     /// Copy device → host
-    timh::copy_a4_to_fh(HS, h_S_h->data);
-    timh::copy_a4_to_fh(HN, h_N_h->data);
+    turbotmp::copy_a4_to_fh(HS, h_S_h->data);
+    turbotmp::copy_a4_to_fh(HN, h_N_h->data);
 
     /// Free memory from a4 containers
-    timh::free_a4(H_IN);
-    timh::free_a4(HS);
-    timh::free_a4(HN);
-    timh::free_a4(MASK2D);
+    turbotmp::free_a4(H_IN);
+    turbotmp::free_a4(HS);
+    turbotmp::free_a4(HN);
+    turbotmp::free_a4(MASK2D);
 }

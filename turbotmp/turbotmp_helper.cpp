@@ -7,9 +7,9 @@
 
 namespace fs = std::filesystem;
 
-#include "tim_helper.hpp"
+#include "turbotmp_helper.hpp"
 
-namespace timh {
+namespace turbotmp {
 
 A4Box make_a4(int nx, int ny, int nz, int ncomp)
 {
