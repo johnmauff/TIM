@@ -4,11 +4,11 @@
 #include <stddef.h>
 
 struct RealArray_C {
-    double* data;
-    int* shape;
-    int* lb;
-    int* ub;
-    int rank;
+    double* data;   // Pointer to multidimensional array
+    int* shape;     // An array of dimension extents
+    int* lb;        // Lower bounds
+    int* ub;        // Upper bounds
+    int dim;        // The number of dimension
 };
 struct Box_C {
     int* idxS;
