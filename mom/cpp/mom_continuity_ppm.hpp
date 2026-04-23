@@ -10,30 +10,30 @@ struct OceanOBC;    // Undefined at the moment
 /**
  * @brief Piecewise parabolic limiter
  */
-void ppm_limit_pos(const amrex::Box &,
-                   amrex::Array4<const amrex::Real> const&,
-                   amrex::Array4<amrex::Real> const&,
-                   amrex::Array4<amrex::Real> const&,
-                   const amrex::Real);
+void ppm_limit_pos(const Box &,
+                   Array4<const Real> const&,
+                   Array4<Real> const&,
+                   Array4<Real> const&,
+                   const Real);
 
 /**
  * @brief Piecewise parabolic limiter of Colella and Woodward, 1984
  */
-void ppm_limit_cw84(const amrex::Box&,
-                    amrex::Array4<const amrex::Real> const&,
-                    amrex::Array4<amrex::Real> const&,
-                    amrex::Array4<amrex::Real> const&);
+void ppm_limit_cw84(const Box&,
+                    Array4<const Real> const&,
+                    Array4<Real> const&,
+                    Array4<Real> const&);
 
 /**
  * @brief Piecewise reconstruction in the y dimension
  */
 void PPM_reconstruction_y(
-    const amrex::Box&,
-    amrex::Array4<const amrex::Real> const&,
-    amrex::Array4<amrex::Real> const&,
-    amrex::Array4<amrex::Real> const&,
-    amrex::Array4<const amrex::Real> const&,
-    amrex::Real,
+    const Box&,
+    Array4<const Real> const&,
+    Array4<Real> const&,
+    Array4<Real> const&,
+    Array4<const Real> const&,
+    Real,
     bool,
     bool,
     OceanOBC*);

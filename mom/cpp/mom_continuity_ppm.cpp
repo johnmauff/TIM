@@ -1,20 +1,19 @@
 // mom_continuity_ppm.cpp
 #define AMREX_ABORT_LOC(msg) \
-    amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
+    Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include "mom_continuity_ppm.hpp"
 
 #include <AMReX_FArrayBox.H>
 
-using namespace amrex;
 
 /**
  * @brief Piecewise parabolic limiter
  */
-void ppm_limit_pos(const amrex::Box & bx,
-		  amrex::Array4<const amrex::Real> const& h_in,
-		  amrex::Array4<amrex::Real> const& h_L,
-		  amrex::Array4<amrex::Real> const& h_R,
-                  const amrex::Real h_min)
+void ppm_limit_pos(const Box & bx,
+		  Array4<const Real> const& h_in,
+		  Array4<Real> const& h_L,
+		  Array4<Real> const& h_R,
+                  const Real h_min)
 {
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
@@ -27,10 +26,10 @@ void ppm_limit_pos(const amrex::Box & bx,
 /**
  * @brief Peacewise parabolic limiter of Colella and Woodward, 1984
  */
-void ppm_limit_cw84(const amrex::Box & bx,
-		   amrex::Array4<const amrex::Real> const& h_in,
-		   amrex::Array4<amrex::Real> const& h_L,
-		   amrex::Array4<amrex::Real> const& h_R)
+void ppm_limit_cw84(const Box & bx,
+		   Array4<const Real> const& h_in,
+		   Array4<Real> const& h_L,
+		   Array4<Real> const& h_R)
 {
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
@@ -42,12 +41,12 @@ void ppm_limit_cw84(const amrex::Box & bx,
 
 //> Calculates left/right edge values for PPM reconstruction.
 void PPM_reconstruction_y(
-    const amrex::Box& bxH,                 //!< H-grid iteration Box
-    const amrex::Array4<const amrex::Real>& h_in,   //!< Layer thickness
-    const amrex::Array4<amrex::Real>& h_S,          //!< South edge thickness
-    const amrex::Array4<amrex::Real>& h_N,          //!< North edge thickness
-    const amrex::Array4<const amrex::Real>& mask2dT,//!< 0 for land, 1 for ocean
-    amrex::Real h_min,                     //!< Minimum thickness
+    const Box& bxH,                 //!< H-grid iteration Box
+    const Array4<const Real>& h_in,   //!< Layer thickness
+    const Array4<Real>& h_S,          //!< South edge thickness
+    const Array4<Real>& h_N,          //!< North edge thickness
+    const Array4<const Real>& mask2dT,//!< 0 for land, 1 for ocean
+    Real h_min,                     //!< Minimum thickness
     bool monotonic,                       //!< Use CW84 limiter if true
     bool simple_2nd,                      //!< Use simple 2nd order if true
     OceanOBC* OBC                         //!< Open boundary control structure
@@ -72,23 +71,23 @@ void PPM_reconstruction_y(
     */
 
     // Local iteration box extends the h-grid by one element
-    Box bx  = amrex::grow(bxH, 1, 1);  // grow in y-direction (dim=1)
+    Box bx  = grow(bxH, 1, 1);  // grow in y-direction (dim=1)
 
     // Extended iteration box extends the h-grid by two elements
-    Box bxE = amrex::grow(bxH, 1, 2); // grow in y-dimension (dim=1)
+    Box bxE = grow(bxH, 1, 2); // grow in y-dimension (dim=1)
 
     // Temporary slope array
-    amrex::FArrayBox slp_fab(bxE, 1);
-    amrex::Array4<amrex::Real> slp = slp_fab.array(); 
+    FArrayBox slp_fab(bxE, 1);
+    Array4<Real> slp = slp_fab.array(); 
 
     if (simple_2nd) {
 
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-	    amrex::Real h_jm1 = mask2dT(i,j-1,0) * h_in(i,j-1,k)
+	    Real h_jm1 = mask2dT(i,j-1,0) * h_in(i,j-1,k)
                   + (1.0 - mask2dT(i,j-1,0)) * h_in(i,j,k);
 
-	    amrex::Real h_jp1 = mask2dT(i,j+1,0) * h_in(i,j+1,k)
+	    Real h_jp1 = mask2dT(i,j+1,0) * h_in(i,j+1,k)
                   + (1.0 - mask2dT(i,j+1,0)) * h_in(i,j,k);
 
             h_S(i,j,k) = 0.5 * (h_jm1 + h_in(i,j,k));
@@ -104,14 +103,14 @@ void PPM_reconstruction_y(
                 slp(i,j,k) = 0.0;
             } else {
                 // Simple 2nd order slope
-	        amrex::Real slope = 0.5 * (h_in(i,j+1,k) - h_in(i,j-1,k));
+	        Real slope = 0.5 * (h_in(i,j+1,k) - h_in(i,j-1,k));
 
                 // Monotonic constraint (Lin 1994, Eq. B2)
-		amrex::Real dMx = amrex::max(amrex::max(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k)) - h_in(i,j,k);
-		amrex::Real dMn = h_in(i,j,k) - amrex::min(amrex::min(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k));
+		Real dMx = max(max(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k)) - h_in(i,j,k);
+		Real dMn = h_in(i,j,k) - min(min(h_in(i,j+1,k), h_in(i,j-1,k)), h_in(i,j,k));
 
-                slp(i,j,k) = amrex::Math::copysign(
-                    amrex::min(amrex::Math::abs(slope), 2.0 * amrex::min(dMx, dMn)),
+                slp(i,j,k) = Math::copysign(
+                    min(Math::abs(slope), 2.0 * min(dMx, dMn)),
                     slope
                 );
             }
@@ -144,10 +143,10 @@ void PPM_reconstruction_y(
         // Compute edge values
         ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-	    amrex::Real h_jm1 = mask2dT(i,j-1,0) * h_in(i,j-1,k)
+	    Real h_jm1 = mask2dT(i,j-1,0) * h_in(i,j-1,k)
                   + (1.0 - mask2dT(i,j-1,0)) * h_in(i,j,k);
 
-	    amrex::Real h_jp1 = mask2dT(i,j+1,0) * h_in(i,j+1,k)
+	    Real h_jp1 = mask2dT(i,j+1,0) * h_in(i,j+1,k)
                   + (1.0 - mask2dT(i,j+1,0)) * h_in(i,j,k);
 
             // Left/right values (Lin 1994 Eq. B2)
