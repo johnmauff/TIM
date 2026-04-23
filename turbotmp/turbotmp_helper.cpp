@@ -5,13 +5,11 @@
 #include <AMReX_VisMF.H>
 #include <filesystem>
 
-namespace fs = std::filesystem;
-
 #include "turbotmp_helper.hpp"
 
 namespace turbotmp {
 
-A4Box make_a4(int nx, int ny, int nz, int ncomp)
+A4Box make_array4(int nx, int ny, int nz, int ncomp)
 {
     using namespace amrex;
 
@@ -36,7 +34,7 @@ A4Box make_a4(int nx, int ny, int nz, int ncomp)
     return a4;
 }
 
-void free_a4(A4Box& a4)
+void free_array4(A4Box& a4)
 {
     using namespace amrex;
 
@@ -51,7 +49,7 @@ void free_a4(A4Box& a4)
     }
 }
 
-void copy_fh_to_a4(const double* f, A4Box& a4)
+void copy_FortranHost_to_array4(const double* f, A4Box& a4)
 {
     using namespace amrex;
 
@@ -86,7 +84,7 @@ void copy_fh_to_a4(const double* f, A4Box& a4)
     Gpu::streamSynchronize();
 }
 
-void copy_a4_to_fh(const A4Box& a4, double* f)
+void copy_array4_to_FortranHost(const A4Box& a4, double* f)
 {
     using namespace amrex;
 
@@ -113,60 +111,10 @@ void copy_a4_to_fh(const A4Box& a4, double* f)
     });
 
 
-    // Copy host -> device
+    // Copy device -> Host
     Gpu::copy(Gpu::deviceToHost, d_f, d_f+n,f);
     Gpu::streamSynchronize();
 
-}
-
-amrex::MultiFab make_mf_from_a4(const A4Box& a4)
-{
-    using namespace amrex;
-
-    BoxArray ba(a4.bx);
-    ba.maxSize(a4.bx.size());  // single box
-
-    DistributionMapping dm(ba);
-
-    MultiFab mf(ba, dm, a4.ncomp, 0);
-
-    return mf;
-}
-
-void fill_mf_from_a4(amrex::MultiFab& mf, const A4Box& a4)
-{
-    using namespace amrex;
-
-    for (MFIter mfi(mf); mfi.isValid(); ++mfi)
-    {
-        auto mf_arr = mf.array(mfi);
-        auto a4_arr = a4.arr;
-        Box bx = mfi.validbox();
-
-        ParallelFor(bx, a4.ncomp,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n)
-        {
-            mf_arr(i,j,k,n) = a4_arr(i,j,k,n);
-        });
-    }
-}
-void write_a4_vismf(const A4Box& a4, const std::string& name)
-{
-    using namespace amrex;
-
-     // Create directory if needed
-    fs::path p(name);
-    fs::path dir = p.parent_path();
-
-    if (!dir.empty() && !fs::exists(dir)) {
-        fs::create_directories(dir);
-    }
-
-    MultiFab mf = make_mf_from_a4(a4);
-
-    fill_mf_from_a4(mf, a4);
-
-    VisMF::Write(mf, name);
 }
 
 }

@@ -1,22 +1,11 @@
 
 #include "mom_continuity_ppm.hpp"
 #include "turbotmp_helper.hpp"
+#include "turbotmp_mom_continuity_ppm_bridge.h"
 #include <fstream>
 #include <string>
 
 using namespace amrex;
-
-struct RealArray_C {
-    double* data;
-    int* shape;
-    int* lb;
-    int* ub;
-    int rank;
-};
-struct Box_C {
-    int* idxS;
-    int* idxE;
-};
 
 /**
  * @brief Bridge for the function PPM_limit_pos function
@@ -26,57 +15,53 @@ struct Box_C {
  * to either capture the input, or output or execute the AMReX C++ 
  * implementation based on the setting of the @p mode parameter.
  *
- * @param h_in_h Layer thickness [H → m or kg m^-2] 
+ * @param h_in_HOST Layer thickness [H → m or kg m^-2] 
  * 	on the host in Fortran order
- * @param h_L_h, Left thickness of the reconstruction {host, Fortran order} 
+ * @param h_L_HOST, Left thickness of the reconstruction {host, Fortran order} 
  * 	[H → m or kg m^-2]
- * @param h_R_h, Right thickness in the reconstruction {host, Fortran order} 
+ * @param h_R_HOST, Right thickness in the reconstruction {host, Fortran order} 
  * 	[H → m or kg m^-2] 
  * @param hmin Minimum thickness allowed by the parabolic fit (host, Fortran order) 
  * 	[H → m or kg m^-2]
  *
- * @return Modified thickness values @p h_L_h and @p h_R_h
+ * @return Modified thickness values @p h_L_HOST and @p h_R_HOST
  */
-extern "C"
-void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_h,
-		           const RealArray_C* h_in_h,
-			   RealArray_C* h_L_h,
-			   RealArray_C* h_R_h,
-	                   const Real* h_min)
+void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
+		                   const RealArray_C* h_in_HOST,
+			           RealArray_C* h_L_HOST,
+			           RealArray_C* h_R_HOST,
+	                           const double* h_min)
 { 
-    /// Define the output directory for captured data
-    std::string dir = "debug/ppm_limit_pos/";
-
     /// Define Active domain (kernel launch only on real cells)
-    Box bx(IntVect(bx_h->idxS[0]-1, bx_h->idxS[1]-1, bx_h->idxS[2]-1),
-	   IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
+    Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
+	   IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = turbotmp::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
-    auto HL   = turbotmp::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
-    auto HR   = turbotmp::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
 
     /// Copy from Fortran arrays to A4 container
-    turbotmp::copy_fh_to_a4(h_in_h->data, H_IN);
-    turbotmp::copy_fh_to_a4(h_L_h->data, HL);
-    turbotmp::copy_fh_to_a4(h_R_h->data, HR);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_L_HOST->data, h_L_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_R_HOST->data, h_R_DEV);
 
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
-    ppm_limit_pos(bx,H_IN.arr, HL.arr, HR.arr, *h_min);
+    ppm_limit_pos(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr, *h_min);
 
     /// Ensure kernel is done before copying back
     Gpu::synchronize();
 
     /// Copy device → host
-    turbotmp::copy_a4_to_fh(HL, h_L_h->data);
-    turbotmp::copy_a4_to_fh(HR, h_R_h->data);
+    turbotmp::copy_array4_to_FortranHost(h_L_DEV, h_L_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(h_R_DEV, h_R_HOST->data);
 
     /// Free a4 container
-    turbotmp::free_a4(H_IN);
-    turbotmp::free_a4(HR);
-    turbotmp::free_a4(HL);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_R_DEV);
+    turbotmp::free_array4(h_L_DEV);
 }
 
 /**
@@ -87,54 +72,51 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_h,
  * to either capture the input, or output or execute the AMReX C++
  * implementation based on the setting of the @p mode parameter.
  *
- * @param bx_h   Box over which to iterate 
- * @param h_in_h Layer thickness [H → m or kg m^-2]
+ * @param bx_HOST   Box over which to iterate 
+ * @param h_in_HOST Layer thickness [H → m or kg m^-2]
  *      on the host in Fortran order
- * @param h_L_h, Left thickness of the reconstruction {host, Fortran order}
+ * @param h_L_HOST, Left thickness of the reconstruction {host, Fortran order}
  *      [H → m or kg m^-2]
- * @param h_R_h, Right thickness in the reconstruction {host, Fortran order}
+ * @param h_R_HOST, Right thickness in the reconstruction {host, Fortran order}
  *      [H → m or kg m^-2]
  *
- * @return Modified thickness values @p h_L_h and @p h_R_h
+ * @return Modified thickness values @p h_L_HOST and @p h_R_HOST
  */
-extern "C"
-void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_h,
-	                  const RealArray_C* h_in_h,
-                          RealArray_C* h_L_h,
-                          RealArray_C* h_R_h)
+void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
+	                  const RealArray_C* h_in_HOST,
+                          RealArray_C* h_L_HOST,
+                          RealArray_C* h_R_HOST)
 {
-    /// Define the output directory for captured data
-    std::string dir = "debug/ppm_limit_cw84/";
     /// Define Active domain (kernel launch only on real cells)
-    Box bx(IntVect(bx_h->idxS[0]-1, bx_h->idxS[1]-1, bx_h->idxS[2]-1),
-           IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
+    Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
+           IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN = turbotmp::make_a4(h_in_h->shape[0], h_in_h->shape[1], h_in_h->shape[2], 1);
-    auto HL   = turbotmp::make_a4(h_L_h->shape[0],  h_L_h->shape[1],  h_L_h->shape[2], 1);
-    auto HR   = turbotmp::make_a4(h_R_h->shape[0],  h_R_h->shape[1],  h_R_h->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
 
     /// Copy from Fortran arrays to A4 container
-    turbotmp::copy_fh_to_a4(h_in_h->data, H_IN);
-    turbotmp::copy_fh_to_a4(h_L_h->data, HL);
-    turbotmp::copy_fh_to_a4(h_R_h->data, HR);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_L_HOST->data, h_L_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_R_HOST->data, h_R_DEV);
 
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
-    ppm_limit_cw84(bx,H_IN.arr, HL.arr, HR.arr);
+    ppm_limit_cw84(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr);
 
     /// Ensure kernel is done before copying back
     Gpu::synchronize();
 
     /// Copy device → host
-    turbotmp::copy_a4_to_fh(HL, h_L_h->data);
-    turbotmp::copy_a4_to_fh(HR, h_R_h->data);
+    turbotmp::copy_array4_to_FortranHost(h_L_DEV, h_L_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(h_R_DEV, h_R_HOST->data);
 
     /// Free memory from a4 containers
-    turbotmp::free_a4(H_IN);
-    turbotmp::free_a4(HR);
-    turbotmp::free_a4(HL);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_R_DEV);
+    turbotmp::free_array4(h_L_DEV);
 }
 
 /**
@@ -145,56 +127,52 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_h,
  * to either capture the input, or output or execute the AMReX C++
  * implementation based on the setting of the @p mode parameter.
  *
- * @param bx_h        Box over which to iterate
- * @param h_in_h      Layer thickness [H → m or kg m^-2] (host, Fortran order)
- * @param h_S_h       South edge thickness (host, Fortran order)
- * @param h_N_h       North edge thickness (host, Fortran order)
- * @param mask2dT_h   Mask (0 land, 1 ocean) (host, Fortran order)
+ * @param bx_HOST        Box over which to iterate
+ * @param h_in_HOST      Layer thickness [H → m or kg m^-2] (host, Fortran order)
+ * @param h_S_HOST       South edge thickness (host, Fortran order)
+ * @param h_N_HOST       North edge thickness (host, Fortran order)
+ * @param mask2dT_HOST   Mask (0 land, 1 ocean) (host, Fortran order)
  * @param h_min       Minimum thickness
  * @param monotonic   Use CW84 limiter if true
  * @param simple_2nd  Use simple 2nd order scheme if true
  *
- * @return Modified thickness values @p h_S_h and @p h_N_h
+ * @return Modified thickness values @p h_S_HOST and @p h_N_HOST
  */
-extern "C"
-void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_h,
-                                 const RealArray_C* h_in_h,
-                                 RealArray_C* h_S_h,
-                                 RealArray_C* h_N_h,
-                                 const RealArray_C* mask2dT_h,
-                                 const amrex::Real* h_min,
-                                 const int* monotonic,
-                                 const int* simple_2nd,
-				 OceanOBC* obc)
+void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
+                                          const RealArray_C* h_in_HOST,
+                                          RealArray_C* h_S_HOST,
+                                          RealArray_C* h_N_HOST,
+                                          const RealArray_C* mask2dT_HOST,
+                                          const double* h_min,
+                                          const int* monotonic,
+                                          const int* simple_2nd,
+				          OceanOBC* obc)
 {
-    /// Define the output directory for captured data
-    std::string dir = "debug/ppm_reconstruction_y/";
-
     /// Define Active domain (kernel launch only on real cells)
-    amrex::Box bx(amrex::IntVect(bx_h->idxS[0]-1, bx_h->idxS[1]-1, bx_h->idxS[2]-1),
-                  amrex::IntVect(bx_h->idxE[0]-1, bx_h->idxE[1]-1, bx_h->idxE[2]-1));
+    amrex::Box bx(amrex::IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
+                  amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto H_IN    = turbotmp::make_a4(h_in_h->shape[0],    h_in_h->shape[1],    h_in_h->shape[2],    1);
-    auto HS      = turbotmp::make_a4(h_S_h->shape[0],     h_S_h->shape[1],     h_S_h->shape[2],     1);
-    auto HN      = turbotmp::make_a4(h_N_h->shape[0],     h_N_h->shape[1],     h_N_h->shape[2],     1);
-    auto MASK2D  = turbotmp::make_a4(mask2dT_h->shape[0], mask2dT_h->shape[1], 1,                    1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2],    1);
+    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1],  h_S_HOST->shape[2],     1);
+    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1],  h_N_HOST->shape[2],     1);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,               1);
 
     /// Copy from Fortran arrays to A4 container
-    turbotmp::copy_fh_to_a4(h_in_h->data,     H_IN);
-    turbotmp::copy_fh_to_a4(h_S_h->data,      HS);
-    turbotmp::copy_fh_to_a4(h_N_h->data,      HN);
-    turbotmp::copy_fh_to_a4(mask2dT_h->data,  MASK2D);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,     h_S_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,     h_N_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data, mask2dT_DEV);
 
     ///-------------------------------------------------
     /// Execute kernel
     ///-------------------------------------------------
 
     PPM_reconstruction_y(bx,
-                         H_IN.arr,
-                         HS.arr,
-                         HN.arr,
-                         MASK2D.arr,
+                         h_in_DEV.arr,
+                         h_S_DEV.arr,
+                         h_N_DEV.arr,
+                         mask2dT_DEV.arr,
                          *h_min,
                          static_cast<bool>(*monotonic),
                          static_cast<bool>(*simple_2nd),
@@ -204,12 +182,12 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_h,
     amrex::Gpu::synchronize();
 
     /// Copy device → host
-    turbotmp::copy_a4_to_fh(HS, h_S_h->data);
-    turbotmp::copy_a4_to_fh(HN, h_N_h->data);
+    turbotmp::copy_array4_to_FortranHost(h_S_DEV, h_S_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(h_N_DEV, h_N_HOST->data);
 
     /// Free memory from a4 containers
-    turbotmp::free_a4(H_IN);
-    turbotmp::free_a4(HS);
-    turbotmp::free_a4(HN);
-    turbotmp::free_a4(MASK2D);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_S_DEV);
+    turbotmp::free_array4(h_N_DEV);
+    turbotmp::free_array4(mask2dT_DEV);
 }

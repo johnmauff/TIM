@@ -11,16 +11,16 @@ using namespace amrex;
  * @brief Piecewise parabolic limiter
  */
 void ppm_limit_pos(const amrex::Box & bx,
-		  amrex::Array4<const amrex::Real> const& H_IN,
-		  amrex::Array4<amrex::Real> const& HL,
-		  amrex::Array4<amrex::Real> const& HR,
-                  const amrex::Real hmin)
+		  amrex::Array4<const amrex::Real> const& h_in,
+		  amrex::Array4<amrex::Real> const& h_L,
+		  amrex::Array4<amrex::Real> const& h_R,
+                  const amrex::Real h_min)
 {
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter prevents undershooting minima within the domain with
         //  values less than h_min.
-        ppm_limit_pos_point(HL(i,j,k), HR(i,j,k), H_IN(i,j,k), hmin);
+        ppm_limit_pos_point(h_L(i,j,k), h_R(i,j,k), h_in(i,j,k), h_min);
     });
 }
 
@@ -28,15 +28,15 @@ void ppm_limit_pos(const amrex::Box & bx,
  * @brief Peacewise parabolic limiter of Colella and Woodward, 1984
  */
 void ppm_limit_cw84(const amrex::Box & bx,
-		   amrex::Array4<const amrex::Real> const& H_IN,
-		   amrex::Array4<amrex::Real> const& HL,
-		   amrex::Array4<amrex::Real> const& HR)
+		   amrex::Array4<const amrex::Real> const& h_in,
+		   amrex::Array4<amrex::Real> const& h_L,
+		   amrex::Array4<amrex::Real> const& h_R)
 {
     ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
         // This limiter monotonizes the parabola following
         // Colella and Woodward, 1984, Eq. 1.10
-        ppm_limit_cw84_point(HL(i,j,k), HR(i,j,k), H_IN(i,j,k));
+        ppm_limit_cw84_point(h_L(i,j,k), h_R(i,j,k), h_in(i,j,k));
     });
 }
 

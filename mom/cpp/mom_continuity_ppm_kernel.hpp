@@ -16,13 +16,13 @@
  *  reinterpreted as giving a constant thickness if the mean thickness is less
  *  than @p h_min, with a minimum of @p h_min otherwise.
  *
- *  @pre H_IN >= 0
- *  @pre hmin > 0
+ *  @pre h_in >= 0
+ *  @pre h_min > 0
  *
- *  @param H_IN Layer thickness [H ~> m or kg m-2].
- *  @param HL  Left thickness in the reconstruction [H ~> m or kg m-2].
- *  @param HR Right thickness in the reconstruction [H ~> m or kg m-2].
- *  @param hmin The minimum thickness that can be obtained by a concave
+ *  @param h_in Layer thickness [H ~> m or kg m-2].
+ *  @param h_L  Left thickness in the reconstruction [H ~> m or kg m-2].
+ *  @param h_R Right thickness in the reconstruction [H ~> m or kg m-2].
+ *  @param h_min The minimum thickness that can be obtained by a concave
  *              parabolic fit [H ~> m or kg m-2]
  *  @return Modified thickness values @p HL and @p HR.
  */
@@ -69,13 +69,13 @@ void ppm_limit_pos_point(amrex::Real& h_L,
  *  This subroutine limits the left/right edge values of the PPM reconstruction
  *  according to the monotonic prescription of Colella and Woodward, 1984.
  *
- *  @pre H_IN >= 0
+ *  @pre h_in >= 0
  *
- *  @param H_IN Layer thickness [H ~> m or kg m-2].
- *  @param HL  Left thickness in the reconstruction [H ~> m or kg m-2].
- *  @param HR Right thickness in the reconstruction [H ~> m or kg m-2].
+ *  @param h_in Layer thickness [H ~> m or kg m-2].
+ *  @param h_L  Left thickness in the reconstruction [H ~> m or kg m-2].
+ *  @param h_R Right thickness in the reconstruction [H ~> m or kg m-2].
  *
- *  @return  Modified thickness values for @p HL and @p HR.
+ *  @return  Modified thickness values for @p h_L and @p h_R.
  */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE

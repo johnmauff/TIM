@@ -10,19 +10,19 @@ struct OceanOBC;    // Undefined at the moment
 /**
  * @brief Piecewise parabolic limiter
  */
-void ppm_limit_pos(const amrex::Box & bx,
-                   amrex::Array4<const amrex::Real> const& H_IN,
-                   amrex::Array4<amrex::Real> const& HL,
-                   amrex::Array4<amrex::Real> const& HR,
-                   const amrex::Real hmin);
+void ppm_limit_pos(const amrex::Box &,
+                   amrex::Array4<const amrex::Real> const&,
+                   amrex::Array4<amrex::Real> const&,
+                   amrex::Array4<amrex::Real> const&,
+                   const amrex::Real);
 
 /**
  * @brief Piecewise parabolic limiter of Colella and Woodward, 1984
  */
-void ppm_limit_cw84(const amrex::Box & bx,
-                    amrex::Array4<const amrex::Real> const& H_IN,
-                    amrex::Array4<amrex::Real> const& HL,
-                    amrex::Array4<amrex::Real> const& HR);
+void ppm_limit_cw84(const amrex::Box&,
+                    amrex::Array4<const amrex::Real> const&,
+                    amrex::Array4<amrex::Real> const&,
+                    amrex::Array4<amrex::Real> const&);
 
 /**
  * @brief Piecewise reconstruction in the y dimension

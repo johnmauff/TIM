@@ -17,12 +17,9 @@ struct A4Box
     int nx, ny, nz, ncomp;
 };
 
-   A4Box make_a4(int nx, int ny, int nz, int ncomp);
-   void free_a4(A4Box& a4);
-   void copy_fh_to_a4(const double* f, A4Box& a4);
-   void copy_a4_to_fh(const A4Box& a4, double* f);
-   amrex::MultiFab make_mf_from_a4(const A4Box& a4);
-   void fill_mf_from_a4(amrex::MultiFab & Mf, const A4Box& at);
-   void write_a4_vismf(const A4Box & a4, const std::string & name);
+   A4Box make_array4(int nx, int ny, int nz, int ncomp);
+   void free_array4(A4Box& a4);
+   void copy_FortranHost_to_array4(const double* f, A4Box& a4);
+   void copy_array4_to_FortranHost(const A4Box& a4, double* f);
 }
 #endif
