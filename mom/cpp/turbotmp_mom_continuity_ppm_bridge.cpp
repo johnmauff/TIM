@@ -30,7 +30,7 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
 		                   const RealArray_C* h_in_HOST,
 			           RealArray_C* h_L_HOST,
 			           RealArray_C* h_R_HOST,
-	                           const double* h_min)
+	                           const double h_min)
 { 
     /// Define Active domain (kernel launch only on real cells)
     Box bx(IntVect(bx_HOST->idxS[0]-1, bx_HOST->idxS[1]-1, bx_HOST->idxS[2]-1),
@@ -49,7 +49,7 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
     ///-------------------------------------------------
     ///  Execute kernel
     ///-------------------------------------------------
-    ppm_limit_pos(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr, *h_min);
+    ppm_limit_pos(bx,h_in_DEV.arr, h_L_DEV.arr, h_R_DEV.arr, h_min);
 
     /// Ensure kernel is done before copying back
     Gpu::synchronize();
@@ -143,9 +143,9 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
                                           RealArray_C* h_S_HOST,
                                           RealArray_C* h_N_HOST,
                                           const RealArray_C* mask2dT_HOST,
-                                          const double* h_min,
-                                          const int* monotonic,
-                                          const int* simple_2nd,
+                                          const double h_min,
+					  const bool monotonic,
+                                          const bool simple_2nd,
 				          OceanOBC* obc)
 {
     /// Define Active domain (kernel launch only on real cells)
@@ -173,9 +173,9 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
                          h_S_DEV.arr,
                          h_N_DEV.arr,
                          mask2dT_DEV.arr,
-                         *h_min,
-                         static_cast<bool>(*monotonic),
-                         static_cast<bool>(*simple_2nd),
+                         h_min,
+                         monotonic,
+                         simple_2nd,
                          obc);
 
     /// Ensure kernel is done before copying back
