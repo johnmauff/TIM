@@ -376,8 +376,7 @@ void meridional_flux_thickness(
     }
 
     // bxV = bxC grown by 1 on the low side in y (mirrors Fortran bxV = bxC%growLo(dim=2, n=1))
-    Box bxV(IntVect(bxC.smallEnd(0), bxC.smallEnd(1)-1, bxC.smallEnd(2)),
-            bxC.bigEnd());
+    Box bxV  = growLo(bxC, 1, 1);  // grow on the low side of the y-direction (dim=1)
 
     if (vol_CFL) {
         if (marginal) {
@@ -488,8 +487,7 @@ void zonal_flux_thickness(
     }
 
     // bxU = bxC grown by 1 on the low side in x (mirrors Fortran bxU = bxC%growLo(dim=1, n=1))
-    Box bxU(IntVect(bxC.smallEnd(0)-1, bxC.smallEnd(1), bxC.smallEnd(2)),
-            bxC.bigEnd());
+    Box bxU  = growLo(bxC, 0, 1);  // grow on the low side of the x-direction (dim=0)
 
     if (vol_CFL) {
         if (marginal) {
