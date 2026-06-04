@@ -345,4 +345,228 @@ void meridional_edge_thickness(
         PPM_reconstruction_y(bxC, h_in, h_S, h_N, mask2dT, h_min, monotonic, simple_2nd, obc);
     }
 }
+
+//> Effective thickness at meridional (V) faces.
+//> Port of meridional_flux_thickness_fortran (MOM_continuity_PPM.F90:2683-2776).
+//> vol_CFL and marginal are call-constants: the four (vol_CFL x marginal)
+//> combinations are dispatched before the ParallelFor to keep both flags off
+//> every GPU thread's divergent-branch stack.
+void meridional_flux_thickness(
+    const Box& bxC,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h,
+    Array4<const Real> const& h_S,
+    Array4<const Real> const& h_N,
+    Array4<Real> const& h_v,
+    const Real dt,
+    bool vol_CFL,
+    bool marginal,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdyT,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaV,
+    Array4<const Real> const& visc_rem_v
+)
+{
+    BL_PROFILE("meridional_flux_thickness");
+
+    if (obc != nullptr) {
+        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    // bxV = bxC grown by 1 on the low side in y (mirrors Fortran bxV = bxC%growLo(dim=2, n=1))
+    Box bxV(IntVect(bxC.smallEnd(0), bxC.smallEnd(1)-1, bxC.smallEnd(2)),
+            bxC.bigEnd());
+
+    if (vol_CFL) {
+        if (marginal) {
+            ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_v_val;
+                if (v(i,j,k) > 0.0_rt) {
+                    Real CFL    = (v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j,0));
+                    Real curv_3 = (h_S(i,j,k) + h_N(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_S(i,j,k) - h_N(i,j,k);
+                    h_v_val = h_N(i,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else if (v(i,j,k) < 0.0_rt) {
+                    Real CFL    = (-v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j+1,0));
+                    Real curv_3 = (h_S(i,j+1,k) + h_N(i,j+1,k)) - 2.0_rt * h(i,j+1,k);
+                    Real dh     = h_N(i,j+1,k) - h_S(i,j+1,k);
+                    h_v_val = h_S(i,j+1,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else {
+                    h_v_val = 0.5_rt * (h_S(i,j+1,k) + h_N(i,j,k));
+                }
+                h_v(i,j,k) = h_v_val * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+            });
+        } else {
+            ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_v_val;
+                if (v(i,j,k) > 0.0_rt) {
+                    Real CFL    = (v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j,0));
+                    Real curv_3 = (h_S(i,j,k) + h_N(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_S(i,j,k) - h_N(i,j,k);
+                    h_v_val = h_N(i,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else if (v(i,j,k) < 0.0_rt) {
+                    Real CFL    = (-v(i,j,k) * dt) * (dx_Cv(i,j,0) * IareaT(i,j+1,0));
+                    Real curv_3 = (h_S(i,j+1,k) + h_N(i,j+1,k)) - 2.0_rt * h(i,j+1,k);
+                    Real dh     = h_N(i,j+1,k) - h_S(i,j+1,k);
+                    h_v_val = h_S(i,j+1,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else {
+                    h_v_val = 0.5_rt * (h_S(i,j+1,k) + h_N(i,j,k));
+                }
+                h_v(i,j,k) = h_v_val * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+            });
+        }
+    } else {
+        if (marginal) {
+            ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_v_val;
+                if (v(i,j,k) > 0.0_rt) {
+                    Real CFL    = v(i,j,k) * dt * IdyT(i,j,0);
+                    Real curv_3 = (h_S(i,j,k) + h_N(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_S(i,j,k) - h_N(i,j,k);
+                    h_v_val = h_N(i,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else if (v(i,j,k) < 0.0_rt) {
+                    Real CFL    = -v(i,j,k) * dt * IdyT(i,j+1,0);
+                    Real curv_3 = (h_S(i,j+1,k) + h_N(i,j+1,k)) - 2.0_rt * h(i,j+1,k);
+                    Real dh     = h_N(i,j+1,k) - h_S(i,j+1,k);
+                    h_v_val = h_S(i,j+1,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else {
+                    h_v_val = 0.5_rt * (h_S(i,j+1,k) + h_N(i,j,k));
+                }
+                h_v(i,j,k) = h_v_val * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+            });
+        } else {
+            ParallelFor(bxV, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_v_val;
+                if (v(i,j,k) > 0.0_rt) {
+                    Real CFL    = v(i,j,k) * dt * IdyT(i,j,0);
+                    Real curv_3 = (h_S(i,j,k) + h_N(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_S(i,j,k) - h_N(i,j,k);
+                    h_v_val = h_N(i,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else if (v(i,j,k) < 0.0_rt) {
+                    Real CFL    = -v(i,j,k) * dt * IdyT(i,j+1,0);
+                    Real curv_3 = (h_S(i,j+1,k) + h_N(i,j+1,k)) - 2.0_rt * h(i,j+1,k);
+                    Real dh     = h_N(i,j+1,k) - h_S(i,j+1,k);
+                    h_v_val = h_S(i,j+1,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else {
+                    h_v_val = 0.5_rt * (h_S(i,j+1,k) + h_N(i,j,k));
+                }
+                h_v(i,j,k) = h_v_val * (visc_rem_v(i,j,k) * por_face_areaV(i,j,k));
+            });
+        }
+    }
+}
+
+//> Effective thickness at zonal (U) faces.
+//> Port of zonal_flux_thickness_fortran (MOM_continuity_PPM.F90:1583-1676).
+//> vol_CFL and marginal are call-constants: the four (vol_CFL x marginal)
+//> combinations are dispatched before the ParallelFor to keep both flags off
+//> every GPU thread's divergent-branch stack.
+void zonal_flux_thickness(
+    const Box& bxC,
+    Array4<const Real> const& u,
+    Array4<const Real> const& h,
+    Array4<const Real> const& h_W,
+    Array4<const Real> const& h_E,
+    Array4<Real> const& h_u,
+    const Real dt,
+    bool vol_CFL,
+    bool marginal,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& visc_rem_u
+)
+{
+    BL_PROFILE("zonal_flux_thickness");
+
+    if (obc != nullptr) {
+        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    // bxU = bxC grown by 1 on the low side in x (mirrors Fortran bxU = bxC%growLo(dim=1, n=1))
+    Box bxU(IntVect(bxC.smallEnd(0)-1, bxC.smallEnd(1), bxC.smallEnd(2)),
+            bxC.bigEnd());
+
+    if (vol_CFL) {
+        if (marginal) {
+            ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_u_val;
+                if (u(i,j,k) > 0.0_rt) {
+                    Real CFL    = (u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i,j,0));
+                    Real curv_3 = (h_W(i,j,k) + h_E(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_W(i,j,k) - h_E(i,j,k);
+                    h_u_val = h_E(i,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else if (u(i,j,k) < 0.0_rt) {
+                    Real CFL    = (-u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i+1,j,0));
+                    Real curv_3 = (h_W(i+1,j,k) + h_E(i+1,j,k)) - 2.0_rt * h(i+1,j,k);
+                    Real dh     = h_E(i+1,j,k) - h_W(i+1,j,k);
+                    h_u_val = h_W(i+1,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else {
+                    h_u_val = 0.5_rt * (h_W(i+1,j,k) + h_E(i,j,k));
+                }
+                h_u(i,j,k) = h_u_val * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+            });
+        } else {
+            ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_u_val;
+                if (u(i,j,k) > 0.0_rt) {
+                    Real CFL    = (u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i,j,0));
+                    Real curv_3 = (h_W(i,j,k) + h_E(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_W(i,j,k) - h_E(i,j,k);
+                    h_u_val = h_E(i,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else if (u(i,j,k) < 0.0_rt) {
+                    Real CFL    = (-u(i,j,k) * dt) * (dy_Cu(i,j,0) * IareaT(i+1,j,0));
+                    Real curv_3 = (h_W(i+1,j,k) + h_E(i+1,j,k)) - 2.0_rt * h(i+1,j,k);
+                    Real dh     = h_E(i+1,j,k) - h_W(i+1,j,k);
+                    h_u_val = h_W(i+1,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else {
+                    h_u_val = 0.5_rt * (h_W(i+1,j,k) + h_E(i,j,k));
+                }
+                h_u(i,j,k) = h_u_val * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+            });
+        }
+    } else {
+        if (marginal) {
+            ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_u_val;
+                if (u(i,j,k) > 0.0_rt) {
+                    Real CFL    = u(i,j,k) * dt * IdxT(i,j,0);
+                    Real curv_3 = (h_W(i,j,k) + h_E(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_W(i,j,k) - h_E(i,j,k);
+                    h_u_val = h_E(i,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else if (u(i,j,k) < 0.0_rt) {
+                    Real CFL    = -u(i,j,k) * dt * IdxT(i+1,j,0);
+                    Real curv_3 = (h_W(i+1,j,k) + h_E(i+1,j,k)) - 2.0_rt * h(i+1,j,k);
+                    Real dh     = h_E(i+1,j,k) - h_W(i+1,j,k);
+                    h_u_val = h_W(i+1,j,k) + CFL * (dh + 3.0_rt * curv_3 * (CFL - 1.0_rt));
+                } else {
+                    h_u_val = 0.5_rt * (h_W(i+1,j,k) + h_E(i,j,k));
+                }
+                h_u(i,j,k) = h_u_val * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+            });
+        } else {
+            ParallelFor(bxU, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept {
+                Real h_u_val;
+                if (u(i,j,k) > 0.0_rt) {
+                    Real CFL    = u(i,j,k) * dt * IdxT(i,j,0);
+                    Real curv_3 = (h_W(i,j,k) + h_E(i,j,k)) - 2.0_rt * h(i,j,k);
+                    Real dh     = h_W(i,j,k) - h_E(i,j,k);
+                    h_u_val = h_E(i,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else if (u(i,j,k) < 0.0_rt) {
+                    Real CFL    = -u(i,j,k) * dt * IdxT(i+1,j,0);
+                    Real curv_3 = (h_W(i+1,j,k) + h_E(i+1,j,k)) - 2.0_rt * h(i+1,j,k);
+                    Real dh     = h_E(i+1,j,k) - h_W(i+1,j,k);
+                    h_u_val = h_W(i+1,j,k) + CFL * (0.5_rt * dh + curv_3 * (CFL - 1.5_rt));
+                } else {
+                    h_u_val = 0.5_rt * (h_W(i+1,j,k) + h_E(i,j,k));
+                }
+                h_u(i,j,k) = h_u_val * (visc_rem_u(i,j,k) * por_face_areaU(i,j,k));
+            });
+        }
+    }
+}
 }

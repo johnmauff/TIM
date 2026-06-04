@@ -412,3 +412,219 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
     turbotmp::free_array4(h_N_DEV);
     turbotmp::free_array4(mask2dT_DEV);
 }
+
+/**
+ * @brief Bridge for meridional_flux_thickness
+ *
+ * Port of meridional_flux_thickness_fortran (MOM_continuity_PPM.F90:2683-2776).
+ * Stencil kernel: reads h(i,j+1,k) etc., so no pointwise primitive.
+ * OBC is forward-declared only; non-null obc aborts in the kernel.
+ *
+ * @param bxC_HOST          H-grid continuity iteration box (host)
+ * @param v_HOST            Meridional velocity [L T-1] (host, Fortran order, V-grid)
+ * @param h_HOST            Layer thickness [H] (host, Fortran order, H-grid)
+ * @param h_S_HOST          South edge thickness [H] (host, Fortran order, H-grid)
+ * @param h_N_HOST          North edge thickness [H] (host, Fortran order, H-grid)
+ * @param h_v_HOST          Effective V-face thickness [H] (host, inout, V-grid)
+ * @param dt                Time increment [T]
+ * @param vol_CFL           If true, rescale face/cell area ratio for CFL
+ * @param marginal          If true, report marginal face thicknesses
+ * @param dx_Cv_HOST        Meridional face length [L] (host, 2-D, V-grid)
+ * @param IareaT_HOST       Inverse tracer cell area [L-2] (host, 2-D, H-grid)
+ * @param IdyT_HOST         Inverse tracer cell y-extent [L-1] (host, 2-D, H-grid)
+ * @param obc               Pointer to OBC structure (forward-declared, aborts if non-null)
+ * @param por_face_areaV_HOST Fractional open area of V-faces (host, Fortran order, V-grid)
+ * @param visc_rem_v_HOST   Viscous remainder fraction (host, Fortran order, V-grid)
+ *
+ * @return Modified h_v_HOST
+ */
+void turbotmp_meridional_flux_thickness_bridge(const Box_C* bxC_HOST,
+                                               const RealArray_C* v_HOST,
+                                               const RealArray_C* h_HOST,
+                                               const RealArray_C* h_S_HOST,
+                                               const RealArray_C* h_N_HOST,
+                                               RealArray_C* h_v_HOST,
+                                               const double dt,
+                                               const bool vol_CFL,
+                                               const bool marginal,
+                                               const RealArray_C* dx_Cv_HOST,
+                                               const RealArray_C* IareaT_HOST,
+                                               const RealArray_C* IdyT_HOST,
+                                               OceanOBC* obc,
+                                               const RealArray_C* por_face_areaV_HOST,
+                                               const RealArray_C* visc_rem_v_HOST)
+{
+    /// Define H-grid active domain (Fortran 1-based -> AMReX 0-based)
+    amrex::Box bxC(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Allocate A4Box containers (3-D arrays use shape[2]; 2-D arrays hardcode nz=1)
+    auto v_DEV              = turbotmp::make_array4(v_HOST->shape[0],              v_HOST->shape[1],              v_HOST->shape[2],              1);
+    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0],              h_HOST->shape[1],              h_HOST->shape[2],              1);
+    auto h_S_DEV            = turbotmp::make_array4(h_S_HOST->shape[0],            h_S_HOST->shape[1],            h_S_HOST->shape[2],            1);
+    auto h_N_DEV            = turbotmp::make_array4(h_N_HOST->shape[0],            h_N_HOST->shape[1],            h_N_HOST->shape[2],            1);
+    auto h_v_DEV            = turbotmp::make_array4(h_v_HOST->shape[0],            h_v_HOST->shape[1],            h_v_HOST->shape[2],            1);
+    auto dx_Cv_DEV          = turbotmp::make_array4(dx_Cv_HOST->shape[0],          dx_Cv_HOST->shape[1],          1,                             1);
+    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0],         IareaT_HOST->shape[1],         1,                             1);
+    auto IdyT_DEV           = turbotmp::make_array4(IdyT_HOST->shape[0],           IdyT_HOST->shape[1],           1,                             1);
+    auto por_face_areaV_DEV = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1);
+    auto visc_rem_v_DEV     = turbotmp::make_array4(visc_rem_v_HOST->shape[0],     visc_rem_v_HOST->shape[1],     visc_rem_v_HOST->shape[2],     1);
+
+    /// Copy host -> device (all inputs + inout h_v)
+    turbotmp::copy_FortranHost_to_array4(v_HOST->data,              v_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_HOST->data,              h_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,            h_S_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,            h_N_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_v_HOST->data,            h_v_DEV);
+    turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,          dx_Cv_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,         IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdyT_HOST->data,           IdyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaV_HOST->data, por_face_areaV_DEV);
+    turbotmp::copy_FortranHost_to_array4(visc_rem_v_HOST->data,     visc_rem_v_DEV);
+
+    if(verbose) amrex::Print() << "Entered turbotmp_meridional_flux_thickness_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::meridional_flux_thickness(bxC,
+                                   v_DEV.arr,
+                                   h_DEV.arr,
+                                   h_S_DEV.arr,
+                                   h_N_DEV.arr,
+                                   h_v_DEV.arr,
+                                   dt,
+                                   vol_CFL,
+                                   marginal,
+                                   dx_Cv_DEV.arr,
+                                   IareaT_DEV.arr,
+                                   IdyT_DEV.arr,
+                                   obc,
+                                   por_face_areaV_DEV.arr,
+                                   visc_rem_v_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device -> host (h_v is the only inout/output)
+    turbotmp::copy_array4_to_FortranHost(h_v_DEV, h_v_HOST->data);
+
+    /// Free all A4Box containers
+    turbotmp::free_array4(v_DEV);
+    turbotmp::free_array4(h_DEV);
+    turbotmp::free_array4(h_S_DEV);
+    turbotmp::free_array4(h_N_DEV);
+    turbotmp::free_array4(h_v_DEV);
+    turbotmp::free_array4(dx_Cv_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdyT_DEV);
+    turbotmp::free_array4(por_face_areaV_DEV);
+    turbotmp::free_array4(visc_rem_v_DEV);
+}
+
+/**
+ * @brief Bridge for zonal_flux_thickness
+ *
+ * Port of zonal_flux_thickness_fortran (MOM_continuity_PPM.F90:1583-1676).
+ * Stencil kernel: reads h(i+1,j,k) etc., so no pointwise primitive.
+ * OBC is forward-declared only; non-null obc aborts in the kernel.
+ *
+ * @param bxC_HOST          H-grid continuity iteration box (host)
+ * @param u_HOST            Zonal velocity [L T-1] (host, Fortran order, U-grid)
+ * @param h_HOST            Layer thickness [H] (host, Fortran order, H-grid)
+ * @param h_W_HOST          West edge thickness [H] (host, Fortran order, H-grid)
+ * @param h_E_HOST          East edge thickness [H] (host, Fortran order, H-grid)
+ * @param h_u_HOST          Effective U-face thickness [H] (host, inout, U-grid)
+ * @param dt                Time increment [T]
+ * @param vol_CFL           If true, rescale face/cell area ratio for CFL
+ * @param marginal          If true, report marginal face thicknesses
+ * @param dy_Cu_HOST        Zonal face length [L] (host, 2-D, U-grid)
+ * @param IareaT_HOST       Inverse tracer cell area [L-2] (host, 2-D, H-grid)
+ * @param IdxT_HOST         Inverse tracer cell x-extent [L-1] (host, 2-D, H-grid)
+ * @param obc               Pointer to OBC structure (forward-declared, aborts if non-null)
+ * @param por_face_areaU_HOST Fractional open area of U-faces (host, Fortran order, U-grid)
+ * @param visc_rem_u_HOST   Viscous remainder fraction (host, Fortran order, U-grid)
+ *
+ * @return Modified h_u_HOST
+ */
+void turbotmp_zonal_flux_thickness_bridge(const Box_C* bxC_HOST,
+                                          const RealArray_C* u_HOST,
+                                          const RealArray_C* h_HOST,
+                                          const RealArray_C* h_W_HOST,
+                                          const RealArray_C* h_E_HOST,
+                                          RealArray_C* h_u_HOST,
+                                          const double dt,
+                                          const bool vol_CFL,
+                                          const bool marginal,
+                                          const RealArray_C* dy_Cu_HOST,
+                                          const RealArray_C* IareaT_HOST,
+                                          const RealArray_C* IdxT_HOST,
+                                          OceanOBC* obc,
+                                          const RealArray_C* por_face_areaU_HOST,
+                                          const RealArray_C* visc_rem_u_HOST)
+{
+    /// Define H-grid active domain (Fortran 1-based -> AMReX 0-based)
+    amrex::Box bxC(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Allocate A4Box containers (3-D arrays use shape[2]; 2-D arrays hardcode nz=1)
+    auto u_DEV              = turbotmp::make_array4(u_HOST->shape[0],              u_HOST->shape[1],              u_HOST->shape[2],              1);
+    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0],              h_HOST->shape[1],              h_HOST->shape[2],              1);
+    auto h_W_DEV            = turbotmp::make_array4(h_W_HOST->shape[0],            h_W_HOST->shape[1],            h_W_HOST->shape[2],            1);
+    auto h_E_DEV            = turbotmp::make_array4(h_E_HOST->shape[0],            h_E_HOST->shape[1],            h_E_HOST->shape[2],            1);
+    auto h_u_DEV            = turbotmp::make_array4(h_u_HOST->shape[0],            h_u_HOST->shape[1],            h_u_HOST->shape[2],            1);
+    auto dy_Cu_DEV          = turbotmp::make_array4(dy_Cu_HOST->shape[0],          dy_Cu_HOST->shape[1],          1,                             1);
+    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0],         IareaT_HOST->shape[1],         1,                             1);
+    auto IdxT_DEV           = turbotmp::make_array4(IdxT_HOST->shape[0],           IdxT_HOST->shape[1],           1,                             1);
+    auto por_face_areaU_DEV = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1);
+    auto visc_rem_u_DEV     = turbotmp::make_array4(visc_rem_u_HOST->shape[0],     visc_rem_u_HOST->shape[1],     visc_rem_u_HOST->shape[2],     1);
+
+    /// Copy host -> device (all inputs + inout h_u)
+    turbotmp::copy_FortranHost_to_array4(u_HOST->data,              u_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_HOST->data,              h_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,            h_W_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,            h_E_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_u_HOST->data,            h_u_DEV);
+    turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,          dy_Cu_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,         IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdxT_HOST->data,           IdxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaU_HOST->data, por_face_areaU_DEV);
+    turbotmp::copy_FortranHost_to_array4(visc_rem_u_HOST->data,     visc_rem_u_DEV);
+
+    if(verbose) amrex::Print() << "Entered turbotmp_zonal_flux_thickness_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::zonal_flux_thickness(bxC,
+                              u_DEV.arr,
+                              h_DEV.arr,
+                              h_W_DEV.arr,
+                              h_E_DEV.arr,
+                              h_u_DEV.arr,
+                              dt,
+                              vol_CFL,
+                              marginal,
+                              dy_Cu_DEV.arr,
+                              IareaT_DEV.arr,
+                              IdxT_DEV.arr,
+                              obc,
+                              por_face_areaU_DEV.arr,
+                              visc_rem_u_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device -> host (h_u is the only inout/output)
+    turbotmp::copy_array4_to_FortranHost(h_u_DEV, h_u_HOST->data);
+
+    /// Free all A4Box containers
+    turbotmp::free_array4(u_DEV);
+    turbotmp::free_array4(h_DEV);
+    turbotmp::free_array4(h_W_DEV);
+    turbotmp::free_array4(h_E_DEV);
+    turbotmp::free_array4(h_u_DEV);
+    turbotmp::free_array4(dy_Cu_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdxT_DEV);
+    turbotmp::free_array4(por_face_areaU_DEV);
+    turbotmp::free_array4(visc_rem_u_DEV);
+}
