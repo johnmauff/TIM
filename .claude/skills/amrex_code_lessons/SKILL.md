@@ -1,9 +1,18 @@
-<!-- Mirrored into the amrex_code_lessons skill (../amrex_code_lessons/SKILL.md)
-     -- keep both in sync when editing. This file is kept only because
-     generate_amrex_code/SKILL.md Step 1 checks for its existence in the
-     target work-directory ($0) when validating a checkout; the skill
-     itself now reads via the amrex_code_lessons skill instead. -->
+---
+name: amrex_code_lessons
+description: Reference material for producing the C++/AMReX side of a MOM6 bridge inside a TURBO-ESM/TIM checkout -- the three-tier layout (bridge/kernel/pointwise primitive), the A4Box host<->device helper, the 7-step marshalling recipe, signature conventions, and recurring C++-side pitfalls, organized in numbered sections §1-§8. Companion to the generate_amrex_code skill, which cites these sections by number (e.g. "lessons.md §3") throughout its procedure. Invoke once near the start of a session that will run generate_amrex_code one or more times; not needed again per-subroutine within that session.
+user-invocable: true
+---
+
 # Lessons from TIM PR #8: AMReX/C++ implementation of the PPM bridges
+
+> Invoke this skill once, near the start of a session, before running
+> `generate_amrex_code` (or `generate_cpp_bridge`, if working the Fortran
+> side of the same PR in a MOM6 checkout). Its content then stays
+> available for the rest of the session — you do not need to invoke it
+> again before each subroutine. Sections are numbered §1–§8 and are
+> referenced by that numbering from the calling skill; do not renumber
+> them.
 
 Source: [TURBO-ESM/TIM PR #8](https://github.com/TURBO-ESM/TIM/pull/8) — merged commit `2374014`.
 

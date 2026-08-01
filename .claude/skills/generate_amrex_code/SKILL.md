@@ -2,16 +2,17 @@
 name: generate_amrex_code
 description: Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine. Adds a three-tier implementation inside a TURBO-ESM/TIM checkout — an extern "C" marshalling bridge, an AMReX kernel in namespace MOM, and (when the kernel is stencil-free per cell) a pointwise device primitive — and reuses the existing turbotmp::A4Box helper for host↔device transfer and Fortran↔C layout transpose. Grounds the AMReX port in the original Fortran source, located either via an optional MOM6 checkout path or by user paste. Assumes the Fortran-side bind(C) interface and capture-mode regression input already exist; this skill does not modify any Fortran source. Mirrors the pattern established in TURBO-ESM/TIM PR #8.
 user-invocable: true
-argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
+argument-hint: <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 ---
 
 # Generate C++/AMReX implementation for a MOM6 Fortran subroutine
 
 This skill is the **execution checklist**. All templates, type tables,
-conventions, and pitfalls live in [lessons.md](lessons.md) — read it
-once at the start of every run (Step 1 enforces this) and refer back
-to its numbered sections from each step below. Do not reproduce
-templates here.
+conventions, and pitfalls live in the `amrex_code_lessons` skill (same
+numbered sections, §1–§8) — invoke `amrex_code_lessons` once near the
+start of a session, before running this skill, and refer back to its
+numbered sections from each step below (Step 0 checks that it has been
+loaded). Do not reproduce templates here.
 
 The Fortran-side wrapper (dispatcher shim, `bind(C)` interface,
 caller rewrite, capture-mode plumbing) is **out of scope**. It is
@@ -25,7 +26,7 @@ equals `-h`, do NOT run any steps. Print the following help message
 verbatim and stop:
 
 ```
-Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit]
+Usage: /generate_amrex_code <work-directory> <function-name> [<mom6-directory>] [--enable_src_validate] [--enable_git_commit] [--disable_git_commit]
 
 Produce the C++/AMReX side of a bridge for a MOM6 Fortran subroutine
 inside a TURBO-ESM/TIM checkout. Writes (or extends) three layers:
@@ -57,9 +58,19 @@ Arguments:
   --enable_src_validate  (optional) Run Step 1: verify the work directory is a
                          TURBO-ESM/TIM checkout on the main branch and that the
                          tree layout is valid. Off by default.
-  --enable_git_commit    (optional) Run Step 12: create branch
-                         claude_<function-name>_bridge, commit all changes, and
-                         push to origin. Off by default.
+  --enable_git_commit    (optional) Force Step 12 to run this invocation
+                         only, overriding the global git_commit_and_push
+                         preference in ~/.claude/preferences.json.
+                         Mutually exclusive with --disable_git_commit.
+  --disable_git_commit   (optional) Force Step 12 to be skipped this
+                         invocation only, overriding the global
+                         preference. Mutually exclusive with
+                         --enable_git_commit.
+
+When neither --enable_git_commit nor --disable_git_commit is passed, Step 12
+follows ~/.claude/preferences.json's "git_commit_and_push" key ("auto" or
+"manual"; treated as "manual" when the file is missing, the key is absent,
+or the JSON fails to parse).
 
 Example:
   /generate_amrex_code /glade/derecho/scratch/sunjian/TIM PPM_limit_pos \
@@ -86,14 +97,27 @@ do not create anything.
    `Error: MOM6 directory "<value>" does not exist.` If `$2` was
    omitted, record `mom6_mode=paste` and Step 3 will ask the user
    for the Fortran source body inline.
-4. **Parse optional flags.** Scan remaining arguments for `--enable_src_validate`
-   and `--enable_git_commit`. Store as boolean flags (default: off). Any
-   unrecognised argument that starts with `--` → stop:
+4. **Parse optional flags.** Scan remaining arguments for `--enable_src_validate`,
+   `--enable_git_commit`, and `--disable_git_commit`. Store as boolean flags
+   (default: off). If both `--enable_git_commit` and `--disable_git_commit`
+   are passed → stop: `Error: --enable_git_commit and --disable_git_commit
+   are mutually exclusive.` Any unrecognised argument that starts with `--`
+   → stop:
    `Error: unknown option "<value>". Run "/generate_amrex_code --help" for usage.`
+5. **Reference material primed.** This skill assumes the `amrex_code_lessons`
+   skill has already been invoked earlier in this session. If you have no
+   memory of its numbered sections (§1–§8, especially §2–§7, are referenced
+   throughout this procedure), invoke the `amrex_code_lessons` skill now,
+   before proceeding to Step 1 or any step below. Do not guess at template
+   content from memory of a similar prior task — invoke it and read its
+   content first.
 
-Step 1 runs only when `--enable_src_validate` is set; Step 12 runs only when
-`--enable_git_commit` is set. Layout / lessons.md / plan-confirmation checks
-run in Step 1.
+Step 1 runs only when `--enable_src_validate` is set. Item 5 (reference-
+material priming) always runs, regardless of flags — this is what replaces
+the old flag-gated read of lessons.md. Step 12's behavior is decided by
+`--enable_git_commit` / `--disable_git_commit` if passed, or otherwise by
+the global preference described in Step 12. Layout / lessons.md /
+plan-confirmation checks run in Step 1.
 
 ## Settle these decisions (ask if not obvious from the tree)
 
@@ -143,9 +167,6 @@ holds the template or rationale.
      One missing is OK — Steps 7–9 will create the sibling.
    - `$0/.claude/skills/generate_amrex_code/lessons.md` missing → stop:
      `Error: lessons.md not found at <work-directory>/.claude/skills/generate_amrex_code/lessons.md.`
-   - **Read `lessons.md` in full.** Authoritative for naming,
-     signature conventions, and the three-tier layout. Prefer it over
-     this file on conflict and report the discrepancy.
 
    **Confirm the plan.** Print one paragraph naming: kernel symbol
    (`MOM::<lowercased_$1>`), bridge symbol
@@ -274,9 +295,22 @@ holds the template or rationale.
 
    If no capture file: skip and note "replay deferred" for Step 12.
 
-### 12. Commit and push *(runs only when `--enable_git_commit` is passed; skip otherwise)*
-   If `--enable_git_commit` was not supplied, skip this entire step and report the
-   files that were modified so the user can commit manually.
+### 12. Commit and push *(gated by the global git-commit preference, overridable per run — see below)*
+   **Decide whether to run this step:**
+   1. If `--disable_git_commit` was passed, skip this entire step and
+      report the files that were modified so the user can commit
+      manually — this run's explicit override wins.
+   2. Else if `--enable_git_commit` was passed, run this step — this
+      run's explicit override wins.
+   3. Else, read the global preference: run
+      `cat ~/.claude/preferences.json 2>/dev/null` and inspect the
+      `git_commit_and_push` key.
+      - If it is `"auto"`, run this step.
+      - If it is `"manual"`, or the file does not exist, or the key is
+        absent, or the JSON fails to parse — skip this entire step and
+        report the files that were modified so the user can commit
+        manually. Absent or unreadable configuration means "manual";
+        never push on an unconfigured machine.
 
    Branch: `claude_<lowercased_$1>_bridge` based on `main`. Stage all
    newly created and modified files. Commit message names the bridge
