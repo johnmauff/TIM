@@ -182,4 +182,74 @@ void continuity_meridional_convergence(
                                   //!< (.p == nullptr), in which case the final thickness is also
                                   //!< used as the initial thickness
     Real);                       //!< The minimum layer thickness [H ~> m or kg m-2]
+
+/**
+ * @brief Sets the effective open face areas and barotropic-velocity
+ * corrections at zonal faces as a function of barotropic flow, for use
+ * by the barotropic solver's transport-adjustment iteration
+ */
+void set_zonal_BT_cont(
+    const Box&,                  //!< Iteration box for continuity solver
+    Array4<const Real> const&,   //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< West edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< East edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<Real> const&,         //!< Effective open face area, west, 0 transport
+    Array4<Real> const&,         //!< Effective open face area, east, 0 transport
+    Array4<Real> const&,         //!< Effective open face area, westerly test velocity
+    Array4<Real> const&,         //!< Effective open face area, easterly test velocity
+    Array4<Real> const&,         //!< Westerly correction to the barotropic velocity
+    Array4<Real> const&,         //!< Easterly correction to the barotropic velocity
+    Array4<const Real> const&,   //!< Barotropic velocity increment that gives 0 transport [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Summed transport with 0 adjustment [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<const Real> const&,   //!< Partial derivative of du_err with du at 0 adjustment [H L ~> m2 or kg m-1]
+    Array4<const Real> const&,   //!< Maximum acceptable value of du [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Minimum acceptable value of du [L T-1 ~> m s-1]
+    Real,                        //!< Time increment [T ~> s]
+    Array4<const Real> const&,   //!< The grid cell's u-point x-extent [L ~> m]
+    Array4<const Real> const&,   //!< The grid cell's unblocked lengths of the u-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,   //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,   //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    Array4<const Real> const&,   //!< Fraction of momentum/barotropic acceleration remaining
+                                  //!< after viscosity [nondim]
+    Array4<const Real> const&,   //!< Maximum allowable viscosity remnant [nondim]
+    Array4<const int> const&,    //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const&);  //!< Fractional open area of U-faces [nondim]
+
+/**
+ * @brief Sets the effective open face areas and barotropic-velocity
+ * corrections at meridional faces as a function of barotropic flow, for
+ * use by the barotropic solver's transport-adjustment iteration
+ */
+void set_merid_BT_cont(
+    const Box&,                  //!< Iteration box for continuity solver
+    Array4<const Real> const&,   //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< South edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const&,   //!< North edge thickness in the reconstruction [H ~> m or kg m-2]
+    Array4<Real> const&,         //!< Effective open face area, south, 0 transport
+    Array4<Real> const&,         //!< Effective open face area, north, 0 transport
+    Array4<Real> const&,         //!< Effective open face area, southerly test velocity
+    Array4<Real> const&,         //!< Effective open face area, northerly test velocity
+    Array4<Real> const&,         //!< Southerly correction to the barotropic velocity
+    Array4<Real> const&,         //!< Northerly correction to the barotropic velocity
+    Array4<const Real> const&,   //!< Barotropic velocity increment that gives 0 transport [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Summed transport with 0 adjustment [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<const Real> const&,   //!< Partial derivative of du_err with dv at 0 adjustment [H L ~> m2 or kg m-1]
+    Array4<const Real> const&,   //!< Maximum acceptable value of dv [L T-1 ~> m s-1]
+    Array4<const Real> const&,   //!< Minimum acceptable value of dv [L T-1 ~> m s-1]
+    Real,                        //!< Time increment [T ~> s]
+    Array4<const Real> const&,   //!< The grid cell's v-point y-extent [L ~> m]
+    Array4<const Real> const&,   //!< The grid cell's unblocked lengths of the v-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,   //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,   //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    Array4<const Real> const&,   //!< Fraction of momentum/barotropic acceleration remaining
+                                  //!< after viscosity [nondim]
+    Array4<const Real> const&,   //!< Maximum allowable viscosity remnant [nondim]
+    Array4<const int> const&,    //!< Logical flag (0/1) indicating which I values to work on
+    Array4<const Real> const&);  //!< Fractional open area of V-faces [nondim]
 }
