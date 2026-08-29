@@ -33,11 +33,12 @@
 //
 // Index conventions
 // -----------------
-//   * idxS / idxE / lb / ub are Fortran 1-based. box() subtracts 1 to convert
-//     into AMReX's 0-based world (matching the turbotmp bridge).
-//   * Captured arrays in this project happen to have lb == 1 for every
-//     dimension. fab() asserts that and builds a storage box that spans
-//     [0, shape-1] in each dim.
+//   * idxS / idxE / lb / ub are Fortran 1-based. box()/fab_host()/
+//     int_fab_host() all subtract 1 to convert into AMReX's 0-based world
+//     (matching the turbotmp bridge), positioning the returned Box/FArrayBox/
+//     IArrayBox at the array's actual absolute location -- lb need not be 1;
+//     staggered-grid arrays (e.g. u/v-point fields) legitimately have a
+//     different lb than the h-grid arrays captured alongside them.
 //
 // AMReX dependency
 // ----------------

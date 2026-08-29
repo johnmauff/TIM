@@ -1119,3 +1119,62 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     expect_arrays_equal(du_cor_after, to_host_fab(du_cor), "du_cor");
     expect_arrays_equal(dv_cor_after, to_host_fab(dv_cor), "dv_cor");
 }
+
+// -------------------------------------------------------------------------
+// meridional_flux_thickness
+// -------------------------------------------------------------------------
+//
+// No capture/meridional_flux_thickness.{bin,meta} fixture exists yet, so
+// this test's field mapping is grounded directly in Fortran source (not a
+// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:5292-5411,
+// the meridional_flux_thickness shim's TIMH_capture arm (rec%add(...)
+// calls at lines 5352-5365 and 5373). Cross-checked against the bind(C)
+// interface and against turbotmp_meridional_flux_thickness_bridge's
+// parameter order in mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp --
+// all three agree.
+//
+// MOM::meridional_flux_thickness computes the effective thickness at
+// meridional faces, scaled down to account for the effects of viscosity
+// and the fractional open area. visc_rem_v is recorded by the Fortran
+// shim only when associated, so a fixture captured with it unassociated
+// would be missing the _visc_rem_v field. OBC is never captured -- pass
+// nullptr, matching the existing PPM_reconstruction_x/_y tests
+// (OBC-inactive configs only).
+TEST(MeridionalFluxThickness, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "meridional_flux_thickness");
+
+    const auto   bxC            = captured.box("_bxC");
+    const auto   v               = captured.fab_device("_v");
+    const auto   h               = captured.fab_device("_h");
+    const auto   h_S             = captured.fab_device("_h_S");
+    const auto   h_N             = captured.fab_device("_h_N");
+    auto         h_v             = captured.fab_device("_h_v_before");
+    const auto   h_v_after       = captured.fab_host("_h_v_after");
+    const double dt              = captured.real64("_dt");
+    const auto   dx_Cv           = captured.fab_device("_dx_Cv");
+    const auto   IareaT          = captured.fab_device("_IareaT");
+    const auto   IdyT            = captured.fab_device("_IdyT");
+    const bool   vol_CFL         = captured.logical("_vol_CFL");
+    const bool   marginal        = captured.logical("_marginal");
+    const auto   por_face_areaV  = captured.fab_device("_por_face_areaV");
+    const auto   visc_rem_v      = captured.fab_device("_visc_rem_v");
+
+    MOM::meridional_flux_thickness(bxC,
+                                   v.const_array(),
+                                   h.const_array(),
+                                   h_S.const_array(),
+                                   h_N.const_array(),
+                                   h_v.array(),
+                                   dt,
+                                   dx_Cv.const_array(),
+                                   IareaT.const_array(),
+                                   IdyT.const_array(),
+                                   vol_CFL,
+                                   marginal,
+                                   /*obc=*/nullptr,
+                                   por_face_areaV.const_array(),
+                                   visc_rem_v.const_array());
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(h_v_after, to_host_fab(h_v), "h_v");
+}

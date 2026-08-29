@@ -131,20 +131,16 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
     }
     int shape[3] = {1, 1, 1};
     for (int i = 0; i < ndim; ++i) shape[i] = read_be_i32(bin_, off);
+    int lb[3] = {1, 1, 1};
+    int ub[3] = {1, 1, 1};
     for (int i = 0; i < ndim; ++i) {
-        int lb = read_be_i32(bin_, off);
-        int ub = read_be_i32(bin_, off);
-        if (lb != 1) {
-            throw std::runtime_error(
-                "captured_io: fab assumes Fortran lb==1 (got " +
-                std::to_string(lb) + " on dim " + std::to_string(i) +
-                ") for '" + name + "'");
-        }
-        if (ub - lb + 1 != shape[i]) {
+        lb[i] = read_be_i32(bin_, off);
+        ub[i] = read_be_i32(bin_, off);
+        if (ub[i] - lb[i] + 1 != shape[i]) {
             throw std::runtime_error(
                 "captured_io: fab bounds inconsistent with shape on dim " +
-                std::to_string(i) + " (lb=" + std::to_string(lb) + ", ub=" +
-                std::to_string(ub) + ", shape=" + std::to_string(shape[i]) +
+                std::to_string(i) + " (lb=" + std::to_string(lb[i]) + ", ub=" +
+                std::to_string(ub[i]) + ", shape=" + std::to_string(shape[i]) +
                 ") for '" + name + "'");
         }
     }
@@ -156,15 +152,19 @@ amrex::FArrayBox CapturedFile::fab_host(const std::string& name) const {
             std::to_string(nelem) + ", expected " + std::to_string(expected) +
             ")");
     }
-    amrex::Box sbx(amrex::IntVect(0, 0, 0),
-                   amrex::IntVect(shape[0] - 1, shape[1] - 1, shape[2] - 1));
+    // lb/ub are Fortran 1-based; the resulting box spans the array's actual
+    // absolute position (matching CapturedFile::box()'s own -1 conversion),
+    // not just [0, shape-1] -- staggered-grid arrays (e.g. u/v-point fields)
+    // legitimately have lb != 1.
+    amrex::Box sbx(amrex::IntVect(lb[0] - 1, lb[1] - 1, lb[2] - 1),
+                   amrex::IntVect(ub[0] - 1, ub[1] - 1, ub[2] - 1));
     amrex::FArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
     auto arr = fab.array();
     // Fortran column-major in the file: i fastest, then j, then k.
     for (int k = 0; k < shape[2]; ++k)
         for (int j = 0; j < shape[1]; ++j)
             for (int i = 0; i < shape[0]; ++i)
-                arr(i, j, k) = read_be_f64(bin_, off);
+                arr(lb[0]-1 + i, lb[1]-1 + j, lb[2]-1 + k) = read_be_f64(bin_, off);
     return fab;
 }
 
@@ -191,20 +191,16 @@ amrex::IArrayBox CapturedFile::int_fab_host(const std::string& name) const {
     }
     int shape[3] = {1, 1, 1};
     for (int i = 0; i < ndim; ++i) shape[i] = read_be_i32(bin_, off);
+    int lb[3] = {1, 1, 1};
+    int ub[3] = {1, 1, 1};
     for (int i = 0; i < ndim; ++i) {
-        int lb = read_be_i32(bin_, off);
-        int ub = read_be_i32(bin_, off);
-        if (lb != 1) {
-            throw std::runtime_error(
-                "captured_io: int_fab assumes Fortran lb==1 (got " +
-                std::to_string(lb) + " on dim " + std::to_string(i) +
-                ") for '" + name + "'");
-        }
-        if (ub - lb + 1 != shape[i]) {
+        lb[i] = read_be_i32(bin_, off);
+        ub[i] = read_be_i32(bin_, off);
+        if (ub[i] - lb[i] + 1 != shape[i]) {
             throw std::runtime_error(
                 "captured_io: int_fab bounds inconsistent with shape on dim " +
-                std::to_string(i) + " (lb=" + std::to_string(lb) + ", ub=" +
-                std::to_string(ub) + ", shape=" + std::to_string(shape[i]) +
+                std::to_string(i) + " (lb=" + std::to_string(lb[i]) + ", ub=" +
+                std::to_string(ub[i]) + ", shape=" + std::to_string(shape[i]) +
                 ") for '" + name + "'");
         }
     }
@@ -216,15 +212,19 @@ amrex::IArrayBox CapturedFile::int_fab_host(const std::string& name) const {
             std::to_string(nelem) + ", expected " + std::to_string(expected) +
             ")");
     }
-    amrex::Box sbx(amrex::IntVect(0, 0, 0),
-                   amrex::IntVect(shape[0] - 1, shape[1] - 1, shape[2] - 1));
+    // lb/ub are Fortran 1-based; the resulting box spans the array's actual
+    // absolute position (matching CapturedFile::box()'s own -1 conversion),
+    // not just [0, shape-1] -- staggered-grid arrays (e.g. u/v-point fields)
+    // legitimately have lb != 1.
+    amrex::Box sbx(amrex::IntVect(lb[0] - 1, lb[1] - 1, lb[2] - 1),
+                   amrex::IntVect(ub[0] - 1, ub[1] - 1, ub[2] - 1));
     amrex::IArrayBox fab(sbx, 1, amrex::The_Pinned_Arena());
     auto arr = fab.array();
     // Fortran column-major in the file: i fastest, then j, then k.
     for (int k = 0; k < shape[2]; ++k)
         for (int j = 0; j < shape[1]; ++j)
             for (int i = 0; i < shape[0]; ++i)
-                arr(i, j, k) = read_be_i32(bin_, off);
+                arr(lb[0]-1 + i, lb[1]-1 + j, lb[2]-1 + k) = read_be_i32(bin_, off);
     return fab;
 }
 
