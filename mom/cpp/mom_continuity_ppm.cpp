@@ -1481,10 +1481,10 @@ void zonal_mass_flux(
         if (uhbt.p != nullptr) {
             // Find du and uh.
             MOM::zonal_flux_adjust(bxC, u, h_in, h_W, h_E,
-                                   uh_tot_0.const_array(), duhdu_tot_0.const_array(), du,
-                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   uh_tot_0, duhdu_tot_0, du,
+                                   du_max_CFL, du_min_CFL, dt,
                                    dy_Cu, IareaT, IdxT, CS,
-                                   visc_rem_u_tmp.const_array(), do_I.const_array(),
+                                   visc_rem_u_tmp, do_I,
                                    por_face_areaU, uhbt, uh, obc);
 
             if (has_u_cor || has_du_cor) {
@@ -1514,19 +1514,19 @@ void zonal_mass_flux(
         if (set_BT_cont) {
             // Diagnose the zero-transport correction, du0.
             MOM::zonal_flux_adjust(bxC, u, h_in, h_W, h_E,
-                                   uh_tot_0.const_array(), duhdu_tot_0.const_array(), du,
-                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   uh_tot_0, duhdu_tot_0, du,
+                                   du_max_CFL, du_min_CFL, dt,
                                    dy_Cu, IareaT, IdxT, CS,
-                                   visc_rem_u_tmp.const_array(), do_I.const_array(),
+                                   visc_rem_u_tmp, do_I,
                                    por_face_areaU, Array4<const Real>{}, Array4<Real>{}, obc);
 
             MOM::set_zonal_BT_cont(bxC, u, h_in, h_W, h_E,
                                    FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE, uBT_WW, uBT_EE,
-                                   du.const_array(), uh_tot_0.const_array(), duhdu_tot_0.const_array(),
-                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   du, uh_tot_0, duhdu_tot_0,
+                                   du_max_CFL, du_min_CFL, dt,
                                    dxCu, dy_Cu, IareaT, IdxT, CS,
-                                   visc_rem_u_tmp.const_array(), visc_rem_max.const_array(),
-                                   do_I.const_array(), por_face_areaU);
+                                   visc_rem_u_tmp, visc_rem_max,
+                                   do_I, por_face_areaU);
 
             /*
             // untested (Fortran source's own comment)!
@@ -1806,10 +1806,10 @@ void meridional_mass_flux(
         if (vhbt.p != nullptr) {
             // Find dv and vh.
             MOM::meridional_flux_adjust(bxC, v, h_in, h_S, h_N,
-                                        vh_tot_0.const_array(), dvhdv_tot_0.const_array(), dv,
-                                        dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                        vh_tot_0, dvhdv_tot_0, dv,
+                                        dv_max_CFL, dv_min_CFL, dt,
                                         dx_Cv, IareaT, IdyT, CS,
-                                        visc_rem_v_tmp.const_array(), do_I.const_array(),
+                                        visc_rem_v_tmp, do_I,
                                         por_face_areaV, vhbt, vh, obc);
 
             if (has_v_cor || has_dv_cor) {
@@ -1839,19 +1839,19 @@ void meridional_mass_flux(
         if (set_BT_cont) {
             // Diagnose the zero-transport correction, dv0.
             MOM::meridional_flux_adjust(bxC, v, h_in, h_S, h_N,
-                                        vh_tot_0.const_array(), dvhdv_tot_0.const_array(), dv,
-                                        dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                        vh_tot_0, dvhdv_tot_0, dv,
+                                        dv_max_CFL, dv_min_CFL, dt,
                                         dx_Cv, IareaT, IdyT, CS,
-                                        visc_rem_v_tmp.const_array(), do_I.const_array(),
+                                        visc_rem_v_tmp, do_I,
                                         por_face_areaV, Array4<const Real>{}, Array4<Real>{}, obc);
 
             MOM::set_merid_BT_cont(bxC, v, h_in, h_S, h_N,
                                    FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN, vBT_SS, vBT_NN,
-                                   dv.const_array(), vh_tot_0.const_array(), dvhdv_tot_0.const_array(),
-                                   dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                   dv, vh_tot_0, dvhdv_tot_0,
+                                   dv_max_CFL, dv_min_CFL, dt,
                                    dyCv, dx_Cv, IareaT, IdyT, CS,
-                                   visc_rem_v_tmp.const_array(), visc_rem_max.const_array(),
-                                   do_I.const_array(), por_face_areaV);
+                                   visc_rem_v_tmp, visc_rem_max,
+                                   do_I, por_face_areaV);
 
             /*
             // untested (Fortran source's own comment)!
