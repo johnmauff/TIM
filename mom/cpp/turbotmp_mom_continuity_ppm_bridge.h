@@ -145,6 +145,27 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST, const RealArray_C
                         RealArray_C* FA_v_S0_HOST, RealArray_C* FA_v_N0_HOST, RealArray_C* FA_v_SS_HOST,
                         RealArray_C* FA_v_NN_HOST, RealArray_C* vBT_SS_HOST, RealArray_C* vBT_NN_HOST,
                         RealArray_C* du_cor_HOST, RealArray_C* dv_cor_HOST);
+void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* u_HOST,
+                        const RealArray_C* h_in_HOST, const RealArray_C* h_W_HOST, const RealArray_C* h_E_HOST,
+                        RealArray_C* uhbt_HOST, const double dt, const RealArray_C* dy_Cu_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdxT_HOST,
+                        const transport_adjust_CS_C* CS_HOST, OceanOBC* obc,
+                        const RealArray_C* por_face_areaU_HOST);
+void turbotmp_meridional_bt_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* v_HOST,
+                        const RealArray_C* h_in_HOST, const RealArray_C* h_S_HOST, const RealArray_C* h_N_HOST,
+                        RealArray_C* vhbt_HOST, const double dt, const RealArray_C* dx_Cv_HOST,
+                        const RealArray_C* IareaT_HOST, const RealArray_C* IdyT_HOST,
+                        const transport_adjust_CS_C* CS_HOST, OceanOBC* obc,
+                        const RealArray_C* por_face_areaV_HOST);
+void turbotmp_continuity_ppm_2d_fluxes_bridge(const RealArray_C* u_HOST, const RealArray_C* v_HOST,
+                        const RealArray_C* h_HOST, RealArray_C* uhbt_HOST, RealArray_C* vhbt_HOST,
+                        const double dt, const Box_C* bxC_HOST, const RealArray_C* mask2dT_HOST,
+                        const RealArray_C* dy_Cu_HOST, const RealArray_C* IareaT_HOST,
+                        const RealArray_C* IdxT_HOST, const RealArray_C* dx_Cv_HOST,
+                        const RealArray_C* IdyT_HOST, const double Angstrom_H,
+                        const reconstruction_CS_C* reconstruction_CS_HOST,
+                        const transport_adjust_CS_C* transport_adjust_CS_HOST, OceanOBC* obc,
+                        const RealArray_C* por_face_areaU_HOST, const RealArray_C* por_face_areaV_HOST);
 
 #ifdef __cplusplus
 }

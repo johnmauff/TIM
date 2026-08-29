@@ -2052,4 +2052,206 @@ void continuity_PPM(
         MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, Array4<const Real>{}, h_min);
     }
 }
+
+//> Sums the zonal PPM transport over all layers to give the barotropic
+//  (depth-integrated) zonal transport, uhbt. visc_rem is fixed at 1.0 here
+//  (this kernel takes no visc_rem parameter at all, unlike
+//  set_zonal_BT_cont/zonal_flux_adjust).
+void zonal_BT_mass_flux(
+    const Box& bxC,
+    Array4<const Real> const& u,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_W,
+    Array4<const Real> const& h_E,
+    Array4<Real> const& uhbt,
+    Real dt,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    const transport_adjust_CS_C& CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU)
+{
+    BL_PROFILE("zonal_BT_mass_flux");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_specified_BC = false;
+    if (obc != nullptr) {
+        if (obc->OBC_pe) {
+            local_specified_BC = obc->specified_v_BCs_exist_globally;
+        }
+    }
+    */
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for u-point (U-grid) fields: grown by 1 at the lower x-extent
+    Box bxU = growLo(bxC, 0, 1);
+    Box bx2d(IntVect(bxU.smallEnd(0), bxU.smallEnd(1), 0),
+             IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        Real uhbt_val = 0.0_rt;
+        for (int k = kmin; k <= kmax; ++k) {
+            Real uh_val, duhdu_val;
+            flux_elem_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                            h_E(i,j,k), h_E(i+1,j,k), uh_val, duhdu_val, 1.0_rt,
+                            dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                            dt, CS.vol_CFL, por_face_areaU(i,j,k));
+            /*
+            // untested (Fortran source's own comment)!
+            if (local_specified_BC) {
+                flux_elem_obc_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), uh_val, duhdu_val, 1.0_rt,
+                                    por_face_areaU(i,j,k), dy_Cu(i,j,0), obc, obc->segnum_u(i,j,0));
+            }
+            // Second pass in the Fortran source: if a specified-transport OBC
+            // segment is active in this row, uh(I,j,k) is replaced by the
+            // segment's normal transport before being summed into uhbt.
+            if (local_specified_BC && obc->segnum_u(i,j,0) != 0) {
+                int const l_seg = amrex::Math::abs(obc->segnum_u(i,j,0));
+                if (obc->segment[l_seg].specified) uh_val = obc->segment[l_seg].normal_trans(i,j,k);
+            }
+            */
+            uhbt_val += uh_val;
+        }
+        uhbt(i,j,0) = uhbt_val;
+    });
+}
+
+//> Sums the meridional PPM transport over all layers to give the
+//  barotropic (depth-integrated) meridional transport, vhbt. visc_rem is
+//  fixed at 1.0 here (this kernel takes no visc_rem parameter at all,
+//  unlike set_merid_BT_cont/meridional_flux_adjust).
+void meridional_BT_mass_flux(
+    const Box& bxC,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_S,
+    Array4<const Real> const& h_N,
+    Array4<Real> const& vhbt,
+    Real dt,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdyT,
+    const transport_adjust_CS_C& CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaV)
+{
+    BL_PROFILE("meridional_BT_mass_flux");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_specified_BC = false;
+    if (obc != nullptr) {
+        if (obc->OBC_pe) {
+            local_specified_BC = obc->specified_v_BCs_exist_globally;
+        }
+    }
+    */
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for v-point (V-grid) fields: grown by 1 at the lower y-extent
+    Box bxV = growLo(bxC, 1, 1);
+    Box bx2d(IntVect(bxV.smallEnd(0), bxV.smallEnd(1), 0),
+             IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        Real vhbt_val = 0.0_rt;
+        for (int k = kmin; k <= kmax; ++k) {
+            Real vh_val, dvhdv_val;
+            flux_elem_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                            h_N(i,j,k), h_N(i,j+1,k), vh_val, dvhdv_val, 1.0_rt,
+                            dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                            dt, CS.vol_CFL, por_face_areaV(i,j,k));
+            /*
+            // untested (Fortran source's own comment)!
+            if (local_specified_BC) {
+                flux_elem_obc_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), vh_val, dvhdv_val, 1.0_rt,
+                                    por_face_areaV(i,j,k), dx_Cv(i,j,0), obc, obc->segnum_v(i,j,0));
+            }
+            // Second pass in the Fortran source: if a specified-transport OBC
+            // segment is active in this row, vh(i,J,k) is replaced by the
+            // segment's normal transport before being summed into vhbt.
+            if (local_specified_BC && obc->segnum_v(i,j,0) != 0) {
+                int const l_seg = amrex::Math::abs(obc->segnum_v(i,j,0));
+                if (obc->segment[l_seg].specified) vh_val = obc->segment[l_seg].normal_trans(i,j,k);
+            }
+            */
+            vhbt_val += vh_val;
+        }
+        vhbt(i,j,0) = vhbt_val;
+    });
+}
+
+//> Reconstructs zonal and meridional edge thicknesses, then computes the
+//  barotropic (depth-integrated) zonal and meridional transports uhbt and
+//  vhbt via zonal_BT_mass_flux and meridional_BT_mass_flux. Unlike
+//  continuity_PPM, there is no stencil/x_first two-half-step split here --
+//  both directions are reconstructed from the same, single input h.
+void continuity_PPM_2d_fluxes(
+    Array4<const Real> const& u,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h,
+    Array4<Real> const& uhbt,
+    Array4<Real> const& vhbt,
+    Real dt,
+    const Box& bxC,
+    Array4<const Real> const& mask2dT,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IdyT,
+    Real Angstrom_H,
+    const reconstruction_CS_C& reconstruction_CS,
+    const transport_adjust_CS_C& transport_adjust_CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& por_face_areaV)
+{
+    BL_PROFILE("continuity_PPM_2d_fluxes");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    // Scratch box spanning h's full array extent (matches h_a%lb/%ub in the
+    // Fortran source, which allocates h_W/h_E/h_S/h_N over that same range).
+    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
+              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+
+    FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+    FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+    MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                              Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                              reconstruction_CS.simple_2nd, obc);
+    MOM::zonal_BT_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uhbt, dt,
+                            dy_Cu, IareaT, IdxT, transport_adjust_CS, obc, por_face_areaU);
+
+    FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+    FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+    MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                   Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                   reconstruction_CS.simple_2nd, obc);
+    MOM::meridional_BT_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vhbt, dt,
+                                 dx_Cv, IareaT, IdyT, transport_adjust_CS, obc, por_face_areaV);
+}
 }

@@ -511,4 +511,73 @@ void continuity_PPM(
     Array4<Real> const&);         //!< Meridional velocity increment from v that gives vhbt as the
                                    //!< depth-integrated transport [L T-1 ~> m s-1];
                                    //!< may be absent (.p == nullptr)
+
+/**
+ * @brief Sums the zonal PPM transport over all layers to give the
+ * barotropic (depth-integrated) zonal transport, uhbt
+ */
+void zonal_BT_mass_flux(
+    const Box&,                   //!< Iteration box for continuity solver
+    Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const&,    //!< Western edge thickness in the PPM reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const&,    //!< Eastern edge thickness in the PPM reconstruction [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< The summed volume flux through zonal faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                         //!< Time increment [T ~> s]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the u-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,    //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    OceanOBC*,                    //!< Open boundary control structure
+    Array4<const Real> const&);   //!< Fractional open area of U-faces [nondim]
+
+/**
+ * @brief Sums the meridional PPM transport over all layers to give the
+ * barotropic (depth-integrated) meridional transport, vhbt
+ */
+void meridional_BT_mass_flux(
+    const Box&,                   //!< Iteration box for continuity solver
+    Array4<const Real> const&,    //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Layer thickness used to calculate fluxes [H ~> m or kg m-2]
+    Array4<const Real> const&,    //!< Southern edge thickness in the PPM reconstruction [H ~> m or kg m-2]
+    Array4<const Real> const&,    //!< Northern edge thickness in the PPM reconstruction [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< The summed volume flux through meridional faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                         //!< Time increment [T ~> s]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the v-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,    //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    OceanOBC*,                    //!< Open boundary control structure
+    Array4<const Real> const&);   //!< Fractional open area of V-faces [nondim]
+
+/**
+ * @brief Reconstructs zonal and meridional edge thicknesses, then computes
+ * the barotropic (depth-integrated) zonal and meridional transports uhbt
+ * and vhbt via zonal_BT_mass_flux and meridional_BT_mass_flux
+ */
+void continuity_PPM_2d_fluxes(
+    Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Meridional velocity [L T-1 ~> m s-1]
+    Array4<const Real> const&,    //!< Layer thickness [H ~> m or kg m-2]
+    Array4<Real> const&,          //!< Vertically summed thickness flux through zonal
+                                   //!< faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Array4<Real> const&,          //!< Vertically summed thickness flux through meridional
+                                   //!< faces [H L2 T-1 ~> m3 s-1 or kg s-1]
+    Real,                         //!< Time increment [T ~> s]
+    const Box&,                   //!< Iteration box for continuity solver
+    Array4<const Real> const&,    //!< Cell land/ocean mask [nondim]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the u-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/areaT [L-2 ~> m-2]
+    Array4<const Real> const&,    //!< The grid cell's 1/dxT [L-1 ~> m-1]
+    Array4<const Real> const&,    //!< The grid cell's unblocked lengths of the v-faces of the h-cell [L ~> m]
+    Array4<const Real> const&,    //!< The grid cell's 1/dyT [L-1 ~> m-1]
+    Real,                         //!< A one-Angstrom thickness [H ~> m or kg m-2]
+    const reconstruction_CS_C&,   //!< Options controlling the edge-value reconstruction scheme
+    const transport_adjust_CS_C&, //!< Options controlling the transport adjustment and
+                                   //!< barotropic-consistency iteration
+    OceanOBC*,                    //!< Open boundary control structure
+    Array4<const Real> const&,    //!< Fractional open area of U-faces [nondim]
+    Array4<const Real> const&);   //!< Fractional open area of V-faces [nondim]
 }
