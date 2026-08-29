@@ -8,13 +8,17 @@
 #define AMREX_ABORT_LOC(msg) \
 	amrex::Abort(std::string(msg) + " [" + __FILE__ + ":" + std::to_string(__LINE__) + "]")
 #include <AMReX.H>
+#include <AMReX_Arena.H>
 #include <AMReX_FArrayBox.H>
+#include <AMReX_IArrayBox.H>
 
 #include "mom_continuity_ppm.hpp"
 
 
 namespace MOM {
 using amrex::FArrayBox;
+using amrex::IArrayBox;
+using amrex::IntVect;
 using namespace amrex::literals;
 /**
  * @brief Piecewise parabolic limiter (positive-definite) over a Box.
@@ -953,5 +957,1099 @@ void set_merid_BT_cont(
             vBT_SS(i,j,0) = 0.0_rt; vBT_NN(i,j,0) = 0.0_rt;
         }
     });
+}
+
+//> Newton-iterates a barotropic velocity correction per zonal face so that
+//  the vertically-summed zonal mass/volume transport matches the target
+//  barotropic transport, to within the transport-adjustment iteration's
+//  tolerance. Always completes the fixed-count itt-loop rather than exiting
+//  early once every column in a row has converged, matching the Fortran
+//  source's own OpenMP-target-compiled path -- the alternative (a
+//  data-dependent per-row early exit) is disabled there because it
+//  serializes on GPU-style parallel execution; do_I masks further updates
+//  to a column once it has converged.
+void zonal_flux_adjust(
+    const Box& bxC,
+    Array4<const Real> const& u,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_W,
+    Array4<const Real> const& h_E,
+    Array4<const Real> const& uh_tot_0,
+    Array4<const Real> const& duhdu_tot_0,
+    Array4<Real> const& du,
+    Array4<const Real> const& du_max_CFL,
+    Array4<const Real> const& du_min_CFL,
+    Real dt,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    const transport_adjust_CS_C& CS,
+    Array4<const Real> const& visc_rem,
+    Array4<const int> const& do_I_in,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& uhbt,
+    Array4<Real> const& uh_3d,
+    OceanOBC* obc)
+{
+    BL_PROFILE("zonal_flux_adjust");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_OBC = false;
+    if (obc != nullptr) local_OBC = obc->open_u_BCs_exist_globally;
+    */
+
+    const bool use_uhbt  = (uhbt.p != nullptr);
+    const bool use_uh_3d = (uh_3d.p != nullptr);
+
+    const Real tol_vel   = CS.tol_vel;
+    const int  max_itts  = 20;
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for u-point (U-grid) fields: grown by 1 at the lower x-extent
+    Box bxU = growLo(bxC, 0, 1);
+    Box bx2d(IntVect(bxU.smallEnd(0), bxU.smallEnd(1), 0),
+             IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        bool do_I = (do_I_in(i,j,0) != 0);
+        Real du_val = 0.0_rt;
+        Real du_max = du_max_CFL(i,j,0);
+        Real du_min = du_min_CFL(i,j,0);
+        Real uh_err = uh_tot_0(i,j,0);
+        if (use_uhbt) uh_err -= uhbt(i,j,0);
+        Real duhdu_tot = duhdu_tot_0(i,j,0);
+        Real uh_err_best = amrex::Math::abs(uh_err);
+
+        for (int itt = 1; itt <= max_itts; ++itt) {
+            Real tol_eta;
+            if (itt <= 1) {
+                tol_eta = 1.0e-6_rt * CS.tol_eta;
+            } else if (itt == 2) {
+                tol_eta = 1.0e-4_rt * CS.tol_eta;
+            } else if (itt == 3) {
+                tol_eta = 1.0e-2_rt * CS.tol_eta;
+            } else {
+                tol_eta = CS.tol_eta;
+            }
+
+            if (do_I) {
+                if (uh_err > 0.0_rt) {
+                    du_max = du_val;
+                } else if (uh_err < 0.0_rt) {
+                    du_min = du_val;
+                } else {
+                    do_I = false;
+                }
+
+                if ((dt * amrex::min(IareaT(i,j,0), IareaT(i+1,j,0)) * amrex::Math::abs(uh_err) > tol_eta) ||
+                    (CS.better_iter &&
+                     ((amrex::Math::abs(uh_err) > tol_vel * duhdu_tot) ||
+                      (amrex::Math::abs(uh_err) > uh_err_best)))) {
+                    // Use Newton's method, provided it stays bounded. Otherwise bisect
+                    // the value with the appropriate bound.
+                    Real const ddu = -uh_err / duhdu_tot;
+                    Real const du_prev = du_val;
+                    du_val = du_val + ddu;
+                    if (amrex::Math::abs(ddu) < 1.0e-15_rt * amrex::Math::abs(du_val)) {
+                        do_I = false; // ddu is small enough to quit.
+                    } else if (ddu > 0.0_rt) {
+                        if (du_val >= du_max) {
+                            du_val = 0.5_rt * (du_prev + du_max);
+                            if (du_max - du_prev < 1.0e-15_rt * amrex::Math::abs(du_val)) do_I = false;
+                        }
+                    } else { // ddu < 0.0
+                        if (du_val <= du_min) {
+                            du_val = 0.5_rt * (du_prev + du_min);
+                            if (du_prev - du_min < 1.0e-15_rt * amrex::Math::abs(du_val)) do_I = false;
+                        }
+                    }
+                } else {
+                    do_I = false;
+                }
+            }
+
+            if ((itt < max_itts) || use_uh_3d) {
+                uh_err = 0.0_rt;
+                duhdu_tot = 0.0_rt;
+                if (use_uhbt) uh_err = -uhbt(i,j,0);
+                if (do_I) {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const u_new = u(i,j,k) + du_val * visc_rem(i,j,k);
+                        Real uh_val, duhdu_val;
+                        flux_elem_point(u_new, h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                                        h_E(i,j,k), h_E(i+1,j,k), uh_val, duhdu_val, visc_rem(i,j,k),
+                                        dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                                        dt, CS.vol_CFL, por_face_areaU(i,j,k));
+                        /*
+                        if (local_OBC) {
+                            int const l_seg = obc->segnum_u(i,j,k);
+                            if (l_seg != 0 && obc->segment[amrex::Math::abs(l_seg)].open) {
+                                if (l_seg > 0) {
+                                    uh_val    = (dy_Cu(i,j,0) * por_face_areaU(i,j,k)) * u_new * h_in(i,j,k);
+                                    duhdu_val = (dy_Cu(i,j,0) * por_face_areaU(i,j,k)) * h_in(i,j,k) * visc_rem(i,j,k);
+                                } else {
+                                    uh_val    = (dy_Cu(i,j,0) * por_face_areaU(i,j,k)) * u_new * h_in(i+1,j,k);
+                                    duhdu_val = (dy_Cu(i,j,0) * por_face_areaU(i,j,k)) * h_in(i+1,j,k) * visc_rem(i,j,k);
+                                }
+                            }
+                        }
+                        */
+                        if (use_uh_3d) uh_3d(i,j,k) = uh_val;
+                        uh_err += uh_val;
+                        duhdu_tot += duhdu_val;
+                    }
+                }
+                uh_err_best = amrex::min(uh_err_best, amrex::Math::abs(uh_err));
+            }
+        }
+
+        du(i,j,0) = du_val;
+    });
+}
+
+//> Newton-iterates a barotropic velocity correction per meridional face so
+//  that the vertically-summed meridional mass/volume transport matches the
+//  target barotropic transport, to within the transport-adjustment
+//  iteration's tolerance. Always completes the fixed-count itt-loop rather
+//  than exiting early once every column in a row has converged, matching
+//  the Fortran source's own OpenMP-target-compiled path -- the alternative
+//  (a data-dependent per-row early exit) is disabled there because it
+//  serializes on GPU-style parallel execution; do_I masks further updates
+//  to a column once it has converged.
+void meridional_flux_adjust(
+    const Box& bxC,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_S,
+    Array4<const Real> const& h_N,
+    Array4<const Real> const& vh_tot_0,
+    Array4<const Real> const& dvhdv_tot_0,
+    Array4<Real> const& dv,
+    Array4<const Real> const& dv_max_CFL,
+    Array4<const Real> const& dv_min_CFL,
+    Real dt,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdyT,
+    const transport_adjust_CS_C& CS,
+    Array4<const Real> const& visc_rem,
+    Array4<const int> const& do_I_in,
+    Array4<const Real> const& por_face_areaV,
+    Array4<const Real> const& vhbt,
+    Array4<Real> const& vh_3d,
+    OceanOBC* obc)
+{
+    BL_PROFILE("meridional_flux_adjust");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_OBC = false;
+    if (obc != nullptr) local_OBC = obc->open_u_BCs_exist_globally;
+    */
+
+    const bool use_vhbt  = (vhbt.p != nullptr);
+    const bool use_vh_3d = (vh_3d.p != nullptr);
+
+    const Real tol_vel   = CS.tol_vel;
+    const int  max_itts  = 20;
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    // Iteration box for v-point (V-grid) fields: grown by 1 at the lower y-extent
+    Box bxV = growLo(bxC, 1, 1);
+    Box bx2d(IntVect(bxV.smallEnd(0), bxV.smallEnd(1), 0),
+             IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        bool do_I = (do_I_in(i,j,0) != 0);
+        Real dv_val = 0.0_rt;
+        Real dv_max = dv_max_CFL(i,j,0);
+        Real dv_min = dv_min_CFL(i,j,0);
+        Real vh_err = vh_tot_0(i,j,0);
+        if (use_vhbt) vh_err -= vhbt(i,j,0);
+        Real dvhdv_tot = dvhdv_tot_0(i,j,0);
+        Real vh_err_best = amrex::Math::abs(vh_err);
+
+        for (int itt = 1; itt <= max_itts; ++itt) {
+            Real tol_eta;
+            if (itt <= 1) {
+                tol_eta = 1.0e-6_rt * CS.tol_eta;
+            } else if (itt == 2) {
+                tol_eta = 1.0e-4_rt * CS.tol_eta;
+            } else if (itt == 3) {
+                tol_eta = 1.0e-2_rt * CS.tol_eta;
+            } else {
+                tol_eta = CS.tol_eta;
+            }
+
+            // Unmasked: runs every iteration regardless of do_I.
+            if (vh_err > 0.0_rt) {
+                dv_max = dv_val;
+            } else if (vh_err < 0.0_rt) {
+                dv_min = dv_val;
+            } else {
+                do_I = false;
+            }
+
+            // do_I-masked: Newton step / bisection.
+            if (do_I) {
+                if ((dt * amrex::min(IareaT(i,j,0), IareaT(i,j+1,0)) * amrex::Math::abs(vh_err) > tol_eta) ||
+                    (CS.better_iter &&
+                     ((amrex::Math::abs(vh_err) > tol_vel * dvhdv_tot) ||
+                      (amrex::Math::abs(vh_err) > vh_err_best)))) {
+                    // Use Newton's method, provided it stays bounded. Otherwise bisect
+                    // the value with the appropriate bound.
+                    Real const ddv = -vh_err / dvhdv_tot;
+                    Real const dv_prev = dv_val;
+                    dv_val = dv_val + ddv;
+                    if (amrex::Math::abs(ddv) < 1.0e-15_rt * amrex::Math::abs(dv_val)) {
+                        do_I = false; // ddv is small enough to quit.
+                    } else if (ddv > 0.0_rt) {
+                        if (dv_val >= dv_max) {
+                            dv_val = 0.5_rt * (dv_prev + dv_max);
+                            if (dv_max - dv_prev < 1.0e-15_rt * amrex::Math::abs(dv_val)) do_I = false;
+                        }
+                    } else { // ddv < 0.0
+                        if (dv_val <= dv_min) {
+                            dv_val = 0.5_rt * (dv_prev + dv_min);
+                            if (dv_prev - dv_min < 1.0e-15_rt * amrex::Math::abs(dv_val)) do_I = false;
+                        }
+                    }
+                } else {
+                    do_I = false;
+                }
+            }
+
+            if ((itt < max_itts) || use_vh_3d) {
+                vh_err = 0.0_rt;
+                dvhdv_tot = 0.0_rt;
+                if (use_vhbt) vh_err = -vhbt(i,j,0);
+                if (do_I) {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const v_new = v(i,j,k) + dv_val * visc_rem(i,j,k);
+                        Real vh_val, dvhdv_val;
+                        flux_elem_point(v_new, h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                                        h_N(i,j,k), h_N(i,j+1,k), vh_val, dvhdv_val, visc_rem(i,j,k),
+                                        dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                                        dt, CS.vol_CFL, por_face_areaV(i,j,k));
+                        /*
+                        if (local_OBC) {
+                            int const l_seg = obc->segnum_v(i,j,k);
+                            if (l_seg != 0 && obc->segment[amrex::Math::abs(l_seg)].open) {
+                                if (l_seg > 0) {
+                                    vh_val    = (dx_Cv(i,j,0) * por_face_areaV(i,j,k)) * v_new * h_in(i,j,k);
+                                    dvhdv_val = (dx_Cv(i,j,0) * por_face_areaV(i,j,k)) * h_in(i,j,k) * visc_rem(i,j,k);
+                                } else {
+                                    vh_val    = (dx_Cv(i,j,0) * por_face_areaV(i,j,k)) * v_new * h_in(i,j+1,k);
+                                    dvhdv_val = (dx_Cv(i,j,0) * por_face_areaV(i,j,k)) * h_in(i,j+1,k) * visc_rem(i,j,k);
+                                }
+                            }
+                        }
+                        */
+                        if (use_vh_3d) vh_3d(i,j,k) = vh_val;
+                        vh_err += vh_val;
+                        dvhdv_tot += dvhdv_val;
+                    }
+                    vh_err_best = amrex::min(vh_err_best, amrex::Math::abs(vh_err));
+                }
+            }
+        }
+
+        dv(i,j,0) = dv_val;
+    });
+}
+
+//> Zonal mass/volume flux orchestrator. Computes the zonal PPM transport
+//  uh (and its viscosity-remnant-scaled velocity derivative), then -- only
+//  when a barotropic target transport (uhbt) and/or BT_cont output is
+//  requested -- the transport-adjustment correction via zonal_flux_adjust,
+//  set_zonal_BT_cont, and (deferred here -- see note near the end)
+//  zonal_flux_thickness. do_I is always true here: it is only ever set
+//  false by OBC segment logic, which is out of scope until OceanOBC is
+//  implemented in C++ (see the AMREX_ABORT_LOC guard below).
+void zonal_mass_flux(
+    const Box& bxC,
+    Array4<const Real> const& u,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_W,
+    Array4<const Real> const& h_E,
+    Array4<Real> const& uh,
+    Real dt,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    Array4<const Real> const& areaT,
+    Array4<const Real> const& dxT,
+    Array4<const Real> const& mask2dCu,
+    Array4<const Real> const& dxCu,
+    Real H_subroundoff,
+    const transport_adjust_CS_C& CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& uhbt,
+    Array4<const Real> const& visc_rem_u,
+    Array4<Real> const& u_cor,
+    Array4<Real> const& FA_u_W0,
+    Array4<Real> const& FA_u_E0,
+    Array4<Real> const& FA_u_WW,
+    Array4<Real> const& FA_u_EE,
+    Array4<Real> const& uBT_WW,
+    Array4<Real> const& uBT_EE,
+    Array4<Real> const& du_cor)
+{
+    BL_PROFILE("zonal_mass_flux");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_specified_BC = false, local_Flather_OBC = false, local_open_BC = false;
+    if (obc != nullptr) {
+        if (obc->OBC_pe) {
+            local_specified_BC = obc->specified_u_BCs_exist_globally;
+            local_Flather_OBC  = obc->Flather_u_BCs_exist_globally;
+            local_open_BC      = obc->open_u_BCs_exist_globally;
+        }
+    }
+    */
+
+    const bool use_visc_rem = (visc_rem_u.p != nullptr);
+    const bool set_BT_cont  = (FA_u_W0.p != nullptr);
+    const bool need_bt      = (uhbt.p != nullptr) || set_BT_cont;
+    const bool has_u_cor    = (u_cor.p != nullptr);
+    const bool has_du_cor   = (du_cor.p != nullptr);
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    Real CFL_dt = CS.CFL_limit_adjust / dt;
+    const Real I_dt = 1.0_rt / dt;
+    if (CS.aggress_adjust) CFL_dt = I_dt;
+
+    // Iteration box for u-point (U-grid) fields: grown by 1 at the lower x-extent
+    Box bxU = growLo(bxC, 0, 1);
+    Box bx2d(IntVect(bxU.smallEnd(0), bxU.smallEnd(1), 0),
+             IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
+
+    // Scratch, internal to this orchestrator -- never crosses the Fortran/C
+    // boundary. Mirrors the Fortran source's own local allocView()/free()
+    // calls (see lessons.md's backlog note on an alternative, scratch-free
+    // design deferred for later).
+    FArrayBox visc_rem_u_tmp_fab(bxU, 1, amrex::The_Arena());
+    FArrayBox uh_tot_0_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox duhdu_tot_0_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox du_max_CFL_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox du_min_CFL_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox visc_rem_max_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox du_fab(bx2d, 1, amrex::The_Arena());
+    IArrayBox do_I_fab(bx2d, 1, amrex::The_Arena());
+
+    Array4<Real> const visc_rem_u_tmp = visc_rem_u_tmp_fab.array();
+    Array4<Real> const uh_tot_0       = uh_tot_0_fab.array();
+    Array4<Real> const duhdu_tot_0    = duhdu_tot_0_fab.array();
+    Array4<Real> const du_max_CFL     = du_max_CFL_fab.array();
+    Array4<Real> const du_min_CFL     = du_min_CFL_fab.array();
+    Array4<Real> const visc_rem_max   = visc_rem_max_fab.array();
+    Array4<Real> const du             = du_fab.array();
+    Array4<int>  const do_I           = do_I_fab.array();
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        if (has_du_cor) du_cor(i,j,0) = 0.0_rt;
+
+        // Set uh (and, only when needed below, the running sums of its
+        // velocity derivative and of visc_rem_u_tmp's running max).
+        Real uh_tot_0_val = 0.0_rt, duhdu_tot_0_val = 0.0_rt;
+        Real visc_rem_max_running = 0.0_rt;
+        for (int k = kmin; k <= kmax; ++k) {
+            Real const vrt = use_visc_rem ? visc_rem_u(i,j,k) : 1.0_rt;
+            visc_rem_u_tmp(i,j,k) = vrt;
+
+            Real duhdu_val;
+            flux_elem_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), h_W(i,j,k), h_W(i+1,j,k),
+                            h_E(i,j,k), h_E(i+1,j,k), uh(i,j,k), duhdu_val, vrt,
+                            dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
+                            dt, CS.vol_CFL, por_face_areaU(i,j,k));
+            /*
+            if (local_open_BC) {
+                int const l_seg = obc->segnum_u(i,j,0);
+                flux_elem_obc_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), uh(i,j,k), duhdu_val,
+                                    vrt, por_face_areaU(i,j,k), dy_Cu(i,j,0), obc, l_seg);
+            }
+            // untested (Fortran source's own comment)!
+            if (local_specified_BC && obc->segnum_u(i,j,0) != 0) {
+                int const l_seg = amrex::Math::abs(obc->segnum_u(i,j,0));
+                if (obc->segment[l_seg].specified) uh(i,j,k) = obc->segment[l_seg].normal_trans(i,j,k);
+            }
+            */
+
+            if (need_bt) {
+                uh_tot_0_val += uh(i,j,k);
+                duhdu_tot_0_val += duhdu_val;
+                if (use_visc_rem && CS.use_visc_rem_max) {
+                    visc_rem_max_running = (k == kmin) ? vrt : amrex::max(visc_rem_max_running, vrt);
+                }
+            }
+        }
+
+        if (need_bt) {
+            Real const visc_rem_max_val = (use_visc_rem && CS.use_visc_rem_max) ? visc_rem_max_running : 1.0_rt;
+            Real const I_vrm = (visc_rem_max_val > 0.0_rt) ? 1.0_rt / visc_rem_max_val : 0.0_rt;
+
+            //   Set limits on du that will keep the CFL number between -1 and 1.
+            // This should be adequate to keep the root bracketed in all cases.
+            Real dx_W, dx_E;
+            if (CS.vol_CFL) {
+                dx_W = ratio_max_point(areaT(i,j,0), dy_Cu(i,j,0), 1000.0_rt*dxT(i,j,0));
+                dx_E = ratio_max_point(areaT(i+1,j,0), dy_Cu(i,j,0), 1000.0_rt*dxT(i+1,j,0));
+            } else {
+                dx_W = dxT(i,j,0);
+                dx_E = dxT(i+1,j,0);
+            }
+            Real du_max_CFL_val = 2.0_rt * (CFL_dt * dx_W) * I_vrm;
+            Real du_min_CFL_val = -2.0_rt * (CFL_dt * dx_E) * I_vrm;
+
+            if (use_visc_rem) {
+                if (CS.aggress_adjust) {
+                    // untested (Fortran source's own comment)!
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const vrt = visc_rem_u_tmp(i,j,k);
+                        Real const du_lim_max = 0.499_rt * ((dx_W*I_dt - u(i,j,k)) + amrex::min(0.0_rt, u(i-1,j,k)));
+                        if (du_max_CFL_val * vrt > du_lim_max) du_max_CFL_val = du_lim_max / vrt;
+                        Real const du_lim_min = 0.499_rt * ((-dx_E*I_dt - u(i,j,k)) + amrex::max(0.0_rt, u(i+1,j,k)));
+                        if (du_min_CFL_val * vrt < du_lim_min) du_min_CFL_val = du_lim_min / vrt;
+                    }
+                } else {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const vrt = visc_rem_u_tmp(i,j,k);
+                        if (du_max_CFL_val * vrt > dx_W*CFL_dt - u(i,j,k)*mask2dCu(i,j,0))
+                            du_max_CFL_val = (dx_W*CFL_dt - u(i,j,k)) / vrt;
+                        if (du_min_CFL_val * vrt < -dx_E*CFL_dt - u(i,j,k)*mask2dCu(i,j,0))
+                            du_min_CFL_val = -(dx_E*CFL_dt + u(i,j,k)) / vrt;
+                    }
+                }
+            } else {
+                // untested (Fortran source's own comment)!
+                if (CS.aggress_adjust) {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        du_max_CFL_val = amrex::min(du_max_CFL_val,
+                            0.499_rt*((dx_W*I_dt - u(i,j,k)) + amrex::min(0.0_rt, u(i-1,j,k))));
+                        du_min_CFL_val = amrex::max(du_min_CFL_val,
+                            0.499_rt*((-dx_E*I_dt - u(i,j,k)) + amrex::max(0.0_rt, u(i+1,j,k))));
+                    }
+                } else {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        du_max_CFL_val = amrex::min(du_max_CFL_val, dx_W*CFL_dt - u(i,j,k));
+                        du_min_CFL_val = amrex::max(du_min_CFL_val, -(dx_E*CFL_dt + u(i,j,k)));
+                    }
+                }
+            }
+            du_max_CFL_val = amrex::max(du_max_CFL_val, 0.0_rt);
+            du_min_CFL_val = amrex::min(du_min_CFL_val, 0.0_rt);
+
+            uh_tot_0(i,j,0)    = uh_tot_0_val;
+            duhdu_tot_0(i,j,0) = duhdu_tot_0_val;
+            du_max_CFL(i,j,0)  = du_max_CFL_val;
+            du_min_CFL(i,j,0)  = du_min_CFL_val;
+            visc_rem_max(i,j,0) = visc_rem_max_val;
+            // do_I is only ever masked false by OBC (specified/Flather segment)
+            // logic, out of scope until OceanOBC is implemented in C++.
+            do_I(i,j,0) = 1;
+        }
+    });
+
+    if (need_bt) {
+        if (uhbt.p != nullptr) {
+            // Find du and uh.
+            MOM::zonal_flux_adjust(bxC, u, h_in, h_W, h_E,
+                                   uh_tot_0.const_array(), duhdu_tot_0.const_array(), du,
+                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   dy_Cu, IareaT, IdxT, CS,
+                                   visc_rem_u_tmp.const_array(), do_I.const_array(),
+                                   por_face_areaU, uhbt, uh, obc);
+
+            if (has_u_cor || has_du_cor) {
+                ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+                {
+                    if (has_u_cor) {
+                        for (int k = kmin; k <= kmax; ++k) {
+                            u_cor(i,j,k) = u(i,j,k) + du(i,j,0) * visc_rem_u_tmp(i,j,k);
+                        }
+                        /*
+                        // untested (Fortran source's own comment)!
+                        if (any_simple_OBC && simple_OBC_pt(i,j)) {
+                            for (int k = kmin; k <= kmax; ++k) {
+                                u_cor(i,j,k) = obc->segment[amrex::Math::abs(obc->segnum_u(i,j,0))]
+                                                  .normal_vel(i,j,k);
+                            }
+                        }
+                        */
+                    }
+                    if (has_du_cor) {
+                        du_cor(i,j,0) = du(i,j,0);
+                    }
+                });
+            }
+        }
+
+        if (set_BT_cont) {
+            // Diagnose the zero-transport correction, du0.
+            MOM::zonal_flux_adjust(bxC, u, h_in, h_W, h_E,
+                                   uh_tot_0.const_array(), duhdu_tot_0.const_array(), du,
+                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   dy_Cu, IareaT, IdxT, CS,
+                                   visc_rem_u_tmp.const_array(), do_I.const_array(),
+                                   por_face_areaU, Array4<const Real>{}, Array4<Real>{}, obc);
+
+            MOM::set_zonal_BT_cont(bxC, u, h_in, h_W, h_E,
+                                   FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE, uBT_WW, uBT_EE,
+                                   du.const_array(), uh_tot_0.const_array(), duhdu_tot_0.const_array(),
+                                   du_max_CFL.const_array(), du_min_CFL.const_array(), dt,
+                                   dxCu, dy_Cu, IareaT, IdxT, CS,
+                                   visc_rem_u_tmp.const_array(), visc_rem_max.const_array(),
+                                   do_I.const_array(), por_face_areaU);
+
+            /*
+            // untested (Fortran source's own comment)!
+            if (any_simple_OBC) {
+                ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+                {
+                    if (simple_OBC_pt(i,j)) {
+                        Real FAuI = H_subroundoff * dy_Cu(i,j,0);
+                        for (int k = kmin; k <= kmax; ++k) {
+                            int const l_seg = amrex::Math::abs(obc->segnum_u(i,j,0));
+                            if ((amrex::Math::abs(obc->segment[l_seg].normal_vel(i,j,k)) > 0.0_rt) &&
+                                obc->segment[l_seg].specified) {
+                                FAuI += obc->segment[l_seg].normal_trans(i,j,k) /
+                                        obc->segment[l_seg].normal_vel(i,j,k);
+                            }
+                        }
+                        FA_u_W0(i,j,0) = FAuI; FA_u_E0(i,j,0) = FAuI;
+                        FA_u_WW(i,j,0) = FAuI; FA_u_EE(i,j,0) = FAuI;
+                        uBT_WW(i,j,0) = 0.0_rt; uBT_EE(i,j,0) = 0.0_rt;
+                    }
+                });
+            }
+            */
+        }
+    }
+
+    /*
+    // untested (Fortran source's own comment)!
+    if (local_open_BC && set_BT_cont) {
+        for (int n = 0; n < obc->number_of_segments; ++n) {
+            if (obc->segment[n].open && obc->segment[n].is_E_or_W) {
+                int const i = obc->segment[n].HI.IsdB;
+                bool const is_E = (obc->segment[n].direction == OBC_DIRECTION_E);
+                ParallelFor(Box(IntVect(i, obc->segment[n].HI.Jsd, kmin),
+                                IntVect(i, obc->segment[n].HI.Jed, kmax)),
+                    [=] AMREX_GPU_DEVICE (int ii, int j, int) noexcept
+                {
+                    Real FA_u = 0.0_rt;
+                    for (int k = kmin; k <= kmax; ++k) {
+                        FA_u += (is_E ? h_in(ii,j,k) : h_in(ii+1,j,k)) * (dy_Cu(ii,j,0) * por_face_areaU(ii,j,k));
+                    }
+                    FA_u_W0(ii,j,0) = FA_u; FA_u_E0(ii,j,0) = FA_u;
+                    FA_u_WW(ii,j,0) = FA_u; FA_u_EE(ii,j,0) = FA_u;
+                    uBT_WW(ii,j,0) = 0.0_rt; uBT_EE(ii,j,0) = 0.0_rt;
+                });
+            }
+        }
+    }
+    */
+
+    // NOTE: BT_cont%h_u (a zonal_flux_thickness call) is out of scope here --
+    // turbotmp_zonal_mass_flux_bridge does not currently expose an h_u
+    // channel, so there is nothing on the C side to write that result into.
+}
+
+//> Meridional mass/volume flux orchestrator. Computes the meridional PPM
+//  transport vh (and its viscosity-remnant-scaled velocity derivative),
+//  then -- only when a barotropic target transport (vhbt) and/or BT_cont
+//  output is requested -- the transport-adjustment correction via
+//  meridional_flux_adjust and set_merid_BT_cont (deferred here -- see note
+//  near the end -- for meridional_flux_thickness/BT_cont%h_v). do_I is
+//  always true here: it is only ever set false by OBC segment logic,
+//  which is out of scope until OceanOBC is implemented in C++ (see the
+//  AMREX_ABORT_LOC guard below). isd/ied bound a wider i-range than this
+//  box's own [ish,ieh] -- visc_rem_v_tmp is filled over that full range,
+//  matching the Fortran source, even though only [ish,ieh] is ever read
+//  by this kernel.
+void meridional_mass_flux(
+    const Box& bxC,
+    Array4<const Real> const& v,
+    Array4<const Real> const& h_in,
+    Array4<const Real> const& h_S,
+    Array4<const Real> const& h_N,
+    Array4<Real> const& vh,
+    Real dt,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdyT,
+    Array4<const Real> const& areaT,
+    Array4<const Real> const& dyT,
+    Array4<const Real> const& mask2dCv,
+    Array4<const Real> const& dyCv,
+    int isd,
+    int ied,
+    Real H_subroundoff,
+    const transport_adjust_CS_C& CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaV,
+    Array4<const Real> const& vhbt,
+    Array4<const Real> const& visc_rem_v,
+    Array4<Real> const& v_cor,
+    Array4<Real> const& FA_v_S0,
+    Array4<Real> const& FA_v_N0,
+    Array4<Real> const& FA_v_SS,
+    Array4<Real> const& FA_v_NN,
+    Array4<Real> const& vBT_SS,
+    Array4<Real> const& vBT_NN,
+    Array4<Real> const& dv_cor)
+{
+    BL_PROFILE("meridional_mass_flux");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    // All boundary-condition logic removed for initial port validation.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+    /*
+    bool local_specified_BC = false, local_Flather_OBC = false, local_open_BC = false;
+    if (obc != nullptr) {
+        if (obc->OBC_pe) {
+            local_specified_BC = obc->specified_v_BCs_exist_globally;
+            local_Flather_OBC  = obc->Flather_v_BCs_exist_globally;
+            local_open_BC      = obc->open_v_BCs_exist_globally;
+        }
+    }
+    */
+
+    const bool use_visc_rem = (visc_rem_v.p != nullptr);
+    const bool set_BT_cont  = (FA_v_S0.p != nullptr);
+    const bool need_bt      = (vhbt.p != nullptr) || set_BT_cont;
+    const bool has_v_cor    = (v_cor.p != nullptr);
+    const bool has_dv_cor   = (dv_cor.p != nullptr);
+
+    const int kmin = bxC.smallEnd(2);
+    const int kmax = bxC.bigEnd(2);
+
+    Real CFL_dt = CS.CFL_limit_adjust / dt;
+    const Real I_dt = 1.0_rt / dt;
+    if (CS.aggress_adjust) CFL_dt = I_dt;
+
+    // Iteration box for v-point (V-grid) fields: grown by 1 at the lower y-extent
+    Box bxV = growLo(bxC, 1, 1);
+    Box bx2d(IntVect(bxV.smallEnd(0), bxV.smallEnd(1), 0),
+             IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
+
+    // visc_rem_v_tmp is filled over the full data-domain i-range [isd,ied]
+    // (matching the Fortran source), wider than this box's own i-range.
+    Box bx_visc_wide(IntVect(isd,               bxV.smallEnd(1), kmin),
+                      IntVect(ied,               bxV.bigEnd(1),   kmax));
+
+    // Scratch, internal to this orchestrator -- never crosses the Fortran/C
+    // boundary. Mirrors the Fortran source's own local allocView()/free()
+    // calls (see lessons.md's backlog note on an alternative, scratch-free
+    // design deferred for later).
+    FArrayBox visc_rem_v_tmp_fab(bx_visc_wide, 1, amrex::The_Arena());
+    FArrayBox vh_tot_0_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox dvhdv_tot_0_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox dv_max_CFL_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox dv_min_CFL_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox visc_rem_max_fab(bx2d, 1, amrex::The_Arena());
+    FArrayBox dv_fab(bx2d, 1, amrex::The_Arena());
+    IArrayBox do_I_fab(bx2d, 1, amrex::The_Arena());
+
+    Array4<Real> const visc_rem_v_tmp = visc_rem_v_tmp_fab.array();
+    Array4<Real> const vh_tot_0        = vh_tot_0_fab.array();
+    Array4<Real> const dvhdv_tot_0     = dvhdv_tot_0_fab.array();
+    Array4<Real> const dv_max_CFL      = dv_max_CFL_fab.array();
+    Array4<Real> const dv_min_CFL      = dv_min_CFL_fab.array();
+    Array4<Real> const visc_rem_max    = visc_rem_max_fab.array();
+    Array4<Real> const dv              = dv_fab.array();
+    Array4<int>  const do_I            = do_I_fab.array();
+
+    ParallelFor(bx_visc_wide, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    {
+        visc_rem_v_tmp(i,j,k) = use_visc_rem ? visc_rem_v(i,j,k) : 1.0_rt;
+    });
+
+    ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+    {
+        if (has_dv_cor) dv_cor(i,j,0) = 0.0_rt;
+
+        // Set vh (and, only when needed below, the running sums of its
+        // velocity derivative and of visc_rem_v_tmp's running max).
+        Real vh_tot_0_val = 0.0_rt, dvhdv_tot_0_val = 0.0_rt;
+        Real visc_rem_max_running = 0.0_rt;
+        for (int k = kmin; k <= kmax; ++k) {
+            Real const vrt = visc_rem_v_tmp(i,j,k);
+
+            Real dvhdv_val;
+            flux_elem_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), h_S(i,j,k), h_S(i,j+1,k),
+                            h_N(i,j,k), h_N(i,j+1,k), vh(i,j,k), dvhdv_val, vrt,
+                            dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
+                            dt, CS.vol_CFL, por_face_areaV(i,j,k));
+            /*
+            // untested (Fortran source's own comment)!
+            if (local_open_BC) {
+                int const l_seg = obc->segnum_v(i,j,0);
+                flux_elem_obc_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), vh(i,j,k), dvhdv_val,
+                                    vrt, por_face_areaV(i,j,k), dx_Cv(i,j,0), obc, l_seg);
+            }
+            // untested (Fortran source's own comment)!
+            if (local_specified_BC && obc->segnum_v(i,j,0) != 0) {
+                int const l_seg = amrex::Math::abs(obc->segnum_v(i,j,0));
+                if (obc->segment[l_seg].specified) vh(i,j,k) = obc->segment[l_seg].normal_trans(i,j,k);
+            }
+            */
+
+            if (need_bt) {
+                vh_tot_0_val += vh(i,j,k);
+                dvhdv_tot_0_val += dvhdv_val;
+                if (use_visc_rem && CS.use_visc_rem_max) {
+                    visc_rem_max_running = amrex::max(visc_rem_max_running, vrt);
+                }
+            }
+        }
+
+        if (need_bt) {
+            Real const visc_rem_max_val = (use_visc_rem && CS.use_visc_rem_max) ? visc_rem_max_running : 1.0_rt;
+            Real const I_vrm = (visc_rem_max_val > 0.0_rt) ? 1.0_rt / visc_rem_max_val : 0.0_rt;
+
+            //   Set limits on dv that will keep the CFL number between -1 and 1.
+            // This should be adequate to keep the root bracketed in all cases.
+            Real dy_S, dy_N;
+            if (CS.vol_CFL) {
+                dy_S = ratio_max_point(areaT(i,j,0), dx_Cv(i,j,0), 1000.0_rt*dyT(i,j,0));
+                dy_N = ratio_max_point(areaT(i,j+1,0), dx_Cv(i,j,0), 1000.0_rt*dyT(i,j+1,0));
+            } else {
+                dy_S = dyT(i,j,0);
+                dy_N = dyT(i,j+1,0);
+            }
+            Real dv_max_CFL_val = 2.0_rt * (CFL_dt * dy_S) * I_vrm;
+            Real dv_min_CFL_val = -2.0_rt * (CFL_dt * dy_N) * I_vrm;
+
+            if (use_visc_rem) {
+                if (CS.aggress_adjust) {
+                    // untested (Fortran source's own comment)!
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const vrt = visc_rem_v_tmp(i,j,k);
+                        Real const dv_lim_max = 0.499_rt * ((dy_S*I_dt - v(i,j,k)) + amrex::min(0.0_rt, v(i,j-1,k)));
+                        if (dv_max_CFL_val * vrt > dv_lim_max) dv_max_CFL_val = dv_lim_max / vrt;
+                        // Fortran source uses CFL_dt (not I_dt) on this line; the two are
+                        // guaranteed equal here since CS.aggress_adjust forces CFL_dt = I_dt.
+                        Real const dv_lim_min = 0.499_rt * ((-dy_N*CFL_dt - v(i,j,k)) + amrex::max(0.0_rt, v(i,j+1,k)));
+                        if (dv_min_CFL_val * vrt < dv_lim_min) dv_min_CFL_val = dv_lim_min / vrt;
+                    }
+                } else {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        Real const vrt = visc_rem_v_tmp(i,j,k);
+                        if (dv_max_CFL_val * vrt > dy_S*CFL_dt - v(i,j,k)*mask2dCv(i,j,0))
+                            dv_max_CFL_val = (dy_S*CFL_dt - v(i,j,k)) / vrt;
+                        if (dv_min_CFL_val * vrt < -dy_N*CFL_dt - v(i,j,k)*mask2dCv(i,j,0))
+                            dv_min_CFL_val = -(dy_N*CFL_dt + v(i,j,k)) / vrt;
+                    }
+                }
+            } else {
+                if (CS.aggress_adjust) {
+                    // untested (Fortran source's own comment)!
+                    for (int k = kmin; k <= kmax; ++k) {
+                        dv_max_CFL_val = amrex::min(dv_max_CFL_val,
+                            0.499_rt*((dy_S*I_dt - v(i,j,k)) + amrex::min(0.0_rt, v(i,j-1,k))));
+                        dv_min_CFL_val = amrex::max(dv_min_CFL_val,
+                            0.499_rt*((-dy_N*I_dt - v(i,j,k)) + amrex::max(0.0_rt, v(i,j+1,k))));
+                    }
+                } else {
+                    for (int k = kmin; k <= kmax; ++k) {
+                        dv_max_CFL_val = amrex::min(dv_max_CFL_val, dy_S*CFL_dt - v(i,j,k));
+                        dv_min_CFL_val = amrex::max(dv_min_CFL_val, -(dy_N*CFL_dt + v(i,j,k)));
+                    }
+                }
+            }
+            dv_max_CFL_val = amrex::max(dv_max_CFL_val, 0.0_rt);
+            dv_min_CFL_val = amrex::min(dv_min_CFL_val, 0.0_rt);
+
+            vh_tot_0(i,j,0)    = vh_tot_0_val;
+            dvhdv_tot_0(i,j,0) = dvhdv_tot_0_val;
+            dv_max_CFL(i,j,0)  = dv_max_CFL_val;
+            dv_min_CFL(i,j,0)  = dv_min_CFL_val;
+            visc_rem_max(i,j,0) = visc_rem_max_val;
+            // do_I is only ever masked false by OBC (specified/Flather segment)
+            // logic, out of scope until OceanOBC is implemented in C++.
+            do_I(i,j,0) = 1;
+        }
+    });
+
+    if (need_bt) {
+        if (vhbt.p != nullptr) {
+            // Find dv and vh.
+            MOM::meridional_flux_adjust(bxC, v, h_in, h_S, h_N,
+                                        vh_tot_0.const_array(), dvhdv_tot_0.const_array(), dv,
+                                        dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                        dx_Cv, IareaT, IdyT, CS,
+                                        visc_rem_v_tmp.const_array(), do_I.const_array(),
+                                        por_face_areaV, vhbt, vh, obc);
+
+            if (has_v_cor || has_dv_cor) {
+                ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+                {
+                    if (has_v_cor) {
+                        for (int k = kmin; k <= kmax; ++k) {
+                            v_cor(i,j,k) = v(i,j,k) + dv(i,j,0) * visc_rem_v_tmp(i,j,k);
+                        }
+                        /*
+                        // untested (Fortran source's own comment)!
+                        if (any_simple_OBC && simple_OBC_pt(i,j)) {
+                            for (int k = kmin; k <= kmax; ++k) {
+                                v_cor(i,j,k) = obc->segment[amrex::Math::abs(obc->segnum_v(i,j,0))]
+                                                  .normal_vel(i,j,k);
+                            }
+                        }
+                        */
+                    }
+                    if (has_dv_cor) {
+                        dv_cor(i,j,0) = dv(i,j,0);
+                    }
+                });
+            }
+        }
+
+        if (set_BT_cont) {
+            // Diagnose the zero-transport correction, dv0.
+            MOM::meridional_flux_adjust(bxC, v, h_in, h_S, h_N,
+                                        vh_tot_0.const_array(), dvhdv_tot_0.const_array(), dv,
+                                        dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                        dx_Cv, IareaT, IdyT, CS,
+                                        visc_rem_v_tmp.const_array(), do_I.const_array(),
+                                        por_face_areaV, Array4<const Real>{}, Array4<Real>{}, obc);
+
+            MOM::set_merid_BT_cont(bxC, v, h_in, h_S, h_N,
+                                   FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN, vBT_SS, vBT_NN,
+                                   dv.const_array(), vh_tot_0.const_array(), dvhdv_tot_0.const_array(),
+                                   dv_max_CFL.const_array(), dv_min_CFL.const_array(), dt,
+                                   dyCv, dx_Cv, IareaT, IdyT, CS,
+                                   visc_rem_v_tmp.const_array(), visc_rem_max.const_array(),
+                                   do_I.const_array(), por_face_areaV);
+
+            /*
+            // untested (Fortran source's own comment)!
+            // NOTE: the Fortran source's own i-range here reads i=ish:jeh (not
+            // ieh) -- ported verbatim; likely a pre-existing Fortran-side typo.
+            if (any_simple_OBC) {
+                ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+                {
+                    if (simple_OBC_pt(i,j)) {
+                        Real FAvi = H_subroundoff * dx_Cv(i,j,0);
+                        for (int k = kmin; k <= kmax; ++k) {
+                            int const l_seg = amrex::Math::abs(obc->segnum_v(i,j,0));
+                            if ((amrex::Math::abs(obc->segment[l_seg].normal_vel(i,j,k)) > 0.0_rt) &&
+                                obc->segment[l_seg].specified) {
+                                FAvi += obc->segment[l_seg].normal_trans(i,j,k) /
+                                        obc->segment[l_seg].normal_vel(i,j,k);
+                            }
+                        }
+                        FA_v_S0(i,j,0) = FAvi; FA_v_N0(i,j,0) = FAvi;
+                        FA_v_SS(i,j,0) = FAvi; FA_v_NN(i,j,0) = FAvi;
+                        vBT_SS(i,j,0) = 0.0_rt; vBT_NN(i,j,0) = 0.0_rt;
+                    }
+                });
+            }
+            */
+        }
+    }
+
+    /*
+    // untested (Fortran source's own comment)!
+    if (local_open_BC && set_BT_cont) {
+        for (int n = 0; n < obc->number_of_segments; ++n) {
+            if (obc->segment[n].open && obc->segment[n].is_N_or_S) {
+                int const j = obc->segment[n].HI.JsdB;
+                bool const is_N = (obc->segment[n].direction == OBC_DIRECTION_N);
+                ParallelFor(Box(IntVect(obc->segment[n].HI.Isd, j, kmin),
+                                IntVect(obc->segment[n].HI.Ied, j, kmax)),
+                    [=] AMREX_GPU_DEVICE (int i, int jj, int) noexcept
+                {
+                    Real FA_v = 0.0_rt;
+                    for (int k = kmin; k <= kmax; ++k) {
+                        FA_v += (is_N ? h_in(i,j,k) : h_in(i,j+1,k)) * (dx_Cv(i,j,0) * por_face_areaV(i,j,k));
+                    }
+                    FA_v_S0(i,j,0) = FA_v; FA_v_N0(i,j,0) = FA_v;
+                    FA_v_SS(i,j,0) = FA_v; FA_v_NN(i,j,0) = FA_v;
+                    vBT_SS(i,j,0) = 0.0_rt; vBT_NN(i,j,0) = 0.0_rt;
+                });
+            }
+        }
+    }
+    */
+
+    // NOTE: BT_cont%h_v (a meridional_flux_thickness call) is out of scope
+    // here -- turbotmp_meridional_mass_flux_bridge does not currently expose
+    // an h_v channel, so there is nothing on the C side to write that
+    // result into.
+}
+
+//> Monolithic continuity solver. Reconstructs edge thicknesses, then advects
+//  (via zonal_mass_flux/meridional_mass_flux and
+//  continuity_zonal_convergence/continuity_meridional_convergence) first in
+//  one direction and then the other, in the order set by x_first; the
+//  second direction's reconstruction and advection use the thickness
+//  already updated by the first. The first half-step's iteration box is
+//  grown by stencil in the OTHER direction (to accommodate the second
+//  half-step's own stencil needs); the second half-step uses bx0 unchanged.
+void continuity_PPM(
+    Array4<const Real> const& u,
+    Array4<const Real> const& v,
+    Array4<const Real> const& hin,
+    Array4<Real> const& h,
+    Array4<Real> const& uh,
+    Array4<Real> const& vh,
+    Real dt,
+    const Box& bx0,
+    int stencil,
+    bool x_first,
+    Array4<const Real> const& mask2dT,
+    Array4<const Real> const& dy_Cu,
+    Array4<const Real> const& IareaT,
+    Array4<const Real> const& IdxT,
+    Array4<const Real> const& areaT,
+    Array4<const Real> const& dxT,
+    Array4<const Real> const& mask2dCu,
+    Array4<const Real> const& dxCu,
+    Array4<const Real> const& dx_Cv,
+    Array4<const Real> const& IdyT,
+    Array4<const Real> const& dyT,
+    Array4<const Real> const& mask2dCv,
+    Array4<const Real> const& dyCv,
+    int isd,
+    int ied,
+    Real Angstrom_H,
+    Real H_subroundoff,
+    const reconstruction_CS_C& reconstruction_CS,
+    const transport_adjust_CS_C& transport_adjust_CS,
+    OceanOBC* obc,
+    Array4<const Real> const& por_face_areaU,
+    Array4<const Real> const& por_face_areaV,
+    Array4<const Real> const& uhbt,
+    Array4<const Real> const& vhbt,
+    Array4<const Real> const& visc_rem_u,
+    Array4<const Real> const& visc_rem_v,
+    Array4<Real> const& u_cor,
+    Array4<Real> const& v_cor,
+    Array4<Real> const& FA_u_W0,
+    Array4<Real> const& FA_u_E0,
+    Array4<Real> const& FA_u_WW,
+    Array4<Real> const& FA_u_EE,
+    Array4<Real> const& uBT_WW,
+    Array4<Real> const& uBT_EE,
+    Array4<Real> const& FA_v_S0,
+    Array4<Real> const& FA_v_N0,
+    Array4<Real> const& FA_v_SS,
+    Array4<Real> const& FA_v_NN,
+    Array4<Real> const& vBT_SS,
+    Array4<Real> const& vBT_NN,
+    Array4<Real> const& du_cor,
+    Array4<Real> const& dv_cor)
+{
+    BL_PROFILE("continuity_PPM");
+
+    // NOTE: OBC support temporarily disabled.
+    // OceanOBC is forward-declared only.
+    if (obc != nullptr) {
+       AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
+    }
+
+    if ((visc_rem_u.p != nullptr) != (visc_rem_v.p != nullptr)) {
+        AMREX_ABORT_LOC("continuity_PPM: Either both visc_rem_u and visc_rem_v or neither "
+                        "one must be present.");
+    }
+
+    const Real h_min = Angstrom_H;
+
+    // Scratch box spanning h's full array extent (matches h_a%lb/%ub in the
+    // Fortran source, which allocates h_W/h_E/h_S/h_N over that same range).
+    Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
+              IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+
+    if (x_first) {
+        // First advect zonally, with loop bounds that accommodate the
+        // subsequent meridional advection.
+        Box bxC = amrex::grow(bx0, 1, stencil);
+        FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+        MOM::zonal_edge_thickness(bxC, hin, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                                  Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  reconstruction_CS.simple_2nd, obc);
+        MOM::zonal_mass_flux(bxC, u, hin, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
+                             dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
+                             H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
+                             uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
+                             uBT_WW, uBT_EE, du_cor);
+        MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, hin, 0.0_rt);
+
+        // Now advect meridionally, using the updated thicknesses to determine the fluxes.
+        bxC = bx0;
+        FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+        MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                       Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       reconstruction_CS.simple_2nd, obc);
+        MOM::meridional_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
+                                  dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
+                                  H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
+                                  vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
+                                  vBT_SS, vBT_NN, dv_cor);
+        MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, Array4<const Real>{}, h_min);
+    } else {
+        // First advect meridionally, with loop bounds that accommodate the
+        // subsequent zonal advection.
+        Box bxC = amrex::grow(bx0, 0, stencil);
+        FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
+        MOM::meridional_edge_thickness(bxC, hin, h_S_fab.array(), h_N_fab.array(), mask2dT,
+                                       Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       reconstruction_CS.simple_2nd, obc);
+        MOM::meridional_mass_flux(bxC, v, hin, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
+                                  dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
+                                  H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
+                                  vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
+                                  vBT_SS, vBT_NN, dv_cor);
+        MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, hin, 0.0_rt);
+
+        // Now advect zonally, using the updated thicknesses to determine the fluxes.
+        bxC = bx0;
+        FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
+        FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
+        MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
+                                  Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  reconstruction_CS.simple_2nd, obc);
+        MOM::zonal_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
+                             dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
+                             H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
+                             uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
+                             uBT_WW, uBT_EE, du_cor);
+        MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, Array4<const Real>{}, h_min);
+    }
 }
 }

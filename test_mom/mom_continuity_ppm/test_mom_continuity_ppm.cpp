@@ -544,3 +544,578 @@ TEST(SetZonalBtCont, MatchesFortranCapture) {
     expect_arrays_equal(uBT_WW_after,  to_host_fab(uBT_WW),  "uBT_WW");
     expect_arrays_equal(uBT_EE_after,  to_host_fab(uBT_EE),  "uBT_EE");
 }
+
+// -------------------------------------------------------------------------
+// meridional_flux_adjust
+// -------------------------------------------------------------------------
+//
+// No capture/meridional_flux_adjust.{bin,meta} fixture exists yet, so this
+// test's field mapping is grounded directly in Fortran source (not a .meta
+// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:5210-5362, the
+// meridional_flux_adjust shim's TIMH_capture arm (rec%add(...) calls at
+// lines 5283-5305 and 5313-5314). Cross-checked against the bind(C)
+// interface and against turbotmp_meridional_flux_adjust_bridge's parameter
+// order in mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
+//
+// MOM::meridional_flux_adjust Newton-iterates a barotropic velocity
+// correction per meridional face so that the vertically-summed meridional
+// mass/volume transport matches the target barotropic transport, to within
+// the transport-adjustment iteration's tolerance. _tol_eta/_tol_vel/
+// _better_iter/_vol_CFL are the only transport_adjust_CS_C fields this
+// kernel reads, and are the only ones the shim captures; the rest of CS is
+// left default-initialized. do_I_in is captured as a LogicalArray_t, read
+// via int_fab_device(). vhbt/vh_3d are captured only when associated at
+// record time -- a fixture recorded with either unassociated would be
+// missing the corresponding field(s). obc is never captured -- pass
+// nullptr, matching the existing PPM_reconstruction_x/_y tests
+// (OBC-inactive configs only).
+TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "meridional_flux_adjust");
+
+    const auto   bxC             = captured.box("_bxC");
+    const auto   v                = captured.fab_device("_v");
+    const auto   h_in             = captured.fab_device("_h_in");
+    const auto   h_S              = captured.fab_device("_h_S");
+    const auto   h_N              = captured.fab_device("_h_N");
+    const auto   vh_tot_0         = captured.fab_device("_vh_tot_0");
+    const auto   dvhdv_tot_0      = captured.fab_device("_dvhdv_tot_0");
+    auto         dv               = captured.fab_device("_dv_before");
+    const auto   dv_after         = captured.fab_host("_dv_after");
+    const auto   dv_max_CFL       = captured.fab_device("_dv_max_CFL");
+    const auto   dv_min_CFL       = captured.fab_device("_dv_min_CFL");
+    const double dt               = captured.real64("_dt");
+    const auto   dx_Cv            = captured.fab_device("_dx_Cv");
+    const auto   IareaT           = captured.fab_device("_IareaT");
+    const auto   IdyT             = captured.fab_device("_IdyT");
+    transport_adjust_CS_C CS{};
+    CS.tol_eta                    = captured.real64("_tol_eta");
+    CS.tol_vel                    = captured.real64("_tol_vel");
+    CS.better_iter                = captured.logical("_better_iter");
+    CS.vol_CFL                    = captured.logical("_vol_CFL");
+    const auto   visc_rem         = captured.fab_device("_visc_rem");
+    const auto   do_I_in          = captured.int_fab_device("_do_I_in");
+    const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
+    const auto   vhbt             = captured.fab_device("_vhbt");
+    auto         vh_3d            = captured.fab_device("_vh_3d_before");
+    const auto   vh_3d_after      = captured.fab_host("_vh_3d_after");
+
+    MOM::meridional_flux_adjust(bxC,
+                                v.const_array(),
+                                h_in.const_array(),
+                                h_S.const_array(),
+                                h_N.const_array(),
+                                vh_tot_0.const_array(),
+                                dvhdv_tot_0.const_array(),
+                                dv.array(),
+                                dv_max_CFL.const_array(),
+                                dv_min_CFL.const_array(),
+                                dt,
+                                dx_Cv.const_array(),
+                                IareaT.const_array(),
+                                IdyT.const_array(),
+                                CS,
+                                visc_rem.const_array(),
+                                do_I_in.const_array(),
+                                por_face_areaV.const_array(),
+                                vhbt.const_array(),
+                                vh_3d.array(),
+                                /*obc=*/nullptr);
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(dv_after,     to_host_fab(dv),     "dv");
+    expect_arrays_equal(vh_3d_after,  to_host_fab(vh_3d),  "vh_3d");
+}
+
+// -------------------------------------------------------------------------
+// zonal_flux_adjust
+// -------------------------------------------------------------------------
+//
+// No capture/zonal_flux_adjust.{bin,meta} fixture exists yet, so this
+// test's field mapping is grounded directly in Fortran source (not a .meta
+// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:3371-3526, the
+// zonal_flux_adjust shim's TIMH_capture arm (rec%add(...) calls at lines
+// 3447-3469 and 3477-3478). Cross-checked against the bind(C) interface and
+// against turbotmp_zonal_flux_adjust_bridge's parameter order in
+// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
+//
+// MOM::zonal_flux_adjust Newton-iterates a barotropic velocity correction
+// per zonal face so that the vertically-summed zonal mass/volume transport
+// matches the target barotropic transport, to within the
+// transport-adjustment iteration's tolerance. _tol_eta/_tol_vel/
+// _better_iter/_vol_CFL are the only transport_adjust_CS_C fields this
+// kernel reads, and are the only ones the shim captures; the rest of CS is
+// left default-initialized. do_I_in is captured as a LogicalArray_t, read
+// via int_fab_device(). uhbt/uh_3d are captured only when associated at
+// record time -- a fixture recorded with either unassociated would be
+// missing the corresponding field(s). obc is never captured -- pass
+// nullptr, matching the existing PPM_reconstruction_x/_y tests
+// (OBC-inactive configs only).
+TEST(ZonalFluxAdjust, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "zonal_flux_adjust");
+
+    const auto   bxC             = captured.box("_bxC");
+    const auto   u                = captured.fab_device("_u");
+    const auto   h_in             = captured.fab_device("_h_in");
+    const auto   h_W              = captured.fab_device("_h_W");
+    const auto   h_E              = captured.fab_device("_h_E");
+    const auto   uh_tot_0         = captured.fab_device("_uh_tot_0");
+    const auto   duhdu_tot_0      = captured.fab_device("_duhdu_tot_0");
+    auto         du               = captured.fab_device("_du_before");
+    const auto   du_after         = captured.fab_host("_du_after");
+    const auto   du_max_CFL       = captured.fab_device("_du_max_CFL");
+    const auto   du_min_CFL       = captured.fab_device("_du_min_CFL");
+    const double dt               = captured.real64("_dt");
+    const auto   dy_Cu            = captured.fab_device("_dy_Cu");
+    const auto   IareaT           = captured.fab_device("_IareaT");
+    const auto   IdxT             = captured.fab_device("_IdxT");
+    transport_adjust_CS_C CS{};
+    CS.tol_eta                    = captured.real64("_tol_eta");
+    CS.tol_vel                    = captured.real64("_tol_vel");
+    CS.better_iter                = captured.logical("_better_iter");
+    CS.vol_CFL                    = captured.logical("_vol_CFL");
+    const auto   visc_rem         = captured.fab_device("_visc_rem");
+    const auto   do_I_in          = captured.int_fab_device("_do_I_in");
+    const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
+    const auto   uhbt             = captured.fab_device("_uhbt");
+    auto         uh_3d            = captured.fab_device("_uh_3d_before");
+    const auto   uh_3d_after      = captured.fab_host("_uh_3d_after");
+
+    MOM::zonal_flux_adjust(bxC,
+                           u.const_array(),
+                           h_in.const_array(),
+                           h_W.const_array(),
+                           h_E.const_array(),
+                           uh_tot_0.const_array(),
+                           duhdu_tot_0.const_array(),
+                           du.array(),
+                           du_max_CFL.const_array(),
+                           du_min_CFL.const_array(),
+                           dt,
+                           dy_Cu.const_array(),
+                           IareaT.const_array(),
+                           IdxT.const_array(),
+                           CS,
+                           visc_rem.const_array(),
+                           do_I_in.const_array(),
+                           por_face_areaU.const_array(),
+                           uhbt.const_array(),
+                           uh_3d.array(),
+                           /*obc=*/nullptr);
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(du_after,    to_host_fab(du),    "du");
+    expect_arrays_equal(uh_3d_after, to_host_fab(uh_3d), "uh_3d");
+}
+
+// -------------------------------------------------------------------------
+// meridional_mass_flux
+// -------------------------------------------------------------------------
+//
+// No capture/meridional_mass_flux.{bin,meta} fixture exists yet, so this
+// test's field mapping is grounded directly in Fortran source (not a .meta
+// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:4290-4502, the
+// meridional_mass_flux shim's TIMH_capture arm (rec%add(...) calls at lines
+// 4383-4417 and 4427-4437). Cross-checked against the bind(C) interface and
+// against turbotmp_meridional_mass_flux_bridge's parameter order in
+// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
+//
+// MOM::meridional_mass_flux is the orchestrator that computes the
+// meridional PPM transport vh, then -- when vhbt/BT_cont output is
+// requested -- the transport-adjustment correction via
+// meridional_flux_adjust and set_merid_BT_cont. _isd/_ied are Fortran
+// 1-based data-domain i-bounds; the bridge normally converts these to
+// 0-based before calling the kernel, so this test does the same
+// subtraction directly. _vhbt/_visc_rem_v are captured unconditionally by
+// the shim (unlike v_cor/dv_cor/the six FA_v_*/vBT_* fields, which are
+// captured only when associated). _CFL_limit_adjust/_aggress_adjust/
+// _vol_CFL/_use_visc_rem_max/_marginal_faces are the transport_adjust_CS_C
+// fields the shim captures; the kernel itself does not read marginal_faces
+// (that would only matter for the BT_cont%h_v/meridional_flux_thickness
+// tail, which is out of scope -- see the kernel's own source comment). obc
+// is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
+TEST(MeridionalMassFlux, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "meridional_mass_flux");
+
+    const auto   bxC             = captured.box("_bxC");
+    const auto   v                = captured.fab_device("_v");
+    const auto   h_in             = captured.fab_device("_h_in");
+    const auto   h_S              = captured.fab_device("_h_S");
+    const auto   h_N              = captured.fab_device("_h_N");
+    auto         vh                = captured.fab_device("_vh_before");
+    const auto   vh_after          = captured.fab_host("_vh_after");
+    const double dt               = captured.real64("_dt");
+    const auto   dx_Cv            = captured.fab_device("_dx_Cv");
+    const auto   IareaT           = captured.fab_device("_IareaT");
+    const auto   IdyT             = captured.fab_device("_IdyT");
+    const auto   areaT            = captured.fab_device("_areaT");
+    const auto   dyT              = captured.fab_device("_dyT");
+    const auto   mask2dCv         = captured.fab_device("_mask2dCv");
+    const auto   dyCv             = captured.fab_device("_dyCv");
+    const int    isd              = captured.integer("_isd") - 1;
+    const int    ied              = captured.integer("_ied") - 1;
+    const double H_subroundoff    = captured.real64("_H_subroundoff");
+    transport_adjust_CS_C CS{};
+    CS.CFL_limit_adjust           = captured.real64("_CFL_limit_adjust");
+    CS.aggress_adjust             = captured.logical("_aggress_adjust");
+    CS.vol_CFL                    = captured.logical("_vol_CFL");
+    CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
+    CS.marginal_faces             = captured.logical("_marginal_faces");
+    const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
+    const auto   vhbt             = captured.fab_device("_vhbt");
+    const auto   visc_rem_v       = captured.fab_device("_visc_rem_v");
+    auto         v_cor             = captured.fab_device("_v_cor_before");
+    const auto   v_cor_after       = captured.fab_host("_v_cor_after");
+    auto         FA_v_S0           = captured.fab_device("_FA_v_S0_before");
+    auto         FA_v_N0           = captured.fab_device("_FA_v_N0_before");
+    auto         FA_v_SS           = captured.fab_device("_FA_v_SS_before");
+    auto         FA_v_NN           = captured.fab_device("_FA_v_NN_before");
+    auto         vBT_SS            = captured.fab_device("_vBT_SS_before");
+    auto         vBT_NN            = captured.fab_device("_vBT_NN_before");
+    const auto   FA_v_S0_after     = captured.fab_host("_FA_v_S0_after");
+    const auto   FA_v_N0_after     = captured.fab_host("_FA_v_N0_after");
+    const auto   FA_v_SS_after     = captured.fab_host("_FA_v_SS_after");
+    const auto   FA_v_NN_after     = captured.fab_host("_FA_v_NN_after");
+    const auto   vBT_SS_after      = captured.fab_host("_vBT_SS_after");
+    const auto   vBT_NN_after      = captured.fab_host("_vBT_NN_after");
+    auto         dv_cor            = captured.fab_device("_dv_cor_before");
+    const auto   dv_cor_after      = captured.fab_host("_dv_cor_after");
+
+    MOM::meridional_mass_flux(bxC,
+                              v.const_array(),
+                              h_in.const_array(),
+                              h_S.const_array(),
+                              h_N.const_array(),
+                              vh.array(),
+                              dt,
+                              dx_Cv.const_array(),
+                              IareaT.const_array(),
+                              IdyT.const_array(),
+                              areaT.const_array(),
+                              dyT.const_array(),
+                              mask2dCv.const_array(),
+                              dyCv.const_array(),
+                              isd,
+                              ied,
+                              H_subroundoff,
+                              CS,
+                              /*obc=*/nullptr,
+                              por_face_areaV.const_array(),
+                              vhbt.const_array(),
+                              visc_rem_v.const_array(),
+                              v_cor.array(),
+                              FA_v_S0.array(),
+                              FA_v_N0.array(),
+                              FA_v_SS.array(),
+                              FA_v_NN.array(),
+                              vBT_SS.array(),
+                              vBT_NN.array(),
+                              dv_cor.array());
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(vh_after,     to_host_fab(vh),     "vh");
+    expect_arrays_equal(v_cor_after,  to_host_fab(v_cor),  "v_cor");
+    expect_arrays_equal(FA_v_S0_after, to_host_fab(FA_v_S0), "FA_v_S0");
+    expect_arrays_equal(FA_v_N0_after, to_host_fab(FA_v_N0), "FA_v_N0");
+    expect_arrays_equal(FA_v_SS_after, to_host_fab(FA_v_SS), "FA_v_SS");
+    expect_arrays_equal(FA_v_NN_after, to_host_fab(FA_v_NN), "FA_v_NN");
+    expect_arrays_equal(vBT_SS_after,  to_host_fab(vBT_SS),  "vBT_SS");
+    expect_arrays_equal(vBT_NN_after,  to_host_fab(vBT_NN),  "vBT_NN");
+    expect_arrays_equal(dv_cor_after, to_host_fab(dv_cor), "dv_cor");
+}
+
+// -------------------------------------------------------------------------
+// zonal_mass_flux
+// -------------------------------------------------------------------------
+//
+// No capture/zonal_mass_flux.{bin,meta} fixture exists yet, so this test's
+// field mapping is grounded directly in Fortran source (not a .meta file):
+// submodules/MOM6/src/core/MOM_continuity_PPM.F90:2371-2570, the
+// zonal_mass_flux shim's TIMH_capture arm (rec%add(...) calls at lines
+// 2455-2487 and 2496-2506). Cross-checked against the bind(C) interface
+// and against turbotmp_zonal_mass_flux_bridge's parameter order in
+// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
+//
+// MOM::zonal_mass_flux is the orchestrator that computes the zonal PPM
+// transport uh, then -- when uhbt/BT_cont output is requested -- the
+// transport-adjustment correction via zonal_flux_adjust and
+// set_zonal_BT_cont. _uhbt/_visc_rem_u are captured unconditionally by
+// the shim (unlike u_cor/du_cor/the six FA_u_*/uBT_* fields, which are
+// captured only when associated). _CFL_limit_adjust/_aggress_adjust/
+// _vol_CFL/_use_visc_rem_max/_marginal_faces are the transport_adjust_CS_C
+// fields the shim captures; the kernel itself does not read
+// marginal_faces (that would only matter for the BT_cont%h_u/
+// zonal_flux_thickness tail, which is out of scope -- see the kernel's
+// own source comment). obc is never captured -- pass nullptr, matching
+// the existing PPM_reconstruction_x/_y tests (OBC-inactive configs only).
+TEST(ZonalMassFlux, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "zonal_mass_flux");
+
+    const auto   bxC             = captured.box("_bxC");
+    const auto   u                = captured.fab_device("_u");
+    const auto   h_in             = captured.fab_device("_h_in");
+    const auto   h_W              = captured.fab_device("_h_W");
+    const auto   h_E              = captured.fab_device("_h_E");
+    auto         uh                = captured.fab_device("_uh_before");
+    const auto   uh_after          = captured.fab_host("_uh_after");
+    const double dt               = captured.real64("_dt");
+    const auto   dy_Cu            = captured.fab_device("_dy_Cu");
+    const auto   IareaT           = captured.fab_device("_IareaT");
+    const auto   IdxT             = captured.fab_device("_IdxT");
+    const auto   areaT            = captured.fab_device("_areaT");
+    const auto   dxT              = captured.fab_device("_dxT");
+    const auto   mask2dCu         = captured.fab_device("_mask2dCu");
+    const auto   dxCu             = captured.fab_device("_dxCu");
+    const double H_subroundoff    = captured.real64("_H_subroundoff");
+    transport_adjust_CS_C CS{};
+    CS.CFL_limit_adjust           = captured.real64("_CFL_limit_adjust");
+    CS.aggress_adjust             = captured.logical("_aggress_adjust");
+    CS.vol_CFL                    = captured.logical("_vol_CFL");
+    CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
+    CS.marginal_faces             = captured.logical("_marginal_faces");
+    const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
+    const auto   uhbt             = captured.fab_device("_uhbt");
+    const auto   visc_rem_u       = captured.fab_device("_visc_rem_u");
+    auto         u_cor             = captured.fab_device("_u_cor_before");
+    const auto   u_cor_after       = captured.fab_host("_u_cor_after");
+    auto         FA_u_W0           = captured.fab_device("_FA_u_W0_before");
+    auto         FA_u_E0           = captured.fab_device("_FA_u_E0_before");
+    auto         FA_u_WW           = captured.fab_device("_FA_u_WW_before");
+    auto         FA_u_EE           = captured.fab_device("_FA_u_EE_before");
+    auto         uBT_WW            = captured.fab_device("_uBT_WW_before");
+    auto         uBT_EE            = captured.fab_device("_uBT_EE_before");
+    const auto   FA_u_W0_after     = captured.fab_host("_FA_u_W0_after");
+    const auto   FA_u_E0_after     = captured.fab_host("_FA_u_E0_after");
+    const auto   FA_u_WW_after     = captured.fab_host("_FA_u_WW_after");
+    const auto   FA_u_EE_after     = captured.fab_host("_FA_u_EE_after");
+    const auto   uBT_WW_after      = captured.fab_host("_uBT_WW_after");
+    const auto   uBT_EE_after      = captured.fab_host("_uBT_EE_after");
+    auto         du_cor            = captured.fab_device("_du_cor_before");
+    const auto   du_cor_after      = captured.fab_host("_du_cor_after");
+
+    MOM::zonal_mass_flux(bxC,
+                         u.const_array(),
+                         h_in.const_array(),
+                         h_W.const_array(),
+                         h_E.const_array(),
+                         uh.array(),
+                         dt,
+                         dy_Cu.const_array(),
+                         IareaT.const_array(),
+                         IdxT.const_array(),
+                         areaT.const_array(),
+                         dxT.const_array(),
+                         mask2dCu.const_array(),
+                         dxCu.const_array(),
+                         H_subroundoff,
+                         CS,
+                         /*obc=*/nullptr,
+                         por_face_areaU.const_array(),
+                         uhbt.const_array(),
+                         visc_rem_u.const_array(),
+                         u_cor.array(),
+                         FA_u_W0.array(),
+                         FA_u_E0.array(),
+                         FA_u_WW.array(),
+                         FA_u_EE.array(),
+                         uBT_WW.array(),
+                         uBT_EE.array(),
+                         du_cor.array());
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(uh_after,     to_host_fab(uh),     "uh");
+    expect_arrays_equal(u_cor_after,  to_host_fab(u_cor),  "u_cor");
+    expect_arrays_equal(FA_u_W0_after, to_host_fab(FA_u_W0), "FA_u_W0");
+    expect_arrays_equal(FA_u_E0_after, to_host_fab(FA_u_E0), "FA_u_E0");
+    expect_arrays_equal(FA_u_WW_after, to_host_fab(FA_u_WW), "FA_u_WW");
+    expect_arrays_equal(FA_u_EE_after, to_host_fab(FA_u_EE), "FA_u_EE");
+    expect_arrays_equal(uBT_WW_after,  to_host_fab(uBT_WW),  "uBT_WW");
+    expect_arrays_equal(uBT_EE_after,  to_host_fab(uBT_EE),  "uBT_EE");
+    expect_arrays_equal(du_cor_after, to_host_fab(du_cor), "du_cor");
+}
+
+// -------------------------------------------------------------------------
+// continuity_PPM
+// -------------------------------------------------------------------------
+//
+// No capture/continuity_ppm.{bin,meta} fixture exists yet, so this test's
+// field mapping is grounded directly in Fortran source (not a .meta file):
+// submodules/MOM6/src/core/MOM_continuity_PPM.F90:1148-1467, the
+// continuity_PPM shim's TIMH_capture arm (rec%add(...) calls at lines
+// 1278-1339 and 1350-1370). Cross-checked against the bind(C) interface
+// and against turbotmp_continuity_ppm_bridge's parameter order in
+// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
+//
+// MOM::continuity_PPM is the monolithic continuity solver: reconstructs
+// edge thicknesses, then advects first in one direction and then the
+// other (order set by x_first), via zonal_mass_flux/meridional_mass_flux
+// and continuity_zonal_convergence/continuity_meridional_convergence.
+// _isd/_ied are Fortran 1-based data-domain i-bounds; the bridge normally
+// converts these to 0-based before calling the kernel, so this test does
+// the same subtraction directly. Every field of both reconstruction_CS_C
+// (upwind_1st/monotonic/simple_2nd) and transport_adjust_CS_C (the
+// remaining 8 fields) is captured here, unlike some of the leaf kernels'
+// fixtures. uhbt/vhbt/visc_rem_u/visc_rem_v are captured unconditionally;
+// u_cor/v_cor/du_cor/dv_cor and the twelve FA_u_*/uBT_*/FA_v_*/vBT_*
+// fields are captured only when associated. obc is never captured -- pass
+// nullptr, matching the existing PPM_reconstruction_x/_y tests
+// (OBC-inactive configs only).
+TEST(ContinuityPPM, MatchesFortranCapture) {
+    test_mom::CapturedFile captured(test_mom::data_dir / "continuity_ppm");
+
+    const auto   u                 = captured.fab_device("_u");
+    const auto   v                 = captured.fab_device("_v");
+    const auto   hin               = captured.fab_device("_hin");
+    auto         h                  = captured.fab_device("_h_before");
+    const auto   h_after            = captured.fab_host("_h_after");
+    auto         uh                 = captured.fab_device("_uh_before");
+    const auto   uh_after           = captured.fab_host("_uh_after");
+    auto         vh                 = captured.fab_device("_vh_before");
+    const auto   vh_after           = captured.fab_host("_vh_after");
+    const double dt                = captured.real64("_dt");
+    const auto   bx0                = captured.box("_bx0");
+    const int    stencil           = captured.integer("_stencil");
+    const bool   x_first           = captured.logical("_x_first");
+    const auto   mask2dT           = captured.fab_device("_mask2dT");
+    const auto   dy_Cu             = captured.fab_device("_dy_Cu");
+    const auto   IareaT            = captured.fab_device("_IareaT");
+    const auto   IdxT              = captured.fab_device("_IdxT");
+    const auto   areaT             = captured.fab_device("_areaT");
+    const auto   dxT               = captured.fab_device("_dxT");
+    const auto   mask2dCu          = captured.fab_device("_mask2dCu");
+    const auto   dxCu              = captured.fab_device("_dxCu");
+    const auto   dx_Cv             = captured.fab_device("_dx_Cv");
+    const auto   IdyT              = captured.fab_device("_IdyT");
+    const auto   dyT               = captured.fab_device("_dyT");
+    const auto   mask2dCv          = captured.fab_device("_mask2dCv");
+    const auto   dyCv              = captured.fab_device("_dyCv");
+    const int    isd               = captured.integer("_isd") - 1;
+    const int    ied               = captured.integer("_ied") - 1;
+    const double Angstrom_H        = captured.real64("_Angstrom_H");
+    const double H_subroundoff     = captured.real64("_H_subroundoff");
+    reconstruction_CS_C reconstruction_CS{};
+    reconstruction_CS.upwind_1st   = captured.logical("_upwind_1st");
+    reconstruction_CS.monotonic    = captured.logical("_monotonic");
+    reconstruction_CS.simple_2nd   = captured.logical("_simple_2nd");
+    transport_adjust_CS_C transport_adjust_CS{};
+    transport_adjust_CS.tol_eta          = captured.real64("_tol_eta");
+    transport_adjust_CS.tol_vel          = captured.real64("_tol_vel");
+    transport_adjust_CS.CFL_limit_adjust = captured.real64("_CFL_limit_adjust");
+    transport_adjust_CS.aggress_adjust   = captured.logical("_aggress_adjust");
+    transport_adjust_CS.vol_CFL          = captured.logical("_vol_CFL");
+    transport_adjust_CS.better_iter      = captured.logical("_better_iter");
+    transport_adjust_CS.use_visc_rem_max = captured.logical("_use_visc_rem_max");
+    transport_adjust_CS.marginal_faces   = captured.logical("_marginal_faces");
+    const auto   por_face_areaU    = captured.fab_device("_por_face_areaU");
+    const auto   por_face_areaV    = captured.fab_device("_por_face_areaV");
+    const auto   uhbt               = captured.fab_device("_uhbt");
+    const auto   vhbt               = captured.fab_device("_vhbt");
+    const auto   visc_rem_u        = captured.fab_device("_visc_rem_u");
+    const auto   visc_rem_v        = captured.fab_device("_visc_rem_v");
+    auto         u_cor              = captured.fab_device("_u_cor_before");
+    const auto   u_cor_after        = captured.fab_host("_u_cor_after");
+    auto         v_cor              = captured.fab_device("_v_cor_before");
+    const auto   v_cor_after        = captured.fab_host("_v_cor_after");
+    auto         FA_u_W0            = captured.fab_device("_FA_u_W0_before");
+    auto         FA_u_E0            = captured.fab_device("_FA_u_E0_before");
+    auto         FA_u_WW            = captured.fab_device("_FA_u_WW_before");
+    auto         FA_u_EE            = captured.fab_device("_FA_u_EE_before");
+    auto         uBT_WW             = captured.fab_device("_uBT_WW_before");
+    auto         uBT_EE             = captured.fab_device("_uBT_EE_before");
+    const auto   FA_u_W0_after      = captured.fab_host("_FA_u_W0_after");
+    const auto   FA_u_E0_after      = captured.fab_host("_FA_u_E0_after");
+    const auto   FA_u_WW_after      = captured.fab_host("_FA_u_WW_after");
+    const auto   FA_u_EE_after      = captured.fab_host("_FA_u_EE_after");
+    const auto   uBT_WW_after       = captured.fab_host("_uBT_WW_after");
+    const auto   uBT_EE_after       = captured.fab_host("_uBT_EE_after");
+    auto         FA_v_S0            = captured.fab_device("_FA_v_S0_before");
+    auto         FA_v_N0            = captured.fab_device("_FA_v_N0_before");
+    auto         FA_v_SS            = captured.fab_device("_FA_v_SS_before");
+    auto         FA_v_NN            = captured.fab_device("_FA_v_NN_before");
+    auto         vBT_SS             = captured.fab_device("_vBT_SS_before");
+    auto         vBT_NN             = captured.fab_device("_vBT_NN_before");
+    const auto   FA_v_S0_after      = captured.fab_host("_FA_v_S0_after");
+    const auto   FA_v_N0_after      = captured.fab_host("_FA_v_N0_after");
+    const auto   FA_v_SS_after      = captured.fab_host("_FA_v_SS_after");
+    const auto   FA_v_NN_after      = captured.fab_host("_FA_v_NN_after");
+    const auto   vBT_SS_after       = captured.fab_host("_vBT_SS_after");
+    const auto   vBT_NN_after       = captured.fab_host("_vBT_NN_after");
+    auto         du_cor             = captured.fab_device("_du_cor_before");
+    const auto   du_cor_after       = captured.fab_host("_du_cor_after");
+    auto         dv_cor             = captured.fab_device("_dv_cor_before");
+    const auto   dv_cor_after       = captured.fab_host("_dv_cor_after");
+
+    MOM::continuity_PPM(u.const_array(),
+                        v.const_array(),
+                        hin.const_array(),
+                        h.array(),
+                        uh.array(),
+                        vh.array(),
+                        dt,
+                        bx0,
+                        stencil,
+                        x_first,
+                        mask2dT.const_array(),
+                        dy_Cu.const_array(),
+                        IareaT.const_array(),
+                        IdxT.const_array(),
+                        areaT.const_array(),
+                        dxT.const_array(),
+                        mask2dCu.const_array(),
+                        dxCu.const_array(),
+                        dx_Cv.const_array(),
+                        IdyT.const_array(),
+                        dyT.const_array(),
+                        mask2dCv.const_array(),
+                        dyCv.const_array(),
+                        isd,
+                        ied,
+                        Angstrom_H,
+                        H_subroundoff,
+                        reconstruction_CS,
+                        transport_adjust_CS,
+                        /*obc=*/nullptr,
+                        por_face_areaU.const_array(),
+                        por_face_areaV.const_array(),
+                        uhbt.const_array(),
+                        vhbt.const_array(),
+                        visc_rem_u.const_array(),
+                        visc_rem_v.const_array(),
+                        u_cor.array(),
+                        v_cor.array(),
+                        FA_u_W0.array(),
+                        FA_u_E0.array(),
+                        FA_u_WW.array(),
+                        FA_u_EE.array(),
+                        uBT_WW.array(),
+                        uBT_EE.array(),
+                        FA_v_S0.array(),
+                        FA_v_N0.array(),
+                        FA_v_SS.array(),
+                        FA_v_NN.array(),
+                        vBT_SS.array(),
+                        vBT_NN.array(),
+                        du_cor.array(),
+                        dv_cor.array());
+    amrex::Gpu::synchronize();
+
+    expect_arrays_equal(h_after,  to_host_fab(h),  "h");
+    expect_arrays_equal(uh_after, to_host_fab(uh), "uh");
+    expect_arrays_equal(vh_after, to_host_fab(vh), "vh");
+    expect_arrays_equal(u_cor_after, to_host_fab(u_cor), "u_cor");
+    expect_arrays_equal(v_cor_after, to_host_fab(v_cor), "v_cor");
+    expect_arrays_equal(FA_u_W0_after, to_host_fab(FA_u_W0), "FA_u_W0");
+    expect_arrays_equal(FA_u_E0_after, to_host_fab(FA_u_E0), "FA_u_E0");
+    expect_arrays_equal(FA_u_WW_after, to_host_fab(FA_u_WW), "FA_u_WW");
+    expect_arrays_equal(FA_u_EE_after, to_host_fab(FA_u_EE), "FA_u_EE");
+    expect_arrays_equal(uBT_WW_after,  to_host_fab(uBT_WW),  "uBT_WW");
+    expect_arrays_equal(uBT_EE_after,  to_host_fab(uBT_EE),  "uBT_EE");
+    expect_arrays_equal(FA_v_S0_after, to_host_fab(FA_v_S0), "FA_v_S0");
+    expect_arrays_equal(FA_v_N0_after, to_host_fab(FA_v_N0), "FA_v_N0");
+    expect_arrays_equal(FA_v_SS_after, to_host_fab(FA_v_SS), "FA_v_SS");
+    expect_arrays_equal(FA_v_NN_after, to_host_fab(FA_v_NN), "FA_v_NN");
+    expect_arrays_equal(vBT_SS_after,  to_host_fab(vBT_SS),  "vBT_SS");
+    expect_arrays_equal(vBT_NN_after,  to_host_fab(vBT_NN),  "vBT_NN");
+    expect_arrays_equal(du_cor_after, to_host_fab(du_cor), "du_cor");
+    expect_arrays_equal(dv_cor_after, to_host_fab(dv_cor), "dv_cor");
+}

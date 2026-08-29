@@ -1138,3 +1138,1017 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
     turbotmp::free_int_array4(do_I_DEV);
     turbotmp::free_array4(por_face_areaV_DEV);
 }
+
+void turbotmp_zonal_flux_adjust_bridge(const Box_C* bxC_HOST,
+                                       const RealArray_C* u_HOST,
+                                       const RealArray_C* h_in_HOST,
+                                       const RealArray_C* h_W_HOST,
+                                       const RealArray_C* h_E_HOST,
+                                       const RealArray_C* uh_tot_0_HOST,
+                                       const RealArray_C* duhdu_tot_0_HOST,
+                                       RealArray_C* du_HOST,
+                                       const RealArray_C* du_max_CFL_HOST,
+                                       const RealArray_C* du_min_CFL_HOST,
+                                       const double dt,
+                                       const RealArray_C* dy_Cu_HOST,
+                                       const RealArray_C* IareaT_HOST,
+                                       const RealArray_C* IdxT_HOST,
+                                       const transport_adjust_CS_C* CS_HOST,
+                                       const RealArray_C* visc_rem_HOST,
+                                       const LogicalArray_C* do_I_in_HOST,
+                                       const RealArray_C* por_face_areaU_HOST,
+                                       const RealArray_C* uhbt_HOST,
+                                       RealArray_C* uh_3d_HOST,
+                                       OceanOBC* obc)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
+    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0],        uh_tot_0_HOST->shape[1],        1, 1);
+    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0],     duhdu_tot_0_HOST->shape[1],     1, 1);
+    auto du_DEV              = turbotmp::make_array4(du_HOST->shape[0],              du_HOST->shape[1],              1, 1);
+    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0],      du_max_CFL_HOST->shape[1],      1, 1);
+    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0],      du_min_CFL_HOST->shape[1],      1, 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
+    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0],     do_I_in_HOST->shape[1],         1, 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+
+    /// uhbt_HOST/uh_3d_HOST may be absent (data == nullptr); only allocate/copy them when present.
+    const bool has_uhbt  = (uhbt_HOST->data != nullptr);
+    const bool has_uh_3d = (uh_3d_HOST->data != nullptr);
+    turbotmp::A4Box uhbt_DEV{};
+    turbotmp::A4Box uh_3d_DEV{};
+    if (has_uhbt) {
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_uh_3d) {
+        uh_3d_DEV = turbotmp::make_array4(uh_3d_HOST->shape[0], uh_3d_HOST->shape[1], uh_3d_HOST->shape[2], 1);
+    }
+
+    /// Copy host → device (du/uh_3d are inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,             h_W_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,             h_E_DEV);
+    turbotmp::copy_FortranHost_to_array4(uh_tot_0_HOST->data,        uh_tot_0_DEV);
+    turbotmp::copy_FortranHost_to_array4(duhdu_tot_0_HOST->data,     duhdu_tot_0_DEV);
+    turbotmp::copy_FortranHost_to_array4(du_HOST->data,              du_DEV);
+    turbotmp::copy_FortranHost_to_array4(du_max_CFL_HOST->data,      du_max_CFL_DEV);
+    turbotmp::copy_FortranHost_to_array4(du_min_CFL_HOST->data,      du_min_CFL_DEV);
+    turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,           dy_Cu_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdxT_HOST->data,            IdxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(visc_rem_HOST->data,        visc_rem_DEV);
+    turbotmp::copy_FortranHost_to_int_array4(do_I_in_HOST->data,     do_I_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaU_HOST->data,  por_face_areaU_DEV);
+    if (has_uhbt) {
+        turbotmp::copy_FortranHost_to_array4(uhbt_HOST->data, uhbt_DEV);
+    }
+    if (has_uh_3d) {
+        turbotmp::copy_FortranHost_to_array4(uh_3d_HOST->data, uh_3d_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_zonal_flux_adjust_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::zonal_flux_adjust(bx,
+                           u_DEV.arr,
+                           h_in_DEV.arr,
+                           h_W_DEV.arr,
+                           h_E_DEV.arr,
+                           uh_tot_0_DEV.arr,
+                           duhdu_tot_0_DEV.arr,
+                           du_DEV.arr,
+                           du_max_CFL_DEV.arr,
+                           du_min_CFL_DEV.arr,
+                           dt,
+                           dy_Cu_DEV.arr,
+                           IareaT_DEV.arr,
+                           IdxT_DEV.arr,
+                           *CS_HOST,
+                           visc_rem_DEV.arr,
+                           do_I_in_DEV.arr,
+                           por_face_areaU_DEV.arr,
+                           uhbt_DEV.arr,
+                           uh_3d_DEV.arr,
+                           obc);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (du is the primary output; uh_3d only if present)
+    turbotmp::copy_array4_to_FortranHost(du_DEV, du_HOST->data);
+    if (has_uh_3d) {
+        turbotmp::copy_array4_to_FortranHost(uh_3d_DEV, uh_3d_HOST->data);
+    }
+
+    /// Free memory from a4 containers (free_array4/free_int_array4 on a
+    /// never-allocated uhbt_DEV/uh_3d_DEV is a safe no-op)
+    turbotmp::free_array4(u_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_W_DEV);
+    turbotmp::free_array4(h_E_DEV);
+    turbotmp::free_array4(uh_tot_0_DEV);
+    turbotmp::free_array4(duhdu_tot_0_DEV);
+    turbotmp::free_array4(du_DEV);
+    turbotmp::free_array4(du_max_CFL_DEV);
+    turbotmp::free_array4(du_min_CFL_DEV);
+    turbotmp::free_array4(dy_Cu_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdxT_DEV);
+    turbotmp::free_array4(visc_rem_DEV);
+    turbotmp::free_int_array4(do_I_in_DEV);
+    turbotmp::free_array4(por_face_areaU_DEV);
+    turbotmp::free_array4(uhbt_DEV);
+    turbotmp::free_array4(uh_3d_DEV);
+}
+
+void turbotmp_meridional_flux_adjust_bridge(const Box_C* bxC_HOST,
+                                            const RealArray_C* v_HOST,
+                                            const RealArray_C* h_in_HOST,
+                                            const RealArray_C* h_S_HOST,
+                                            const RealArray_C* h_N_HOST,
+                                            const RealArray_C* vh_tot_0_HOST,
+                                            const RealArray_C* dvhdv_tot_0_HOST,
+                                            RealArray_C* dv_HOST,
+                                            const RealArray_C* dv_max_CFL_HOST,
+                                            const RealArray_C* dv_min_CFL_HOST,
+                                            const double dt,
+                                            const RealArray_C* dx_Cv_HOST,
+                                            const RealArray_C* IareaT_HOST,
+                                            const RealArray_C* IdyT_HOST,
+                                            const transport_adjust_CS_C* CS_HOST,
+                                            const RealArray_C* visc_rem_HOST,
+                                            const LogicalArray_C* do_I_in_HOST,
+                                            const RealArray_C* por_face_areaV_HOST,
+                                            const RealArray_C* vhbt_HOST,
+                                            RealArray_C* vh_3d_HOST,
+                                            OceanOBC* obc)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
+    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0],        vh_tot_0_HOST->shape[1],        1, 1);
+    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0],     dvhdv_tot_0_HOST->shape[1],     1, 1);
+    auto dv_DEV              = turbotmp::make_array4(dv_HOST->shape[0],              dv_HOST->shape[1],              1, 1);
+    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0],      dv_max_CFL_HOST->shape[1],      1, 1);
+    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0],      dv_min_CFL_HOST->shape[1],      1, 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
+    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0],     do_I_in_HOST->shape[1],         1, 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+
+    /// vhbt_HOST/vh_3d_HOST may be absent (data == nullptr); only allocate/copy them when present.
+    const bool has_vhbt  = (vhbt_HOST->data != nullptr);
+    const bool has_vh_3d = (vh_3d_HOST->data != nullptr);
+    turbotmp::A4Box vhbt_DEV{};
+    turbotmp::A4Box vh_3d_DEV{};
+    if (has_vhbt) {
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_vh_3d) {
+        vh_3d_DEV = turbotmp::make_array4(vh_3d_HOST->shape[0], vh_3d_HOST->shape[1], vh_3d_HOST->shape[2], 1);
+    }
+
+    /// Copy host → device (dv/vh_3d are inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,             h_S_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,             h_N_DEV);
+    turbotmp::copy_FortranHost_to_array4(vh_tot_0_HOST->data,        vh_tot_0_DEV);
+    turbotmp::copy_FortranHost_to_array4(dvhdv_tot_0_HOST->data,     dvhdv_tot_0_DEV);
+    turbotmp::copy_FortranHost_to_array4(dv_HOST->data,              dv_DEV);
+    turbotmp::copy_FortranHost_to_array4(dv_max_CFL_HOST->data,      dv_max_CFL_DEV);
+    turbotmp::copy_FortranHost_to_array4(dv_min_CFL_HOST->data,      dv_min_CFL_DEV);
+    turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,           dx_Cv_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdyT_HOST->data,            IdyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(visc_rem_HOST->data,        visc_rem_DEV);
+    turbotmp::copy_FortranHost_to_int_array4(do_I_in_HOST->data,     do_I_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaV_HOST->data,  por_face_areaV_DEV);
+    if (has_vhbt) {
+        turbotmp::copy_FortranHost_to_array4(vhbt_HOST->data, vhbt_DEV);
+    }
+    if (has_vh_3d) {
+        turbotmp::copy_FortranHost_to_array4(vh_3d_HOST->data, vh_3d_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_meridional_flux_adjust_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::meridional_flux_adjust(bx,
+                                v_DEV.arr,
+                                h_in_DEV.arr,
+                                h_S_DEV.arr,
+                                h_N_DEV.arr,
+                                vh_tot_0_DEV.arr,
+                                dvhdv_tot_0_DEV.arr,
+                                dv_DEV.arr,
+                                dv_max_CFL_DEV.arr,
+                                dv_min_CFL_DEV.arr,
+                                dt,
+                                dx_Cv_DEV.arr,
+                                IareaT_DEV.arr,
+                                IdyT_DEV.arr,
+                                *CS_HOST,
+                                visc_rem_DEV.arr,
+                                do_I_in_DEV.arr,
+                                por_face_areaV_DEV.arr,
+                                vhbt_DEV.arr,
+                                vh_3d_DEV.arr,
+                                obc);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (dv is the primary output; vh_3d only if present)
+    turbotmp::copy_array4_to_FortranHost(dv_DEV, dv_HOST->data);
+    if (has_vh_3d) {
+        turbotmp::copy_array4_to_FortranHost(vh_3d_DEV, vh_3d_HOST->data);
+    }
+
+    /// Free memory from a4 containers (free_array4/free_int_array4 on a
+    /// never-allocated vhbt_DEV/vh_3d_DEV is a safe no-op)
+    turbotmp::free_array4(v_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_S_DEV);
+    turbotmp::free_array4(h_N_DEV);
+    turbotmp::free_array4(vh_tot_0_DEV);
+    turbotmp::free_array4(dvhdv_tot_0_DEV);
+    turbotmp::free_array4(dv_DEV);
+    turbotmp::free_array4(dv_max_CFL_DEV);
+    turbotmp::free_array4(dv_min_CFL_DEV);
+    turbotmp::free_array4(dx_Cv_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdyT_DEV);
+    turbotmp::free_array4(visc_rem_DEV);
+    turbotmp::free_int_array4(do_I_in_DEV);
+    turbotmp::free_array4(por_face_areaV_DEV);
+    turbotmp::free_array4(vhbt_DEV);
+    turbotmp::free_array4(vh_3d_DEV);
+}
+
+void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
+                                     const RealArray_C* u_HOST,
+                                     const RealArray_C* h_in_HOST,
+                                     const RealArray_C* h_W_HOST,
+                                     const RealArray_C* h_E_HOST,
+                                     RealArray_C* uh_HOST,
+                                     const double dt,
+                                     const RealArray_C* dy_Cu_HOST,
+                                     const RealArray_C* IareaT_HOST,
+                                     const RealArray_C* IdxT_HOST,
+                                     const RealArray_C* areaT_HOST,
+                                     const RealArray_C* dxT_HOST,
+                                     const RealArray_C* mask2dCu_HOST,
+                                     const RealArray_C* dxCu_HOST,
+                                     const double H_subroundoff,
+                                     const transport_adjust_CS_C* CS_HOST,
+                                     OceanOBC* obc,
+                                     const RealArray_C* por_face_areaU_HOST,
+                                     const RealArray_C* uhbt_HOST,
+                                     const RealArray_C* visc_rem_u_HOST,
+                                     RealArray_C* u_cor_HOST,
+                                     RealArray_C* FA_u_W0_HOST,
+                                     RealArray_C* FA_u_E0_HOST,
+                                     RealArray_C* FA_u_WW_HOST,
+                                     RealArray_C* FA_u_EE_HOST,
+                                     RealArray_C* uBT_WW_HOST,
+                                     RealArray_C* uBT_EE_HOST,
+                                     RealArray_C* du_cor_HOST)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
+    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0],              uh_HOST->shape[1],              uh_HOST->shape[2], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
+    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0],             dxT_HOST->shape[1],             1, 1);
+    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0],        mask2dCu_HOST->shape[1],        1, 1);
+    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0],            dxCu_HOST->shape[1],            1, 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+
+    /// uhbt_HOST/visc_rem_u_HOST/u_cor_HOST/du_cor_HOST and the six
+    /// FA_u_*/uBT_* BT_cont fields may all be absent (data == nullptr);
+    /// only allocate/copy each when present. The six BT_cont fields are
+    /// always associated together (or not at all) -- see set_BT_cont below.
+    const bool has_uhbt       = (uhbt_HOST->data != nullptr);
+    const bool has_visc_rem_u = (visc_rem_u_HOST->data != nullptr);
+    const bool has_u_cor      = (u_cor_HOST->data != nullptr);
+    const bool has_du_cor     = (du_cor_HOST->data != nullptr);
+    const bool set_BT_cont    = (FA_u_W0_HOST->data != nullptr);
+
+    turbotmp::A4Box uhbt_DEV{}, visc_rem_u_DEV{}, u_cor_DEV{}, du_cor_DEV{};
+    turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
+    if (has_uhbt) {
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_visc_rem_u) {
+        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1);
+    }
+    if (has_u_cor) {
+        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1);
+    }
+    if (has_du_cor) {
+        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1);
+    }
+    if (set_BT_cont) {
+        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1);
+        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1);
+        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1);
+        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1);
+        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0],  uBT_WW_HOST->shape[1],  1, 1);
+        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0],  uBT_EE_HOST->shape[1],  1, 1);
+    }
+
+    /// Copy host → device (uh/u_cor/du_cor/FA_u_*/uBT_* are inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,             h_W_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_E_HOST->data,             h_E_DEV);
+    turbotmp::copy_FortranHost_to_array4(uh_HOST->data,               uh_DEV);
+    turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,           dy_Cu_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdxT_HOST->data,            IdxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(areaT_HOST->data,           areaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(dxT_HOST->data,             dxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dCu_HOST->data,        mask2dCu_DEV);
+    turbotmp::copy_FortranHost_to_array4(dxCu_HOST->data,            dxCu_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaU_HOST->data,  por_face_areaU_DEV);
+    if (has_uhbt) {
+        turbotmp::copy_FortranHost_to_array4(uhbt_HOST->data, uhbt_DEV);
+    }
+    if (has_visc_rem_u) {
+        turbotmp::copy_FortranHost_to_array4(visc_rem_u_HOST->data, visc_rem_u_DEV);
+    }
+    if (has_u_cor) {
+        turbotmp::copy_FortranHost_to_array4(u_cor_HOST->data, u_cor_DEV);
+    }
+    if (has_du_cor) {
+        turbotmp::copy_FortranHost_to_array4(du_cor_HOST->data, du_cor_DEV);
+    }
+    if (set_BT_cont) {
+        turbotmp::copy_FortranHost_to_array4(FA_u_W0_HOST->data, FA_u_W0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_E0_HOST->data, FA_u_E0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_WW_HOST->data, FA_u_WW_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_EE_HOST->data, FA_u_EE_DEV);
+        turbotmp::copy_FortranHost_to_array4(uBT_WW_HOST->data,  uBT_WW_DEV);
+        turbotmp::copy_FortranHost_to_array4(uBT_EE_HOST->data,  uBT_EE_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_zonal_mass_flux_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::zonal_mass_flux(bx,
+                         u_DEV.arr,
+                         h_in_DEV.arr,
+                         h_W_DEV.arr,
+                         h_E_DEV.arr,
+                         uh_DEV.arr,
+                         dt,
+                         dy_Cu_DEV.arr,
+                         IareaT_DEV.arr,
+                         IdxT_DEV.arr,
+                         areaT_DEV.arr,
+                         dxT_DEV.arr,
+                         mask2dCu_DEV.arr,
+                         dxCu_DEV.arr,
+                         H_subroundoff,
+                         *CS_HOST,
+                         obc,
+                         por_face_areaU_DEV.arr,
+                         uhbt_DEV.arr,
+                         visc_rem_u_DEV.arr,
+                         u_cor_DEV.arr,
+                         FA_u_W0_DEV.arr,
+                         FA_u_E0_DEV.arr,
+                         FA_u_WW_DEV.arr,
+                         FA_u_EE_DEV.arr,
+                         uBT_WW_DEV.arr,
+                         uBT_EE_DEV.arr,
+                         du_cor_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (uh is always an output; the rest only if present)
+    turbotmp::copy_array4_to_FortranHost(uh_DEV, uh_HOST->data);
+    if (has_u_cor) {
+        turbotmp::copy_array4_to_FortranHost(u_cor_DEV, u_cor_HOST->data);
+    }
+    if (has_du_cor) {
+        turbotmp::copy_array4_to_FortranHost(du_cor_DEV, du_cor_HOST->data);
+    }
+    if (set_BT_cont) {
+        turbotmp::copy_array4_to_FortranHost(FA_u_W0_DEV, FA_u_W0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_E0_DEV, FA_u_E0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_WW_DEV, FA_u_WW_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_EE_DEV, FA_u_EE_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(uBT_WW_DEV,  uBT_WW_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(uBT_EE_DEV,  uBT_EE_HOST->data);
+    }
+
+    /// Free memory from a4 containers (free_array4 on a never-allocated
+    /// A4Box is a safe no-op)
+    turbotmp::free_array4(u_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_W_DEV);
+    turbotmp::free_array4(h_E_DEV);
+    turbotmp::free_array4(uh_DEV);
+    turbotmp::free_array4(dy_Cu_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdxT_DEV);
+    turbotmp::free_array4(areaT_DEV);
+    turbotmp::free_array4(dxT_DEV);
+    turbotmp::free_array4(mask2dCu_DEV);
+    turbotmp::free_array4(dxCu_DEV);
+    turbotmp::free_array4(por_face_areaU_DEV);
+    turbotmp::free_array4(uhbt_DEV);
+    turbotmp::free_array4(visc_rem_u_DEV);
+    turbotmp::free_array4(u_cor_DEV);
+    turbotmp::free_array4(du_cor_DEV);
+    turbotmp::free_array4(FA_u_W0_DEV);
+    turbotmp::free_array4(FA_u_E0_DEV);
+    turbotmp::free_array4(FA_u_WW_DEV);
+    turbotmp::free_array4(FA_u_EE_DEV);
+    turbotmp::free_array4(uBT_WW_DEV);
+    turbotmp::free_array4(uBT_EE_DEV);
+}
+
+void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
+                                          const RealArray_C* v_HOST,
+                                          const RealArray_C* h_in_HOST,
+                                          const RealArray_C* h_S_HOST,
+                                          const RealArray_C* h_N_HOST,
+                                          RealArray_C* vh_HOST,
+                                          const double dt,
+                                          const RealArray_C* dx_Cv_HOST,
+                                          const RealArray_C* IareaT_HOST,
+                                          const RealArray_C* IdyT_HOST,
+                                          const RealArray_C* areaT_HOST,
+                                          const RealArray_C* dyT_HOST,
+                                          const RealArray_C* mask2dCv_HOST,
+                                          const RealArray_C* dyCv_HOST,
+                                          const int isd,
+                                          const int ied,
+                                          const double H_subroundoff,
+                                          const transport_adjust_CS_C* CS_HOST,
+                                          OceanOBC* obc,
+                                          const RealArray_C* por_face_areaV_HOST,
+                                          const RealArray_C* vhbt_HOST,
+                                          const RealArray_C* visc_rem_v_HOST,
+                                          RealArray_C* v_cor_HOST,
+                                          RealArray_C* FA_v_S0_HOST,
+                                          RealArray_C* FA_v_N0_HOST,
+                                          RealArray_C* FA_v_SS_HOST,
+                                          RealArray_C* FA_v_NN_HOST,
+                                          RealArray_C* vBT_SS_HOST,
+                                          RealArray_C* vBT_NN_HOST,
+                                          RealArray_C* dv_cor_HOST)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx(amrex::IntVect(bxC_HOST->idxS[0]-1, bxC_HOST->idxS[1]-1, bxC_HOST->idxS[2]-1),
+                  amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
+
+    /// Convert the Fortran 1-based data-domain i-range to AMReX 0-based
+    const int isd_dev = isd - 1;
+    const int ied_dev = ied - 1;
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
+    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0],              vh_HOST->shape[1],              vh_HOST->shape[2], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
+    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0],             dyT_HOST->shape[1],             1, 1);
+    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0],        mask2dCv_HOST->shape[1],        1, 1);
+    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0],            dyCv_HOST->shape[1],            1, 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+
+    /// vhbt_HOST/visc_rem_v_HOST/v_cor_HOST/dv_cor_HOST and the six
+    /// FA_v_*/vBT_* BT_cont fields may all be absent (data == nullptr);
+    /// only allocate/copy each when present. The six BT_cont fields are
+    /// always associated together (or not at all) -- see set_BT_cont below.
+    const bool has_vhbt       = (vhbt_HOST->data != nullptr);
+    const bool has_visc_rem_v = (visc_rem_v_HOST->data != nullptr);
+    const bool has_v_cor      = (v_cor_HOST->data != nullptr);
+    const bool has_dv_cor     = (dv_cor_HOST->data != nullptr);
+    const bool set_BT_cont    = (FA_v_S0_HOST->data != nullptr);
+
+    turbotmp::A4Box vhbt_DEV{}, visc_rem_v_DEV{}, v_cor_DEV{}, dv_cor_DEV{};
+    turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
+    if (has_vhbt) {
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_visc_rem_v) {
+        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1);
+    }
+    if (has_v_cor) {
+        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1);
+    }
+    if (has_dv_cor) {
+        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1);
+    }
+    if (set_BT_cont) {
+        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1);
+        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1);
+        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1);
+        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1);
+        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0],  vBT_SS_HOST->shape[1],  1, 1);
+        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0],  vBT_NN_HOST->shape[1],  1, 1);
+    }
+
+    /// Copy host → device (vh/v_cor/dv_cor/FA_v_*/vBT_* are inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,             h_S_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_N_HOST->data,             h_N_DEV);
+    turbotmp::copy_FortranHost_to_array4(vh_HOST->data,               vh_DEV);
+    turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,           dx_Cv_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdyT_HOST->data,            IdyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(areaT_HOST->data,           areaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(dyT_HOST->data,             dyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dCv_HOST->data,        mask2dCv_DEV);
+    turbotmp::copy_FortranHost_to_array4(dyCv_HOST->data,            dyCv_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaV_HOST->data,  por_face_areaV_DEV);
+    if (has_vhbt) {
+        turbotmp::copy_FortranHost_to_array4(vhbt_HOST->data, vhbt_DEV);
+    }
+    if (has_visc_rem_v) {
+        turbotmp::copy_FortranHost_to_array4(visc_rem_v_HOST->data, visc_rem_v_DEV);
+    }
+    if (has_v_cor) {
+        turbotmp::copy_FortranHost_to_array4(v_cor_HOST->data, v_cor_DEV);
+    }
+    if (has_dv_cor) {
+        turbotmp::copy_FortranHost_to_array4(dv_cor_HOST->data, dv_cor_DEV);
+    }
+    if (set_BT_cont) {
+        turbotmp::copy_FortranHost_to_array4(FA_v_S0_HOST->data, FA_v_S0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_N0_HOST->data, FA_v_N0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_SS_HOST->data, FA_v_SS_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_NN_HOST->data, FA_v_NN_DEV);
+        turbotmp::copy_FortranHost_to_array4(vBT_SS_HOST->data,  vBT_SS_DEV);
+        turbotmp::copy_FortranHost_to_array4(vBT_NN_HOST->data,  vBT_NN_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_meridional_mass_flux_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::meridional_mass_flux(bx,
+                              v_DEV.arr,
+                              h_in_DEV.arr,
+                              h_S_DEV.arr,
+                              h_N_DEV.arr,
+                              vh_DEV.arr,
+                              dt,
+                              dx_Cv_DEV.arr,
+                              IareaT_DEV.arr,
+                              IdyT_DEV.arr,
+                              areaT_DEV.arr,
+                              dyT_DEV.arr,
+                              mask2dCv_DEV.arr,
+                              dyCv_DEV.arr,
+                              isd_dev,
+                              ied_dev,
+                              H_subroundoff,
+                              *CS_HOST,
+                              obc,
+                              por_face_areaV_DEV.arr,
+                              vhbt_DEV.arr,
+                              visc_rem_v_DEV.arr,
+                              v_cor_DEV.arr,
+                              FA_v_S0_DEV.arr,
+                              FA_v_N0_DEV.arr,
+                              FA_v_SS_DEV.arr,
+                              FA_v_NN_DEV.arr,
+                              vBT_SS_DEV.arr,
+                              vBT_NN_DEV.arr,
+                              dv_cor_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (vh is always an output; the rest only if present)
+    turbotmp::copy_array4_to_FortranHost(vh_DEV, vh_HOST->data);
+    if (has_v_cor) {
+        turbotmp::copy_array4_to_FortranHost(v_cor_DEV, v_cor_HOST->data);
+    }
+    if (has_dv_cor) {
+        turbotmp::copy_array4_to_FortranHost(dv_cor_DEV, dv_cor_HOST->data);
+    }
+    if (set_BT_cont) {
+        turbotmp::copy_array4_to_FortranHost(FA_v_S0_DEV, FA_v_S0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_N0_DEV, FA_v_N0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_SS_DEV, FA_v_SS_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_NN_DEV, FA_v_NN_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(vBT_SS_DEV,  vBT_SS_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(vBT_NN_DEV,  vBT_NN_HOST->data);
+    }
+
+    /// Free memory from a4 containers (free_array4 on a never-allocated
+    /// A4Box is a safe no-op)
+    turbotmp::free_array4(v_DEV);
+    turbotmp::free_array4(h_in_DEV);
+    turbotmp::free_array4(h_S_DEV);
+    turbotmp::free_array4(h_N_DEV);
+    turbotmp::free_array4(vh_DEV);
+    turbotmp::free_array4(dx_Cv_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdyT_DEV);
+    turbotmp::free_array4(areaT_DEV);
+    turbotmp::free_array4(dyT_DEV);
+    turbotmp::free_array4(mask2dCv_DEV);
+    turbotmp::free_array4(dyCv_DEV);
+    turbotmp::free_array4(por_face_areaV_DEV);
+    turbotmp::free_array4(vhbt_DEV);
+    turbotmp::free_array4(visc_rem_v_DEV);
+    turbotmp::free_array4(v_cor_DEV);
+    turbotmp::free_array4(dv_cor_DEV);
+    turbotmp::free_array4(FA_v_S0_DEV);
+    turbotmp::free_array4(FA_v_N0_DEV);
+    turbotmp::free_array4(FA_v_SS_DEV);
+    turbotmp::free_array4(FA_v_NN_DEV);
+    turbotmp::free_array4(vBT_SS_DEV);
+    turbotmp::free_array4(vBT_NN_DEV);
+}
+
+void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
+                                    const RealArray_C* v_HOST,
+                                    const RealArray_C* hin_HOST,
+                                    RealArray_C* h_HOST,
+                                    RealArray_C* uh_HOST,
+                                    RealArray_C* vh_HOST,
+                                    const double dt,
+                                    const Box_C* bx0_HOST,
+                                    const int stencil,
+                                    const bool x_first,
+                                    const RealArray_C* mask2dT_HOST,
+                                    const RealArray_C* dy_Cu_HOST,
+                                    const RealArray_C* IareaT_HOST,
+                                    const RealArray_C* IdxT_HOST,
+                                    const RealArray_C* areaT_HOST,
+                                    const RealArray_C* dxT_HOST,
+                                    const RealArray_C* mask2dCu_HOST,
+                                    const RealArray_C* dxCu_HOST,
+                                    const RealArray_C* dx_Cv_HOST,
+                                    const RealArray_C* IdyT_HOST,
+                                    const RealArray_C* dyT_HOST,
+                                    const RealArray_C* mask2dCv_HOST,
+                                    const RealArray_C* dyCv_HOST,
+                                    const int isd,
+                                    const int ied,
+                                    const double Angstrom_H,
+                                    const double H_subroundoff,
+                                    const reconstruction_CS_C* reconstruction_CS_HOST,
+                                    const transport_adjust_CS_C* transport_adjust_CS_HOST,
+                                    OceanOBC* obc,
+                                    const RealArray_C* por_face_areaU_HOST,
+                                    const RealArray_C* por_face_areaV_HOST,
+                                    const RealArray_C* uhbt_HOST,
+                                    const RealArray_C* vhbt_HOST,
+                                    const RealArray_C* visc_rem_u_HOST,
+                                    const RealArray_C* visc_rem_v_HOST,
+                                    RealArray_C* u_cor_HOST,
+                                    RealArray_C* v_cor_HOST,
+                                    RealArray_C* FA_u_W0_HOST,
+                                    RealArray_C* FA_u_E0_HOST,
+                                    RealArray_C* FA_u_WW_HOST,
+                                    RealArray_C* FA_u_EE_HOST,
+                                    RealArray_C* uBT_WW_HOST,
+                                    RealArray_C* uBT_EE_HOST,
+                                    RealArray_C* FA_v_S0_HOST,
+                                    RealArray_C* FA_v_N0_HOST,
+                                    RealArray_C* FA_v_SS_HOST,
+                                    RealArray_C* FA_v_NN_HOST,
+                                    RealArray_C* vBT_SS_HOST,
+                                    RealArray_C* vBT_NN_HOST,
+                                    RealArray_C* du_cor_HOST,
+                                    RealArray_C* dv_cor_HOST)
+{
+    /// Define Active domain (kernel launch only on real cells)
+    amrex::Box bx0(amrex::IntVect(bx0_HOST->idxS[0]-1, bx0_HOST->idxS[1]-1, bx0_HOST->idxS[2]-1),
+                   amrex::IntVect(bx0_HOST->idxE[0]-1, bx0_HOST->idxE[1]-1, bx0_HOST->idxE[2]-1));
+
+    /// Convert the Fortran 1-based data-domain i-range to AMReX 0-based
+    const int isd_dev = isd - 1;
+    const int ied_dev = ied - 1;
+
+    /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
+    auto hin_DEV             = turbotmp::make_array4(hin_HOST->shape[0],             hin_HOST->shape[1],             hin_HOST->shape[2], 1);
+    auto h_DEV               = turbotmp::make_array4(h_HOST->shape[0],               h_HOST->shape[1],               h_HOST->shape[2],   1);
+    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0],              uh_HOST->shape[1],              uh_HOST->shape[2],  1);
+    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0],              vh_HOST->shape[1],              vh_HOST->shape[2],  1);
+    auto mask2dT_DEV         = turbotmp::make_array4(mask2dT_HOST->shape[0],         mask2dT_HOST->shape[1],         1, 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
+    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0],             dxT_HOST->shape[1],             1, 1);
+    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0],        mask2dCu_HOST->shape[1],        1, 1);
+    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0],            dxCu_HOST->shape[1],            1, 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
+    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0],             dyT_HOST->shape[1],             1, 1);
+    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0],        mask2dCv_HOST->shape[1],        1, 1);
+    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0],            dyCv_HOST->shape[1],            1, 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+
+    /// uhbt_HOST/vhbt_HOST/visc_rem_u_HOST/visc_rem_v_HOST/u_cor_HOST/v_cor_HOST/
+    /// du_cor_HOST/dv_cor_HOST and the twelve FA_u_*/uBT_*/FA_v_*/vBT_* BT_cont
+    /// fields may all be absent (data == nullptr); only allocate/copy each when
+    /// present. The six FA_u_*/uBT_* fields are always associated together (or
+    /// not at all), and likewise for the six FA_v_*/vBT_* fields.
+    const bool has_uhbt        = (uhbt_HOST->data != nullptr);
+    const bool has_vhbt        = (vhbt_HOST->data != nullptr);
+    const bool has_visc_rem_u  = (visc_rem_u_HOST->data != nullptr);
+    const bool has_visc_rem_v  = (visc_rem_v_HOST->data != nullptr);
+    const bool has_u_cor       = (u_cor_HOST->data != nullptr);
+    const bool has_v_cor       = (v_cor_HOST->data != nullptr);
+    const bool has_du_cor      = (du_cor_HOST->data != nullptr);
+    const bool has_dv_cor      = (dv_cor_HOST->data != nullptr);
+    const bool set_BT_cont_u   = (FA_u_W0_HOST->data != nullptr);
+    const bool set_BT_cont_v   = (FA_v_S0_HOST->data != nullptr);
+
+    turbotmp::A4Box uhbt_DEV{}, vhbt_DEV{}, visc_rem_u_DEV{}, visc_rem_v_DEV{};
+    turbotmp::A4Box u_cor_DEV{}, v_cor_DEV{}, du_cor_DEV{}, dv_cor_DEV{};
+    turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
+    turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
+    if (has_uhbt) {
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_vhbt) {
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+    }
+    if (has_visc_rem_u) {
+        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1);
+    }
+    if (has_visc_rem_v) {
+        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1);
+    }
+    if (has_u_cor) {
+        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1);
+    }
+    if (has_v_cor) {
+        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1);
+    }
+    if (has_du_cor) {
+        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1);
+    }
+    if (has_dv_cor) {
+        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1);
+    }
+    if (set_BT_cont_u) {
+        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1);
+        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1);
+        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1);
+        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1);
+        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0],  uBT_WW_HOST->shape[1],  1, 1);
+        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0],  uBT_EE_HOST->shape[1],  1, 1);
+    }
+    if (set_BT_cont_v) {
+        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1);
+        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1);
+        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1);
+        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1);
+        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0],  vBT_SS_HOST->shape[1],  1, 1);
+        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0],  vBT_NN_HOST->shape[1],  1, 1);
+    }
+
+    /// Copy host → device (h/uh/vh/u_cor/v_cor/du_cor/dv_cor/FA_*/*BT_* are inout: copy in before kernel)
+    turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
+    turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
+    turbotmp::copy_FortranHost_to_array4(hin_HOST->data,             hin_DEV);
+    turbotmp::copy_FortranHost_to_array4(h_HOST->data,                h_DEV);
+    turbotmp::copy_FortranHost_to_array4(uh_HOST->data,               uh_DEV);
+    turbotmp::copy_FortranHost_to_array4(vh_HOST->data,               vh_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dT_HOST->data,         mask2dT_DEV);
+    turbotmp::copy_FortranHost_to_array4(dy_Cu_HOST->data,           dy_Cu_DEV);
+    turbotmp::copy_FortranHost_to_array4(IareaT_HOST->data,          IareaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdxT_HOST->data,            IdxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(areaT_HOST->data,           areaT_DEV);
+    turbotmp::copy_FortranHost_to_array4(dxT_HOST->data,             dxT_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dCu_HOST->data,        mask2dCu_DEV);
+    turbotmp::copy_FortranHost_to_array4(dxCu_HOST->data,            dxCu_DEV);
+    turbotmp::copy_FortranHost_to_array4(dx_Cv_HOST->data,           dx_Cv_DEV);
+    turbotmp::copy_FortranHost_to_array4(IdyT_HOST->data,            IdyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(dyT_HOST->data,             dyT_DEV);
+    turbotmp::copy_FortranHost_to_array4(mask2dCv_HOST->data,        mask2dCv_DEV);
+    turbotmp::copy_FortranHost_to_array4(dyCv_HOST->data,            dyCv_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaU_HOST->data,  por_face_areaU_DEV);
+    turbotmp::copy_FortranHost_to_array4(por_face_areaV_HOST->data,  por_face_areaV_DEV);
+    if (has_uhbt) {
+        turbotmp::copy_FortranHost_to_array4(uhbt_HOST->data, uhbt_DEV);
+    }
+    if (has_vhbt) {
+        turbotmp::copy_FortranHost_to_array4(vhbt_HOST->data, vhbt_DEV);
+    }
+    if (has_visc_rem_u) {
+        turbotmp::copy_FortranHost_to_array4(visc_rem_u_HOST->data, visc_rem_u_DEV);
+    }
+    if (has_visc_rem_v) {
+        turbotmp::copy_FortranHost_to_array4(visc_rem_v_HOST->data, visc_rem_v_DEV);
+    }
+    if (has_u_cor) {
+        turbotmp::copy_FortranHost_to_array4(u_cor_HOST->data, u_cor_DEV);
+    }
+    if (has_v_cor) {
+        turbotmp::copy_FortranHost_to_array4(v_cor_HOST->data, v_cor_DEV);
+    }
+    if (has_du_cor) {
+        turbotmp::copy_FortranHost_to_array4(du_cor_HOST->data, du_cor_DEV);
+    }
+    if (has_dv_cor) {
+        turbotmp::copy_FortranHost_to_array4(dv_cor_HOST->data, dv_cor_DEV);
+    }
+    if (set_BT_cont_u) {
+        turbotmp::copy_FortranHost_to_array4(FA_u_W0_HOST->data, FA_u_W0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_E0_HOST->data, FA_u_E0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_WW_HOST->data, FA_u_WW_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_u_EE_HOST->data, FA_u_EE_DEV);
+        turbotmp::copy_FortranHost_to_array4(uBT_WW_HOST->data,  uBT_WW_DEV);
+        turbotmp::copy_FortranHost_to_array4(uBT_EE_HOST->data,  uBT_EE_DEV);
+    }
+    if (set_BT_cont_v) {
+        turbotmp::copy_FortranHost_to_array4(FA_v_S0_HOST->data, FA_v_S0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_N0_HOST->data, FA_v_N0_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_SS_HOST->data, FA_v_SS_DEV);
+        turbotmp::copy_FortranHost_to_array4(FA_v_NN_HOST->data, FA_v_NN_DEV);
+        turbotmp::copy_FortranHost_to_array4(vBT_SS_HOST->data,  vBT_SS_DEV);
+        turbotmp::copy_FortranHost_to_array4(vBT_NN_HOST->data,  vBT_NN_DEV);
+    }
+
+    if(verbose) amrex::Print() << "Entered: turbotmp_continuity_ppm_bridge\n";
+    ///-------------------------------------------------
+    /// Execute kernel
+    ///-------------------------------------------------
+    MOM::continuity_PPM(u_DEV.arr,
+                        v_DEV.arr,
+                        hin_DEV.arr,
+                        h_DEV.arr,
+                        uh_DEV.arr,
+                        vh_DEV.arr,
+                        dt,
+                        bx0,
+                        stencil,
+                        x_first,
+                        mask2dT_DEV.arr,
+                        dy_Cu_DEV.arr,
+                        IareaT_DEV.arr,
+                        IdxT_DEV.arr,
+                        areaT_DEV.arr,
+                        dxT_DEV.arr,
+                        mask2dCu_DEV.arr,
+                        dxCu_DEV.arr,
+                        dx_Cv_DEV.arr,
+                        IdyT_DEV.arr,
+                        dyT_DEV.arr,
+                        mask2dCv_DEV.arr,
+                        dyCv_DEV.arr,
+                        isd_dev,
+                        ied_dev,
+                        Angstrom_H,
+                        H_subroundoff,
+                        *reconstruction_CS_HOST,
+                        *transport_adjust_CS_HOST,
+                        obc,
+                        por_face_areaU_DEV.arr,
+                        por_face_areaV_DEV.arr,
+                        uhbt_DEV.arr,
+                        vhbt_DEV.arr,
+                        visc_rem_u_DEV.arr,
+                        visc_rem_v_DEV.arr,
+                        u_cor_DEV.arr,
+                        v_cor_DEV.arr,
+                        FA_u_W0_DEV.arr,
+                        FA_u_E0_DEV.arr,
+                        FA_u_WW_DEV.arr,
+                        FA_u_EE_DEV.arr,
+                        uBT_WW_DEV.arr,
+                        uBT_EE_DEV.arr,
+                        FA_v_S0_DEV.arr,
+                        FA_v_N0_DEV.arr,
+                        FA_v_SS_DEV.arr,
+                        FA_v_NN_DEV.arr,
+                        vBT_SS_DEV.arr,
+                        vBT_NN_DEV.arr,
+                        du_cor_DEV.arr,
+                        dv_cor_DEV.arr);
+
+    /// Ensure kernel is done before copying back
+    amrex::Gpu::synchronize();
+
+    /// Copy device → host (h/uh/vh are always outputs; the rest only if present)
+    turbotmp::copy_array4_to_FortranHost(h_DEV,  h_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(uh_DEV, uh_HOST->data);
+    turbotmp::copy_array4_to_FortranHost(vh_DEV, vh_HOST->data);
+    if (has_u_cor) {
+        turbotmp::copy_array4_to_FortranHost(u_cor_DEV, u_cor_HOST->data);
+    }
+    if (has_v_cor) {
+        turbotmp::copy_array4_to_FortranHost(v_cor_DEV, v_cor_HOST->data);
+    }
+    if (has_du_cor) {
+        turbotmp::copy_array4_to_FortranHost(du_cor_DEV, du_cor_HOST->data);
+    }
+    if (has_dv_cor) {
+        turbotmp::copy_array4_to_FortranHost(dv_cor_DEV, dv_cor_HOST->data);
+    }
+    if (set_BT_cont_u) {
+        turbotmp::copy_array4_to_FortranHost(FA_u_W0_DEV, FA_u_W0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_E0_DEV, FA_u_E0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_WW_DEV, FA_u_WW_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_u_EE_DEV, FA_u_EE_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(uBT_WW_DEV,  uBT_WW_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(uBT_EE_DEV,  uBT_EE_HOST->data);
+    }
+    if (set_BT_cont_v) {
+        turbotmp::copy_array4_to_FortranHost(FA_v_S0_DEV, FA_v_S0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_N0_DEV, FA_v_N0_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_SS_DEV, FA_v_SS_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(FA_v_NN_DEV, FA_v_NN_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(vBT_SS_DEV,  vBT_SS_HOST->data);
+        turbotmp::copy_array4_to_FortranHost(vBT_NN_DEV,  vBT_NN_HOST->data);
+    }
+
+    /// Free memory from a4 containers (free_array4 on a never-allocated
+    /// A4Box is a safe no-op)
+    turbotmp::free_array4(u_DEV);
+    turbotmp::free_array4(v_DEV);
+    turbotmp::free_array4(hin_DEV);
+    turbotmp::free_array4(h_DEV);
+    turbotmp::free_array4(uh_DEV);
+    turbotmp::free_array4(vh_DEV);
+    turbotmp::free_array4(mask2dT_DEV);
+    turbotmp::free_array4(dy_Cu_DEV);
+    turbotmp::free_array4(IareaT_DEV);
+    turbotmp::free_array4(IdxT_DEV);
+    turbotmp::free_array4(areaT_DEV);
+    turbotmp::free_array4(dxT_DEV);
+    turbotmp::free_array4(mask2dCu_DEV);
+    turbotmp::free_array4(dxCu_DEV);
+    turbotmp::free_array4(dx_Cv_DEV);
+    turbotmp::free_array4(IdyT_DEV);
+    turbotmp::free_array4(dyT_DEV);
+    turbotmp::free_array4(mask2dCv_DEV);
+    turbotmp::free_array4(dyCv_DEV);
+    turbotmp::free_array4(por_face_areaU_DEV);
+    turbotmp::free_array4(por_face_areaV_DEV);
+    turbotmp::free_array4(uhbt_DEV);
+    turbotmp::free_array4(vhbt_DEV);
+    turbotmp::free_array4(visc_rem_u_DEV);
+    turbotmp::free_array4(visc_rem_v_DEV);
+    turbotmp::free_array4(u_cor_DEV);
+    turbotmp::free_array4(v_cor_DEV);
+    turbotmp::free_array4(du_cor_DEV);
+    turbotmp::free_array4(dv_cor_DEV);
+    turbotmp::free_array4(FA_u_W0_DEV);
+    turbotmp::free_array4(FA_u_E0_DEV);
+    turbotmp::free_array4(FA_u_WW_DEV);
+    turbotmp::free_array4(FA_u_EE_DEV);
+    turbotmp::free_array4(uBT_WW_DEV);
+    turbotmp::free_array4(uBT_EE_DEV);
+    turbotmp::free_array4(FA_v_S0_DEV);
+    turbotmp::free_array4(FA_v_N0_DEV);
+    turbotmp::free_array4(FA_v_SS_DEV);
+    turbotmp::free_array4(FA_v_NN_DEV);
+    turbotmp::free_array4(vBT_SS_DEV);
+    turbotmp::free_array4(vBT_NN_DEV);
+}
