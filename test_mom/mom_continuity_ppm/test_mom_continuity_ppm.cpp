@@ -304,15 +304,22 @@ TEST(ContinuityMeridionalConvergence, MatchesFortranCapture) {
     const auto   vh      = captured.fab_device("_vh");
     const double dt      = captured.real64("_dt");
     const auto   IareaT  = captured.fab_device("_IareaT");
-    const auto   hin     = captured.fab_device("_hin");
     const double h_min   = captured.real64("_h_min");
+    // _hin is captured unconditionally but may still be null-encoded
+    // (Fortran container unassociated at capture time).
+    amrex::FArrayBox hin_fab;
+    amrex::Array4<const amrex::Real> hin{};
+    if (captured.is_associated("_hin")) {
+        hin_fab = captured.fab_device("_hin");
+        hin = hin_fab.const_array();
+    }
 
     MOM::continuity_meridional_convergence(bxC,
                                            h.array(),
                                            vh.const_array(),
                                            dt,
                                            IareaT.const_array(),
-                                           hin.const_array(),
+                                           hin,
                                            h_min);
     amrex::Gpu::synchronize();
 
@@ -346,15 +353,22 @@ TEST(ContinuityZonalConvergence, MatchesFortranCapture) {
     const auto   uh      = captured.fab_device("_uh");
     const double dt      = captured.real64("_dt");
     const auto   IareaT  = captured.fab_device("_IareaT");
-    const auto   hin     = captured.fab_device("_hin");
     const double h_min   = captured.real64("_h_min");
+    // _hin is captured unconditionally but may still be null-encoded
+    // (Fortran container unassociated at capture time).
+    amrex::FArrayBox hin_fab;
+    amrex::Array4<const amrex::Real> hin{};
+    if (captured.is_associated("_hin")) {
+        hin_fab = captured.fab_device("_hin");
+        hin = hin_fab.const_array();
+    }
 
     MOM::continuity_zonal_convergence(bxC,
                                       h.array(),
                                       uh.const_array(),
                                       dt,
                                       IareaT.const_array(),
-                                      hin.const_array(),
+                                      hin,
                                       h_min);
     amrex::Gpu::synchronize();
 
@@ -762,8 +776,18 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
     CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
     CS.marginal_faces             = captured.logical("_marginal_faces");
     const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
-    const auto   vhbt             = captured.fab_device("_vhbt");
-    const auto   visc_rem_v       = captured.fab_device("_visc_rem_v");
+    // _vhbt/_visc_rem_v are captured unconditionally but may still be
+    // null-encoded (Fortran container unassociated at capture time).
+    amrex::FArrayBox vhbt_fab, visc_rem_v_fab;
+    amrex::Array4<const amrex::Real> vhbt{}, visc_rem_v{};
+    if (captured.is_associated("_vhbt")) {
+        vhbt_fab = captured.fab_device("_vhbt");
+        vhbt = vhbt_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_v")) {
+        visc_rem_v_fab = captured.fab_device("_visc_rem_v");
+        visc_rem_v = visc_rem_v_fab.const_array();
+    }
     auto         v_cor             = captured.fab_device("_v_cor_before");
     const auto   v_cor_after       = captured.fab_host("_v_cor_after");
     auto         FA_v_S0           = captured.fab_device("_FA_v_S0_before");
@@ -801,8 +825,8 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
                               CS,
                               /*obc=*/nullptr,
                               por_face_areaV.const_array(),
-                              vhbt.const_array(),
-                              visc_rem_v.const_array(),
+                              vhbt,
+                              visc_rem_v,
                               v_cor.array(),
                               FA_v_S0.array(),
                               FA_v_N0.array(),
@@ -874,8 +898,18 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
     CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
     CS.marginal_faces             = captured.logical("_marginal_faces");
     const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
-    const auto   uhbt             = captured.fab_device("_uhbt");
-    const auto   visc_rem_u       = captured.fab_device("_visc_rem_u");
+    // _uhbt/_visc_rem_u are captured unconditionally but may still be
+    // null-encoded (Fortran container unassociated at capture time).
+    amrex::FArrayBox uhbt_fab, visc_rem_u_fab;
+    amrex::Array4<const amrex::Real> uhbt{}, visc_rem_u{};
+    if (captured.is_associated("_uhbt")) {
+        uhbt_fab = captured.fab_device("_uhbt");
+        uhbt = uhbt_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_u")) {
+        visc_rem_u_fab = captured.fab_device("_visc_rem_u");
+        visc_rem_u = visc_rem_u_fab.const_array();
+    }
     auto         u_cor             = captured.fab_device("_u_cor_before");
     const auto   u_cor_after       = captured.fab_host("_u_cor_after");
     auto         FA_u_W0           = captured.fab_device("_FA_u_W0_before");
@@ -911,8 +945,8 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
                          CS,
                          /*obc=*/nullptr,
                          por_face_areaU.const_array(),
-                         uhbt.const_array(),
-                         visc_rem_u.const_array(),
+                         uhbt,
+                         visc_rem_u,
                          u_cor.array(),
                          FA_u_W0.array(),
                          FA_u_E0.array(),
@@ -1008,10 +1042,27 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     transport_adjust_CS.marginal_faces   = captured.logical("_marginal_faces");
     const auto   por_face_areaU    = captured.fab_device("_por_face_areaU");
     const auto   por_face_areaV    = captured.fab_device("_por_face_areaV");
-    const auto   uhbt               = captured.fab_device("_uhbt");
-    const auto   vhbt               = captured.fab_device("_vhbt");
-    const auto   visc_rem_u        = captured.fab_device("_visc_rem_u");
-    const auto   visc_rem_v        = captured.fab_device("_visc_rem_v");
+    // _uhbt/_vhbt/_visc_rem_u/_visc_rem_v are captured unconditionally but
+    // may still be null-encoded (Fortran container unassociated at capture
+    // time).
+    amrex::FArrayBox uhbt_fab, vhbt_fab, visc_rem_u_fab, visc_rem_v_fab;
+    amrex::Array4<const amrex::Real> uhbt{}, vhbt{}, visc_rem_u{}, visc_rem_v{};
+    if (captured.is_associated("_uhbt")) {
+        uhbt_fab = captured.fab_device("_uhbt");
+        uhbt = uhbt_fab.const_array();
+    }
+    if (captured.is_associated("_vhbt")) {
+        vhbt_fab = captured.fab_device("_vhbt");
+        vhbt = vhbt_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_u")) {
+        visc_rem_u_fab = captured.fab_device("_visc_rem_u");
+        visc_rem_u = visc_rem_u_fab.const_array();
+    }
+    if (captured.is_associated("_visc_rem_v")) {
+        visc_rem_v_fab = captured.fab_device("_visc_rem_v");
+        visc_rem_v = visc_rem_v_fab.const_array();
+    }
     auto         u_cor              = captured.fab_device("_u_cor_before");
     const auto   u_cor_after        = captured.fab_host("_u_cor_after");
     auto         v_cor              = captured.fab_device("_v_cor_before");
@@ -1077,10 +1128,10 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
                         /*obc=*/nullptr,
                         por_face_areaU.const_array(),
                         por_face_areaV.const_array(),
-                        uhbt.const_array(),
-                        vhbt.const_array(),
-                        visc_rem_u.const_array(),
-                        visc_rem_v.const_array(),
+                        uhbt,
+                        vhbt,
+                        visc_rem_u,
+                        visc_rem_v,
                         u_cor.array(),
                         v_cor.array(),
                         FA_u_W0.array(),
