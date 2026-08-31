@@ -89,11 +89,18 @@ public:
     double           real64       (const std::string& name) const;
     bool             logical      (const std::string& name) const;
     int              integer      (const std::string& name) const;
-    // True unless a RealArray_t/LogicalArray_t entry is null-encoded
-    // (ndim == -1, i.e. the Fortran container was unassociated at capture
-    // time). Check this before calling fab_host()/fab_device()/
-    // int_fab_host()/int_fab_device() on a field the Fortran shim captures
-    // unconditionally.
+    // True unless the named field was unassociated in the Fortran container
+    // at capture time. Two Fortran-side conventions both encode "not
+    // associated" here: an independently-optional argument (e.g.
+    // uhbt/visc_rem_u) is captured unconditionally, so its entry is always
+    // present but may be null-encoded (ndim == -1); a field that is itself
+    // a member of an optionally-associated derived type (e.g.
+    // BT_cont%FA_u_W0) can't be captured at all when the parent is
+    // unassociated -- rec%add(..., BT_cont%FA_u_W0) would dereference an
+    // unassociated BT_cont -- so its entry is missing from the file
+    // entirely in that case. Check this before calling
+    // fab_host()/fab_device()/int_fab_host()/int_fab_device() on any field
+    // that may be absent at the kernel level.
     bool             is_associated(const std::string& name) const;
 
 private:

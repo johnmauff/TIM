@@ -49,9 +49,9 @@ void turbotmp_ppm_limit_pos_bridge(const Box_C* bx_HOST,
 	   IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0], h_L_HOST->shape[1], h_L_HOST->shape[2], 1, h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0], h_R_HOST->shape[1], h_R_HOST->shape[2], 1, h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -105,9 +105,9 @@ void turbotmp_ppm_limit_cw84_bridge(const Box_C* bx_HOST,
            IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1);
-    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0],  h_L_HOST->shape[1],  h_L_HOST->shape[2], 1);
-    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0],  h_R_HOST->shape[1],  h_R_HOST->shape[2], 1);
+    auto h_in_DEV = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_L_DEV  = turbotmp::make_array4(h_L_HOST->shape[0], h_L_HOST->shape[1], h_L_HOST->shape[2], 1, h_L_HOST->lb[0], h_L_HOST->lb[1], h_L_HOST->lb[2]);
+    auto h_R_DEV  = turbotmp::make_array4(h_R_HOST->shape[0], h_R_HOST->shape[1], h_R_HOST->shape[2], 1, h_R_HOST->lb[0], h_R_HOST->lb[1], h_R_HOST->lb[2]);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data, h_in_DEV);
@@ -168,10 +168,10 @@ void turbotmp_ppm_reconstruction_y_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2],    1);
-    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1],  h_S_HOST->shape[2],     1);
-    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1],  h_N_HOST->shape[2],     1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,               1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy from Fortran arrays to A4 container
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -238,10 +238,10 @@ void turbotmp_ppm_reconstruction_x_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0],     h_W_HOST->shape[1],     h_W_HOST->shape[2],  1);
-    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0],     h_E_HOST->shape[1],     h_E_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_W and h_E are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -308,10 +308,10 @@ void turbotmp_zonal_edge_thickness_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0],     h_W_HOST->shape[1],     h_W_HOST->shape[2],  1);
-    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0],     h_E_HOST->shape[1],     h_E_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV     = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV     = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_W and h_E are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -380,10 +380,10 @@ void turbotmp_meridional_edge_thickness_bridge(const Box_C* bx_HOST,
                   amrex::IntVect(bx_HOST->idxE[0]-1, bx_HOST->idxE[1]-1, bx_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays
-    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0],    h_in_HOST->shape[1],    h_in_HOST->shape[2], 1);
-    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0],     h_S_HOST->shape[1],     h_S_HOST->shape[2],  1);
-    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0],     h_N_HOST->shape[1],     h_N_HOST->shape[2],  1);
-    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1,                   1);
+    auto h_in_DEV    = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV     = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV     = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto mask2dT_DEV = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
 
     /// Copy host → device (h_S and h_N are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,    h_in_DEV);
@@ -467,23 +467,22 @@ void turbotmp_meridional_flux_thickness_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (dx_Cv/IareaT/IdyT are 2D: nz=1)
-    auto v_DEV             = turbotmp::make_array4(v_HOST->shape[0],             v_HOST->shape[1],             v_HOST->shape[2],             1);
-    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0],              h_HOST->shape[1],              h_HOST->shape[2],              1);
-    auto h_S_DEV            = turbotmp::make_array4(h_S_HOST->shape[0],            h_S_HOST->shape[1],            h_S_HOST->shape[2],            1);
-    auto h_N_DEV            = turbotmp::make_array4(h_N_HOST->shape[0],            h_N_HOST->shape[1],            h_N_HOST->shape[2],            1);
-    auto h_v_DEV            = turbotmp::make_array4(h_v_HOST->shape[0],            h_v_HOST->shape[1],            h_v_HOST->shape[2],            1);
-    auto dx_Cv_DEV          = turbotmp::make_array4(dx_Cv_HOST->shape[0],          dx_Cv_HOST->shape[1],          1,                             1);
-    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0],         IareaT_HOST->shape[1],         1,                             1);
-    auto IdyT_DEV           = turbotmp::make_array4(IdyT_HOST->shape[0],           IdyT_HOST->shape[1],           1,                             1);
-    auto por_face_areaV_DEV = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1);
+    auto v_DEV             = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto h_S_DEV            = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV            = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto h_v_DEV            = turbotmp::make_array4(h_v_HOST->shape[0], h_v_HOST->shape[1], h_v_HOST->shape[2], 1, h_v_HOST->lb[0], h_v_HOST->lb[1], h_v_HOST->lb[2]);
+    auto dx_Cv_DEV          = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV           = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto por_face_areaV_DEV = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// visc_rem_v_HOST may be absent (data == nullptr); only allocate/copy
     /// it when present.
     const bool has_visc_rem_v = (visc_rem_v_HOST->data != nullptr);
     turbotmp::A4Box visc_rem_v_DEV{};
     if (has_visc_rem_v) {
-        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1],
-                                               visc_rem_v_HOST->shape[2], 1);
+        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1, visc_rem_v_HOST->lb[0], visc_rem_v_HOST->lb[1], visc_rem_v_HOST->lb[2]);
     }
 
     /// Copy host → device (h_v is inout: copy in before kernel)
@@ -587,23 +586,22 @@ void turbotmp_zonal_flux_thickness_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (dy_Cu/IareaT/IdxT are 2D: nz=1)
-    auto u_DEV             = turbotmp::make_array4(u_HOST->shape[0],             u_HOST->shape[1],             u_HOST->shape[2],             1);
-    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0],              h_HOST->shape[1],              h_HOST->shape[2],              1);
-    auto h_W_DEV            = turbotmp::make_array4(h_W_HOST->shape[0],            h_W_HOST->shape[1],            h_W_HOST->shape[2],            1);
-    auto h_E_DEV            = turbotmp::make_array4(h_E_HOST->shape[0],            h_E_HOST->shape[1],            h_E_HOST->shape[2],            1);
-    auto h_u_DEV            = turbotmp::make_array4(h_u_HOST->shape[0],            h_u_HOST->shape[1],            h_u_HOST->shape[2],            1);
-    auto dy_Cu_DEV          = turbotmp::make_array4(dy_Cu_HOST->shape[0],          dy_Cu_HOST->shape[1],          1,                             1);
-    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0],         IareaT_HOST->shape[1],         1,                             1);
-    auto IdxT_DEV           = turbotmp::make_array4(IdxT_HOST->shape[0],           IdxT_HOST->shape[1],           1,                             1);
-    auto por_face_areaU_DEV = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1);
+    auto u_DEV             = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_DEV              = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto h_W_DEV            = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV            = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto h_u_DEV            = turbotmp::make_array4(h_u_HOST->shape[0], h_u_HOST->shape[1], h_u_HOST->shape[2], 1, h_u_HOST->lb[0], h_u_HOST->lb[1], h_u_HOST->lb[2]);
+    auto dy_Cu_DEV          = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV         = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV           = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto por_face_areaU_DEV = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
 
     /// visc_rem_u_HOST may be absent (data == nullptr); only allocate/copy
     /// it when present.
     const bool has_visc_rem_u = (visc_rem_u_HOST->data != nullptr);
     turbotmp::A4Box visc_rem_u_DEV{};
     if (has_visc_rem_u) {
-        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1],
-                                               visc_rem_u_HOST->shape[2], 1);
+        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1, visc_rem_u_HOST->lb[0], visc_rem_u_HOST->lb[1], visc_rem_u_HOST->lb[2]);
     }
 
     /// Copy host → device (h_u is inout: copy in before kernel)
@@ -688,15 +686,15 @@ void turbotmp_continuity_zonal_convergence_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
-    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
-    auto uh_DEV     = turbotmp::make_array4(uh_HOST->shape[0],     uh_HOST->shape[1],     uh_HOST->shape[2], 1);
-    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto uh_DEV     = turbotmp::make_array4(uh_HOST->shape[0], uh_HOST->shape[1], uh_HOST->shape[2], 1, uh_HOST->lb[0], uh_HOST->lb[1], uh_HOST->lb[2]);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
 
     /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
     const bool has_hin = (hin_HOST->data != nullptr);
     turbotmp::A4Box hin_DEV{};
     if (has_hin) {
-        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1, hin_HOST->lb[0], hin_HOST->lb[1], hin_HOST->lb[2]);
     }
 
     /// Copy host → device (h is inout: copy in before kernel)
@@ -761,15 +759,15 @@ void turbotmp_continuity_meridional_convergence_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (IareaT is 2D: nz=1)
-    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0],      h_HOST->shape[1],      h_HOST->shape[2], 1);
-    auto vh_DEV     = turbotmp::make_array4(vh_HOST->shape[0],     vh_HOST->shape[1],     vh_HOST->shape[2], 1);
-    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1,                1);
+    auto h_DEV      = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto vh_DEV     = turbotmp::make_array4(vh_HOST->shape[0], vh_HOST->shape[1], vh_HOST->shape[2], 1, vh_HOST->lb[0], vh_HOST->lb[1], vh_HOST->lb[2]);
+    auto IareaT_DEV = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
 
     /// hin_HOST may be absent (data == nullptr); only allocate/copy it when present.
     const bool has_hin = (hin_HOST->data != nullptr);
     turbotmp::A4Box hin_DEV{};
     if (has_hin) {
-        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1);
+        hin_DEV = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1, hin_HOST->lb[0], hin_HOST->lb[1], hin_HOST->lb[2]);
     }
 
     /// Copy host → device (h is inout: copy in before kernel)
@@ -873,29 +871,29 @@ void turbotmp_set_zonal_bt_cont_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
-    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
-    auto FA_u_W0_DEV         = turbotmp::make_array4(FA_u_W0_HOST->shape[0],         FA_u_W0_HOST->shape[1],         1, 1);
-    auto FA_u_E0_DEV         = turbotmp::make_array4(FA_u_E0_HOST->shape[0],         FA_u_E0_HOST->shape[1],         1, 1);
-    auto FA_u_WW_DEV         = turbotmp::make_array4(FA_u_WW_HOST->shape[0],         FA_u_WW_HOST->shape[1],         1, 1);
-    auto FA_u_EE_DEV         = turbotmp::make_array4(FA_u_EE_HOST->shape[0],         FA_u_EE_HOST->shape[1],         1, 1);
-    auto uBT_WW_DEV          = turbotmp::make_array4(uBT_WW_HOST->shape[0],          uBT_WW_HOST->shape[1],          1, 1);
-    auto uBT_EE_DEV          = turbotmp::make_array4(uBT_EE_HOST->shape[0],          uBT_EE_HOST->shape[1],          1, 1);
-    auto du0_DEV             = turbotmp::make_array4(du0_HOST->shape[0],             du0_HOST->shape[1],             1, 1);
-    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0],        uh_tot_0_HOST->shape[1],        1, 1);
-    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0],     duhdu_tot_0_HOST->shape[1],     1, 1);
-    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0],      du_max_CFL_HOST->shape[1],      1, 1);
-    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0],      du_min_CFL_HOST->shape[1],      1, 1);
-    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0],            dxCu_HOST->shape[1],            1, 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
-    auto visc_rem_max_DEV    = turbotmp::make_array4(visc_rem_max_HOST->shape[0],    visc_rem_max_HOST->shape[1],    1, 1);
-    auto do_I_DEV            = turbotmp::make_int_array4(do_I_HOST->shape[0],        do_I_HOST->shape[1],            1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto FA_u_W0_DEV         = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1, FA_u_W0_HOST->lb[0], FA_u_W0_HOST->lb[1], 1);
+    auto FA_u_E0_DEV         = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1, FA_u_E0_HOST->lb[0], FA_u_E0_HOST->lb[1], 1);
+    auto FA_u_WW_DEV         = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1, FA_u_WW_HOST->lb[0], FA_u_WW_HOST->lb[1], 1);
+    auto FA_u_EE_DEV         = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1, FA_u_EE_HOST->lb[0], FA_u_EE_HOST->lb[1], 1);
+    auto uBT_WW_DEV          = turbotmp::make_array4(uBT_WW_HOST->shape[0], uBT_WW_HOST->shape[1], 1, 1, uBT_WW_HOST->lb[0], uBT_WW_HOST->lb[1], 1);
+    auto uBT_EE_DEV          = turbotmp::make_array4(uBT_EE_HOST->shape[0], uBT_EE_HOST->shape[1], 1, 1, uBT_EE_HOST->lb[0], uBT_EE_HOST->lb[1], 1);
+    auto du0_DEV             = turbotmp::make_array4(du0_HOST->shape[0], du0_HOST->shape[1], 1, 1, du0_HOST->lb[0], du0_HOST->lb[1], 1);
+    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0], uh_tot_0_HOST->shape[1], 1, 1, uh_tot_0_HOST->lb[0], uh_tot_0_HOST->lb[1], 1);
+    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0], duhdu_tot_0_HOST->shape[1], 1, 1, duhdu_tot_0_HOST->lb[0], duhdu_tot_0_HOST->lb[1], 1);
+    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0], du_max_CFL_HOST->shape[1], 1, 1, du_max_CFL_HOST->lb[0], du_max_CFL_HOST->lb[1], 1);
+    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0], du_min_CFL_HOST->shape[1], 1, 1, du_min_CFL_HOST->lb[0], du_min_CFL_HOST->lb[1], 1);
+    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0], dxCu_HOST->shape[1], 1, 1, dxCu_HOST->lb[0], dxCu_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0], visc_rem_HOST->shape[1], visc_rem_HOST->shape[2], 1, visc_rem_HOST->lb[0], visc_rem_HOST->lb[1], visc_rem_HOST->lb[2]);
+    auto visc_rem_max_DEV    = turbotmp::make_array4(visc_rem_max_HOST->shape[0], visc_rem_max_HOST->shape[1], 1, 1, visc_rem_max_HOST->lb[0], visc_rem_max_HOST->lb[1], 1);
+    auto do_I_DEV            = turbotmp::make_int_array4(do_I_HOST->shape[0], do_I_HOST->shape[1], 1, 1, do_I_HOST->lb[0], do_I_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
 
     /// Copy host → device (FA_u_*/uBT_* are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
@@ -1022,29 +1020,29 @@ void turbotmp_set_merid_bt_cont_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
-    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
-    auto FA_v_S0_DEV         = turbotmp::make_array4(FA_v_S0_HOST->shape[0],         FA_v_S0_HOST->shape[1],         1, 1);
-    auto FA_v_N0_DEV         = turbotmp::make_array4(FA_v_N0_HOST->shape[0],         FA_v_N0_HOST->shape[1],         1, 1);
-    auto FA_v_SS_DEV         = turbotmp::make_array4(FA_v_SS_HOST->shape[0],         FA_v_SS_HOST->shape[1],         1, 1);
-    auto FA_v_NN_DEV         = turbotmp::make_array4(FA_v_NN_HOST->shape[0],         FA_v_NN_HOST->shape[1],         1, 1);
-    auto vBT_SS_DEV          = turbotmp::make_array4(vBT_SS_HOST->shape[0],          vBT_SS_HOST->shape[1],          1, 1);
-    auto vBT_NN_DEV          = turbotmp::make_array4(vBT_NN_HOST->shape[0],          vBT_NN_HOST->shape[1],          1, 1);
-    auto dv0_DEV             = turbotmp::make_array4(dv0_HOST->shape[0],             dv0_HOST->shape[1],             1, 1);
-    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0],        vh_tot_0_HOST->shape[1],        1, 1);
-    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0],     dvhdv_tot_0_HOST->shape[1],     1, 1);
-    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0],      dv_max_CFL_HOST->shape[1],      1, 1);
-    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0],      dv_min_CFL_HOST->shape[1],      1, 1);
-    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0],            dyCv_HOST->shape[1],            1, 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
-    auto visc_rem_max_DEV    = turbotmp::make_array4(visc_rem_max_HOST->shape[0],    visc_rem_max_HOST->shape[1],    1, 1);
-    auto do_I_DEV            = turbotmp::make_int_array4(do_I_HOST->shape[0],        do_I_HOST->shape[1],            1, 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto FA_v_S0_DEV         = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1, FA_v_S0_HOST->lb[0], FA_v_S0_HOST->lb[1], 1);
+    auto FA_v_N0_DEV         = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1, FA_v_N0_HOST->lb[0], FA_v_N0_HOST->lb[1], 1);
+    auto FA_v_SS_DEV         = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1, FA_v_SS_HOST->lb[0], FA_v_SS_HOST->lb[1], 1);
+    auto FA_v_NN_DEV         = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1, FA_v_NN_HOST->lb[0], FA_v_NN_HOST->lb[1], 1);
+    auto vBT_SS_DEV          = turbotmp::make_array4(vBT_SS_HOST->shape[0], vBT_SS_HOST->shape[1], 1, 1, vBT_SS_HOST->lb[0], vBT_SS_HOST->lb[1], 1);
+    auto vBT_NN_DEV          = turbotmp::make_array4(vBT_NN_HOST->shape[0], vBT_NN_HOST->shape[1], 1, 1, vBT_NN_HOST->lb[0], vBT_NN_HOST->lb[1], 1);
+    auto dv0_DEV             = turbotmp::make_array4(dv0_HOST->shape[0], dv0_HOST->shape[1], 1, 1, dv0_HOST->lb[0], dv0_HOST->lb[1], 1);
+    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0], vh_tot_0_HOST->shape[1], 1, 1, vh_tot_0_HOST->lb[0], vh_tot_0_HOST->lb[1], 1);
+    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0], dvhdv_tot_0_HOST->shape[1], 1, 1, dvhdv_tot_0_HOST->lb[0], dvhdv_tot_0_HOST->lb[1], 1);
+    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0], dv_max_CFL_HOST->shape[1], 1, 1, dv_max_CFL_HOST->lb[0], dv_max_CFL_HOST->lb[1], 1);
+    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0], dv_min_CFL_HOST->shape[1], 1, 1, dv_min_CFL_HOST->lb[0], dv_min_CFL_HOST->lb[1], 1);
+    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0], dyCv_HOST->shape[1], 1, 1, dyCv_HOST->lb[0], dyCv_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0], visc_rem_HOST->shape[1], visc_rem_HOST->shape[2], 1, visc_rem_HOST->lb[0], visc_rem_HOST->lb[1], visc_rem_HOST->lb[2]);
+    auto visc_rem_max_DEV    = turbotmp::make_array4(visc_rem_max_HOST->shape[0], visc_rem_max_HOST->shape[1], 1, 1, visc_rem_max_HOST->lb[0], visc_rem_max_HOST->lb[1], 1);
+    auto do_I_DEV            = turbotmp::make_int_array4(do_I_HOST->shape[0], do_I_HOST->shape[1], 1, 1, do_I_HOST->lb[0], do_I_HOST->lb[1], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// Copy host → device (FA_v_*/vBT_* are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
@@ -1166,21 +1164,21 @@ void turbotmp_zonal_flux_adjust_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
-    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
-    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0],        uh_tot_0_HOST->shape[1],        1, 1);
-    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0],     duhdu_tot_0_HOST->shape[1],     1, 1);
-    auto du_DEV              = turbotmp::make_array4(du_HOST->shape[0],              du_HOST->shape[1],              1, 1);
-    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0],      du_max_CFL_HOST->shape[1],      1, 1);
-    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0],      du_min_CFL_HOST->shape[1],      1, 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
-    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0],     do_I_in_HOST->shape[1],         1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto uh_tot_0_DEV        = turbotmp::make_array4(uh_tot_0_HOST->shape[0], uh_tot_0_HOST->shape[1], 1, 1, uh_tot_0_HOST->lb[0], uh_tot_0_HOST->lb[1], 1);
+    auto duhdu_tot_0_DEV     = turbotmp::make_array4(duhdu_tot_0_HOST->shape[0], duhdu_tot_0_HOST->shape[1], 1, 1, duhdu_tot_0_HOST->lb[0], duhdu_tot_0_HOST->lb[1], 1);
+    auto du_DEV              = turbotmp::make_array4(du_HOST->shape[0], du_HOST->shape[1], 1, 1, du_HOST->lb[0], du_HOST->lb[1], 1);
+    auto du_max_CFL_DEV      = turbotmp::make_array4(du_max_CFL_HOST->shape[0], du_max_CFL_HOST->shape[1], 1, 1, du_max_CFL_HOST->lb[0], du_max_CFL_HOST->lb[1], 1);
+    auto du_min_CFL_DEV      = turbotmp::make_array4(du_min_CFL_HOST->shape[0], du_min_CFL_HOST->shape[1], 1, 1, du_min_CFL_HOST->lb[0], du_min_CFL_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0], visc_rem_HOST->shape[1], visc_rem_HOST->shape[2], 1, visc_rem_HOST->lb[0], visc_rem_HOST->lb[1], visc_rem_HOST->lb[2]);
+    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0], do_I_in_HOST->shape[1], 1, 1, do_I_in_HOST->lb[0], do_I_in_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
 
     /// uhbt_HOST/uh_3d_HOST may be absent (data == nullptr); only allocate/copy them when present.
     const bool has_uhbt  = (uhbt_HOST->data != nullptr);
@@ -1188,10 +1186,10 @@ void turbotmp_zonal_flux_adjust_bridge(const Box_C* bxC_HOST,
     turbotmp::A4Box uhbt_DEV{};
     turbotmp::A4Box uh_3d_DEV{};
     if (has_uhbt) {
-        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
     }
     if (has_uh_3d) {
-        uh_3d_DEV = turbotmp::make_array4(uh_3d_HOST->shape[0], uh_3d_HOST->shape[1], uh_3d_HOST->shape[2], 1);
+        uh_3d_DEV = turbotmp::make_array4(uh_3d_HOST->shape[0], uh_3d_HOST->shape[1], uh_3d_HOST->shape[2], 1, uh_3d_HOST->lb[0], uh_3d_HOST->lb[1], uh_3d_HOST->lb[2]);
     }
 
     /// Copy host → device (du/uh_3d are inout: copy in before kernel)
@@ -1300,21 +1298,21 @@ void turbotmp_meridional_flux_adjust_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
-    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
-    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0],        vh_tot_0_HOST->shape[1],        1, 1);
-    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0],     dvhdv_tot_0_HOST->shape[1],     1, 1);
-    auto dv_DEV              = turbotmp::make_array4(dv_HOST->shape[0],              dv_HOST->shape[1],              1, 1);
-    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0],      dv_max_CFL_HOST->shape[1],      1, 1);
-    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0],      dv_min_CFL_HOST->shape[1],      1, 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0],        visc_rem_HOST->shape[1],        visc_rem_HOST->shape[2], 1);
-    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0],     do_I_in_HOST->shape[1],         1, 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto vh_tot_0_DEV        = turbotmp::make_array4(vh_tot_0_HOST->shape[0], vh_tot_0_HOST->shape[1], 1, 1, vh_tot_0_HOST->lb[0], vh_tot_0_HOST->lb[1], 1);
+    auto dvhdv_tot_0_DEV     = turbotmp::make_array4(dvhdv_tot_0_HOST->shape[0], dvhdv_tot_0_HOST->shape[1], 1, 1, dvhdv_tot_0_HOST->lb[0], dvhdv_tot_0_HOST->lb[1], 1);
+    auto dv_DEV              = turbotmp::make_array4(dv_HOST->shape[0], dv_HOST->shape[1], 1, 1, dv_HOST->lb[0], dv_HOST->lb[1], 1);
+    auto dv_max_CFL_DEV      = turbotmp::make_array4(dv_max_CFL_HOST->shape[0], dv_max_CFL_HOST->shape[1], 1, 1, dv_max_CFL_HOST->lb[0], dv_max_CFL_HOST->lb[1], 1);
+    auto dv_min_CFL_DEV      = turbotmp::make_array4(dv_min_CFL_HOST->shape[0], dv_min_CFL_HOST->shape[1], 1, 1, dv_min_CFL_HOST->lb[0], dv_min_CFL_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto visc_rem_DEV        = turbotmp::make_array4(visc_rem_HOST->shape[0], visc_rem_HOST->shape[1], visc_rem_HOST->shape[2], 1, visc_rem_HOST->lb[0], visc_rem_HOST->lb[1], visc_rem_HOST->lb[2]);
+    auto do_I_in_DEV         = turbotmp::make_int_array4(do_I_in_HOST->shape[0], do_I_in_HOST->shape[1], 1, 1, do_I_in_HOST->lb[0], do_I_in_HOST->lb[1], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// vhbt_HOST/vh_3d_HOST may be absent (data == nullptr); only allocate/copy them when present.
     const bool has_vhbt  = (vhbt_HOST->data != nullptr);
@@ -1322,10 +1320,10 @@ void turbotmp_meridional_flux_adjust_bridge(const Box_C* bxC_HOST,
     turbotmp::A4Box vhbt_DEV{};
     turbotmp::A4Box vh_3d_DEV{};
     if (has_vhbt) {
-        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
     }
     if (has_vh_3d) {
-        vh_3d_DEV = turbotmp::make_array4(vh_3d_HOST->shape[0], vh_3d_HOST->shape[1], vh_3d_HOST->shape[2], 1);
+        vh_3d_DEV = turbotmp::make_array4(vh_3d_HOST->shape[0], vh_3d_HOST->shape[1], vh_3d_HOST->shape[2], 1, vh_3d_HOST->lb[0], vh_3d_HOST->lb[1], vh_3d_HOST->lb[2]);
     }
 
     /// Copy host → device (dv/vh_3d are inout: copy in before kernel)
@@ -1441,19 +1439,19 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
-    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
-    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0],              uh_HOST->shape[1],              uh_HOST->shape[2], 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
-    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0],             dxT_HOST->shape[1],             1, 1);
-    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0],        mask2dCu_HOST->shape[1],        1, 1);
-    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0],            dxCu_HOST->shape[1],            1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0], uh_HOST->shape[1], uh_HOST->shape[2], 1, uh_HOST->lb[0], uh_HOST->lb[1], uh_HOST->lb[2]);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0], areaT_HOST->shape[1], 1, 1, areaT_HOST->lb[0], areaT_HOST->lb[1], 1);
+    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0], dxT_HOST->shape[1], 1, 1, dxT_HOST->lb[0], dxT_HOST->lb[1], 1);
+    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0], mask2dCu_HOST->shape[1], 1, 1, mask2dCu_HOST->lb[0], mask2dCu_HOST->lb[1], 1);
+    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0], dxCu_HOST->shape[1], 1, 1, dxCu_HOST->lb[0], dxCu_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
 
     /// uhbt_HOST/visc_rem_u_HOST/u_cor_HOST/du_cor_HOST and the six
     /// FA_u_*/uBT_* BT_cont fields may all be absent (data == nullptr);
@@ -1468,24 +1466,24 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
     turbotmp::A4Box uhbt_DEV{}, visc_rem_u_DEV{}, u_cor_DEV{}, du_cor_DEV{};
     turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
     if (has_uhbt) {
-        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
     }
     if (has_visc_rem_u) {
-        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1);
+        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1, visc_rem_u_HOST->lb[0], visc_rem_u_HOST->lb[1], visc_rem_u_HOST->lb[2]);
     }
     if (has_u_cor) {
-        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1);
+        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1, u_cor_HOST->lb[0], u_cor_HOST->lb[1], u_cor_HOST->lb[2]);
     }
     if (has_du_cor) {
-        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1);
+        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1, du_cor_HOST->lb[0], du_cor_HOST->lb[1], 1);
     }
     if (set_BT_cont) {
-        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1);
-        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1);
-        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1);
-        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1);
-        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0],  uBT_WW_HOST->shape[1],  1, 1);
-        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0],  uBT_EE_HOST->shape[1],  1, 1);
+        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1, FA_u_W0_HOST->lb[0], FA_u_W0_HOST->lb[1], 1);
+        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1, FA_u_E0_HOST->lb[0], FA_u_E0_HOST->lb[1], 1);
+        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1, FA_u_WW_HOST->lb[0], FA_u_WW_HOST->lb[1], 1);
+        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1, FA_u_EE_HOST->lb[0], FA_u_EE_HOST->lb[1], 1);
+        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0], uBT_WW_HOST->shape[1], 1, 1, uBT_WW_HOST->lb[0], uBT_WW_HOST->lb[1], 1);
+        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0], uBT_EE_HOST->shape[1], 1, 1, uBT_EE_HOST->lb[0], uBT_EE_HOST->lb[1], 1);
     }
 
     /// Copy host → device (uh/u_cor/du_cor/FA_u_*/uBT_* are inout: copy in before kernel)
@@ -1643,19 +1641,19 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
     const int ied_dev = ied - 1;
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
-    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
-    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0],              vh_HOST->shape[1],              vh_HOST->shape[2], 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
-    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0],             dyT_HOST->shape[1],             1, 1);
-    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0],        mask2dCv_HOST->shape[1],        1, 1);
-    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0],            dyCv_HOST->shape[1],            1, 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0], vh_HOST->shape[1], vh_HOST->shape[2], 1, vh_HOST->lb[0], vh_HOST->lb[1], vh_HOST->lb[2]);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0], areaT_HOST->shape[1], 1, 1, areaT_HOST->lb[0], areaT_HOST->lb[1], 1);
+    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0], dyT_HOST->shape[1], 1, 1, dyT_HOST->lb[0], dyT_HOST->lb[1], 1);
+    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0], mask2dCv_HOST->shape[1], 1, 1, mask2dCv_HOST->lb[0], mask2dCv_HOST->lb[1], 1);
+    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0], dyCv_HOST->shape[1], 1, 1, dyCv_HOST->lb[0], dyCv_HOST->lb[1], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// vhbt_HOST/visc_rem_v_HOST/v_cor_HOST/dv_cor_HOST and the six
     /// FA_v_*/vBT_* BT_cont fields may all be absent (data == nullptr);
@@ -1670,24 +1668,24 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
     turbotmp::A4Box vhbt_DEV{}, visc_rem_v_DEV{}, v_cor_DEV{}, dv_cor_DEV{};
     turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
     if (has_vhbt) {
-        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
     }
     if (has_visc_rem_v) {
-        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1);
+        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1, visc_rem_v_HOST->lb[0], visc_rem_v_HOST->lb[1], visc_rem_v_HOST->lb[2]);
     }
     if (has_v_cor) {
-        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1);
+        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1, v_cor_HOST->lb[0], v_cor_HOST->lb[1], v_cor_HOST->lb[2]);
     }
     if (has_dv_cor) {
-        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1);
+        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1, dv_cor_HOST->lb[0], dv_cor_HOST->lb[1], 1);
     }
     if (set_BT_cont) {
-        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1);
-        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1);
-        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1);
-        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1);
-        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0],  vBT_SS_HOST->shape[1],  1, 1);
-        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0],  vBT_NN_HOST->shape[1],  1, 1);
+        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1, FA_v_S0_HOST->lb[0], FA_v_S0_HOST->lb[1], 1);
+        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1, FA_v_N0_HOST->lb[0], FA_v_N0_HOST->lb[1], 1);
+        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1, FA_v_SS_HOST->lb[0], FA_v_SS_HOST->lb[1], 1);
+        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1, FA_v_NN_HOST->lb[0], FA_v_NN_HOST->lb[1], 1);
+        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0], vBT_SS_HOST->shape[1], 1, 1, vBT_SS_HOST->lb[0], vBT_SS_HOST->lb[1], 1);
+        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0], vBT_NN_HOST->shape[1], 1, 1, vBT_NN_HOST->lb[0], vBT_NN_HOST->lb[1], 1);
     }
 
     /// Copy host → device (vh/v_cor/dv_cor/FA_v_*/vBT_* are inout: copy in before kernel)
@@ -1869,27 +1867,27 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
     const int ied_dev = ied - 1;
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto hin_DEV             = turbotmp::make_array4(hin_HOST->shape[0],             hin_HOST->shape[1],             hin_HOST->shape[2], 1);
-    auto h_DEV               = turbotmp::make_array4(h_HOST->shape[0],               h_HOST->shape[1],               h_HOST->shape[2],   1);
-    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0],              uh_HOST->shape[1],              uh_HOST->shape[2],  1);
-    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0],              vh_HOST->shape[1],              vh_HOST->shape[2],  1);
-    auto mask2dT_DEV         = turbotmp::make_array4(mask2dT_HOST->shape[0],         mask2dT_HOST->shape[1],         1, 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0],           areaT_HOST->shape[1],           1, 1);
-    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0],             dxT_HOST->shape[1],             1, 1);
-    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0],        mask2dCu_HOST->shape[1],        1, 1);
-    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0],            dxCu_HOST->shape[1],            1, 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0],             dyT_HOST->shape[1],             1, 1);
-    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0],        mask2dCv_HOST->shape[1],        1, 1);
-    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0],            dyCv_HOST->shape[1],            1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto hin_DEV             = turbotmp::make_array4(hin_HOST->shape[0], hin_HOST->shape[1], hin_HOST->shape[2], 1, hin_HOST->lb[0], hin_HOST->lb[1], hin_HOST->lb[2]);
+    auto h_DEV               = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto uh_DEV              = turbotmp::make_array4(uh_HOST->shape[0], uh_HOST->shape[1], uh_HOST->shape[2], 1, uh_HOST->lb[0], uh_HOST->lb[1], uh_HOST->lb[2]);
+    auto vh_DEV              = turbotmp::make_array4(vh_HOST->shape[0], vh_HOST->shape[1], vh_HOST->shape[2], 1, vh_HOST->lb[0], vh_HOST->lb[1], vh_HOST->lb[2]);
+    auto mask2dT_DEV         = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto areaT_DEV           = turbotmp::make_array4(areaT_HOST->shape[0], areaT_HOST->shape[1], 1, 1, areaT_HOST->lb[0], areaT_HOST->lb[1], 1);
+    auto dxT_DEV             = turbotmp::make_array4(dxT_HOST->shape[0], dxT_HOST->shape[1], 1, 1, dxT_HOST->lb[0], dxT_HOST->lb[1], 1);
+    auto mask2dCu_DEV        = turbotmp::make_array4(mask2dCu_HOST->shape[0], mask2dCu_HOST->shape[1], 1, 1, mask2dCu_HOST->lb[0], mask2dCu_HOST->lb[1], 1);
+    auto dxCu_DEV            = turbotmp::make_array4(dxCu_HOST->shape[0], dxCu_HOST->shape[1], 1, 1, dxCu_HOST->lb[0], dxCu_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto dyT_DEV             = turbotmp::make_array4(dyT_HOST->shape[0], dyT_HOST->shape[1], 1, 1, dyT_HOST->lb[0], dyT_HOST->lb[1], 1);
+    auto mask2dCv_DEV        = turbotmp::make_array4(mask2dCv_HOST->shape[0], mask2dCv_HOST->shape[1], 1, 1, mask2dCv_HOST->lb[0], mask2dCv_HOST->lb[1], 1);
+    auto dyCv_DEV            = turbotmp::make_array4(dyCv_HOST->shape[0], dyCv_HOST->shape[1], 1, 1, dyCv_HOST->lb[0], dyCv_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// uhbt_HOST/vhbt_HOST/visc_rem_u_HOST/visc_rem_v_HOST/u_cor_HOST/v_cor_HOST/
     /// du_cor_HOST/dv_cor_HOST and the twelve FA_u_*/uBT_*/FA_v_*/vBT_* BT_cont
@@ -1912,44 +1910,44 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
     turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
     turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
     if (has_uhbt) {
-        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1);
+        uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
     }
     if (has_vhbt) {
-        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1);
+        vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
     }
     if (has_visc_rem_u) {
-        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1);
+        visc_rem_u_DEV = turbotmp::make_array4(visc_rem_u_HOST->shape[0], visc_rem_u_HOST->shape[1], visc_rem_u_HOST->shape[2], 1, visc_rem_u_HOST->lb[0], visc_rem_u_HOST->lb[1], visc_rem_u_HOST->lb[2]);
     }
     if (has_visc_rem_v) {
-        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1);
+        visc_rem_v_DEV = turbotmp::make_array4(visc_rem_v_HOST->shape[0], visc_rem_v_HOST->shape[1], visc_rem_v_HOST->shape[2], 1, visc_rem_v_HOST->lb[0], visc_rem_v_HOST->lb[1], visc_rem_v_HOST->lb[2]);
     }
     if (has_u_cor) {
-        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1);
+        u_cor_DEV = turbotmp::make_array4(u_cor_HOST->shape[0], u_cor_HOST->shape[1], u_cor_HOST->shape[2], 1, u_cor_HOST->lb[0], u_cor_HOST->lb[1], u_cor_HOST->lb[2]);
     }
     if (has_v_cor) {
-        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1);
+        v_cor_DEV = turbotmp::make_array4(v_cor_HOST->shape[0], v_cor_HOST->shape[1], v_cor_HOST->shape[2], 1, v_cor_HOST->lb[0], v_cor_HOST->lb[1], v_cor_HOST->lb[2]);
     }
     if (has_du_cor) {
-        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1);
+        du_cor_DEV = turbotmp::make_array4(du_cor_HOST->shape[0], du_cor_HOST->shape[1], 1, 1, du_cor_HOST->lb[0], du_cor_HOST->lb[1], 1);
     }
     if (has_dv_cor) {
-        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1);
+        dv_cor_DEV = turbotmp::make_array4(dv_cor_HOST->shape[0], dv_cor_HOST->shape[1], 1, 1, dv_cor_HOST->lb[0], dv_cor_HOST->lb[1], 1);
     }
     if (set_BT_cont_u) {
-        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1);
-        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1);
-        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1);
-        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1);
-        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0],  uBT_WW_HOST->shape[1],  1, 1);
-        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0],  uBT_EE_HOST->shape[1],  1, 1);
+        FA_u_W0_DEV = turbotmp::make_array4(FA_u_W0_HOST->shape[0], FA_u_W0_HOST->shape[1], 1, 1, FA_u_W0_HOST->lb[0], FA_u_W0_HOST->lb[1], 1);
+        FA_u_E0_DEV = turbotmp::make_array4(FA_u_E0_HOST->shape[0], FA_u_E0_HOST->shape[1], 1, 1, FA_u_E0_HOST->lb[0], FA_u_E0_HOST->lb[1], 1);
+        FA_u_WW_DEV = turbotmp::make_array4(FA_u_WW_HOST->shape[0], FA_u_WW_HOST->shape[1], 1, 1, FA_u_WW_HOST->lb[0], FA_u_WW_HOST->lb[1], 1);
+        FA_u_EE_DEV = turbotmp::make_array4(FA_u_EE_HOST->shape[0], FA_u_EE_HOST->shape[1], 1, 1, FA_u_EE_HOST->lb[0], FA_u_EE_HOST->lb[1], 1);
+        uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0], uBT_WW_HOST->shape[1], 1, 1, uBT_WW_HOST->lb[0], uBT_WW_HOST->lb[1], 1);
+        uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0], uBT_EE_HOST->shape[1], 1, 1, uBT_EE_HOST->lb[0], uBT_EE_HOST->lb[1], 1);
     }
     if (set_BT_cont_v) {
-        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1);
-        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1);
-        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1);
-        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1);
-        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0],  vBT_SS_HOST->shape[1],  1, 1);
-        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0],  vBT_NN_HOST->shape[1],  1, 1);
+        FA_v_S0_DEV = turbotmp::make_array4(FA_v_S0_HOST->shape[0], FA_v_S0_HOST->shape[1], 1, 1, FA_v_S0_HOST->lb[0], FA_v_S0_HOST->lb[1], 1);
+        FA_v_N0_DEV = turbotmp::make_array4(FA_v_N0_HOST->shape[0], FA_v_N0_HOST->shape[1], 1, 1, FA_v_N0_HOST->lb[0], FA_v_N0_HOST->lb[1], 1);
+        FA_v_SS_DEV = turbotmp::make_array4(FA_v_SS_HOST->shape[0], FA_v_SS_HOST->shape[1], 1, 1, FA_v_SS_HOST->lb[0], FA_v_SS_HOST->lb[1], 1);
+        FA_v_NN_DEV = turbotmp::make_array4(FA_v_NN_HOST->shape[0], FA_v_NN_HOST->shape[1], 1, 1, FA_v_NN_HOST->lb[0], FA_v_NN_HOST->lb[1], 1);
+        vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0], vBT_SS_HOST->shape[1], 1, 1, vBT_SS_HOST->lb[0], vBT_SS_HOST->lb[1], 1);
+        vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0], vBT_NN_HOST->shape[1], 1, 1, vBT_NN_HOST->lb[0], vBT_NN_HOST->lb[1], 1);
     }
 
     /// Copy host → device (h/uh/vh/u_cor/v_cor/du_cor/dv_cor/FA_*/*BT_* are inout: copy in before kernel)
@@ -2172,15 +2170,15 @@ void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0],             h_W_HOST->shape[1],             h_W_HOST->shape[2], 1);
-    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0],             h_E_HOST->shape[1],             h_E_HOST->shape[2], 1);
-    auto uhbt_DEV            = turbotmp::make_array4(uhbt_HOST->shape[0],            uhbt_HOST->shape[1],            1, 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_W_DEV             = turbotmp::make_array4(h_W_HOST->shape[0], h_W_HOST->shape[1], h_W_HOST->shape[2], 1, h_W_HOST->lb[0], h_W_HOST->lb[1], h_W_HOST->lb[2]);
+    auto h_E_DEV             = turbotmp::make_array4(h_E_HOST->shape[0], h_E_HOST->shape[1], h_E_HOST->shape[2], 1, h_E_HOST->lb[0], h_E_HOST->lb[1], h_E_HOST->lb[2]);
+    auto uhbt_DEV            = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
 
     /// Copy host → device (uhbt is inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
@@ -2248,15 +2246,15 @@ void turbotmp_meridional_bt_mass_flux_bridge(const Box_C* bxC_HOST,
                   amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0],            h_in_HOST->shape[1],            h_in_HOST->shape[2], 1);
-    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0],             h_S_HOST->shape[1],             h_S_HOST->shape[2], 1);
-    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0],             h_N_HOST->shape[1],             h_N_HOST->shape[2], 1);
-    auto vhbt_DEV            = turbotmp::make_array4(vhbt_HOST->shape[0],            vhbt_HOST->shape[1],            1, 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_in_DEV            = turbotmp::make_array4(h_in_HOST->shape[0], h_in_HOST->shape[1], h_in_HOST->shape[2], 1, h_in_HOST->lb[0], h_in_HOST->lb[1], h_in_HOST->lb[2]);
+    auto h_S_DEV             = turbotmp::make_array4(h_S_HOST->shape[0], h_S_HOST->shape[1], h_S_HOST->shape[2], 1, h_S_HOST->lb[0], h_S_HOST->lb[1], h_S_HOST->lb[2]);
+    auto h_N_DEV             = turbotmp::make_array4(h_N_HOST->shape[0], h_N_HOST->shape[1], h_N_HOST->shape[2], 1, h_N_HOST->lb[0], h_N_HOST->lb[1], h_N_HOST->lb[2]);
+    auto vhbt_DEV            = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// Copy host → device (vhbt is inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
@@ -2330,19 +2328,19 @@ void turbotmp_continuity_ppm_2d_fluxes_bridge(const RealArray_C* u_HOST,
                    amrex::IntVect(bxC_HOST->idxE[0]-1, bxC_HOST->idxE[1]-1, bxC_HOST->idxE[2]-1));
 
     /// Create A4 containers for the Fortran arrays (2D fields: nz=1)
-    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0],               u_HOST->shape[1],               u_HOST->shape[2],   1);
-    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0],               v_HOST->shape[1],               v_HOST->shape[2],   1);
-    auto h_DEV               = turbotmp::make_array4(h_HOST->shape[0],               h_HOST->shape[1],               h_HOST->shape[2],   1);
-    auto uhbt_DEV            = turbotmp::make_array4(uhbt_HOST->shape[0],            uhbt_HOST->shape[1],            1, 1);
-    auto vhbt_DEV            = turbotmp::make_array4(vhbt_HOST->shape[0],            vhbt_HOST->shape[1],            1, 1);
-    auto mask2dT_DEV         = turbotmp::make_array4(mask2dT_HOST->shape[0],         mask2dT_HOST->shape[1],         1, 1);
-    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0],           dy_Cu_HOST->shape[1],           1, 1);
-    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0],          IareaT_HOST->shape[1],          1, 1);
-    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0],            IdxT_HOST->shape[1],            1, 1);
-    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0],           dx_Cv_HOST->shape[1],           1, 1);
-    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0],            IdyT_HOST->shape[1],            1, 1);
-    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0],  por_face_areaU_HOST->shape[1],  por_face_areaU_HOST->shape[2], 1);
-    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0],  por_face_areaV_HOST->shape[1],  por_face_areaV_HOST->shape[2], 1);
+    auto u_DEV               = turbotmp::make_array4(u_HOST->shape[0], u_HOST->shape[1], u_HOST->shape[2], 1, u_HOST->lb[0], u_HOST->lb[1], u_HOST->lb[2]);
+    auto v_DEV               = turbotmp::make_array4(v_HOST->shape[0], v_HOST->shape[1], v_HOST->shape[2], 1, v_HOST->lb[0], v_HOST->lb[1], v_HOST->lb[2]);
+    auto h_DEV               = turbotmp::make_array4(h_HOST->shape[0], h_HOST->shape[1], h_HOST->shape[2], 1, h_HOST->lb[0], h_HOST->lb[1], h_HOST->lb[2]);
+    auto uhbt_DEV            = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
+    auto vhbt_DEV            = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
+    auto mask2dT_DEV         = turbotmp::make_array4(mask2dT_HOST->shape[0], mask2dT_HOST->shape[1], 1, 1, mask2dT_HOST->lb[0], mask2dT_HOST->lb[1], 1);
+    auto dy_Cu_DEV           = turbotmp::make_array4(dy_Cu_HOST->shape[0], dy_Cu_HOST->shape[1], 1, 1, dy_Cu_HOST->lb[0], dy_Cu_HOST->lb[1], 1);
+    auto IareaT_DEV          = turbotmp::make_array4(IareaT_HOST->shape[0], IareaT_HOST->shape[1], 1, 1, IareaT_HOST->lb[0], IareaT_HOST->lb[1], 1);
+    auto IdxT_DEV            = turbotmp::make_array4(IdxT_HOST->shape[0], IdxT_HOST->shape[1], 1, 1, IdxT_HOST->lb[0], IdxT_HOST->lb[1], 1);
+    auto dx_Cv_DEV           = turbotmp::make_array4(dx_Cv_HOST->shape[0], dx_Cv_HOST->shape[1], 1, 1, dx_Cv_HOST->lb[0], dx_Cv_HOST->lb[1], 1);
+    auto IdyT_DEV            = turbotmp::make_array4(IdyT_HOST->shape[0], IdyT_HOST->shape[1], 1, 1, IdyT_HOST->lb[0], IdyT_HOST->lb[1], 1);
+    auto por_face_areaU_DEV  = turbotmp::make_array4(por_face_areaU_HOST->shape[0], por_face_areaU_HOST->shape[1], por_face_areaU_HOST->shape[2], 1, por_face_areaU_HOST->lb[0], por_face_areaU_HOST->lb[1], por_face_areaU_HOST->lb[2]);
+    auto por_face_areaV_DEV  = turbotmp::make_array4(por_face_areaV_HOST->shape[0], por_face_areaV_HOST->shape[1], por_face_areaV_HOST->shape[2], 1, por_face_areaV_HOST->lb[0], por_face_areaV_HOST->lb[1], por_face_areaV_HOST->lb[2]);
 
     /// Copy host → device (uhbt/vhbt are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);

@@ -19,6 +19,36 @@
 using test_mom::expect_arrays_equal;
 using test_mom::to_host_fab;
 
+namespace {
+
+// Binds a "<field>_before" / "<field>_after" in/out array pair that the
+// Fortran shim only captures when the corresponding container was
+// associated at capture time (may be null-encoded or missing entirely --
+// CapturedFile::is_associated() checks both). When absent, `arr` is left
+// default-constructed (Array4<Real>{}, a null pointer), matching the
+// kernel's own "may be absent (.p == nullptr)" parameter convention;
+// `present` gates whether the post-call assertion runs at all.
+struct OptionalInOutArray {
+    amrex::FArrayBox before_fab;
+    amrex::FArrayBox after_fab;
+    amrex::Array4<amrex::Real> arr{};
+    bool present = false;
+};
+
+OptionalInOutArray bind_optional_inout(const test_mom::CapturedFile& captured,
+                                       const std::string& field) {
+    OptionalInOutArray o;
+    o.present = captured.is_associated("_" + field + "_before");
+    if (o.present) {
+        o.before_fab = captured.fab_device("_" + field + "_before");
+        o.arr = o.before_fab.array();
+        o.after_fab = captured.fab_host("_" + field + "_after");
+    }
+    return o;
+}
+
+} // namespace
+
 // -------------------------------------------------------------------------
 // ppm_limit_pos
 // -------------------------------------------------------------------------
@@ -255,7 +285,14 @@ TEST(ZonalFluxThickness, MatchesFortranCapture) {
     const bool   vol_CFL         = captured.logical("_vol_CFL");
     const bool   marginal        = captured.logical("_marginal");
     const auto   por_face_areaU  = captured.fab_device("_por_face_areaU");
-    const auto   visc_rem_u      = captured.fab_device("_visc_rem_u");
+    // _visc_rem_u is captured only when associated -- may be absent
+    // entirely from this fixture.
+    amrex::FArrayBox visc_rem_u_fab;
+    amrex::Array4<const amrex::Real> visc_rem_u{};
+    if (captured.is_associated("_visc_rem_u")) {
+        visc_rem_u_fab = captured.fab_device("_visc_rem_u");
+        visc_rem_u = visc_rem_u_fab.const_array();
+    }
 
     MOM::zonal_flux_thickness(bxC,
                               u.const_array(),
@@ -271,7 +308,7 @@ TEST(ZonalFluxThickness, MatchesFortranCapture) {
                               marginal,
                               /*obc=*/nullptr,
                               por_face_areaU.const_array(),
-                              visc_rem_u.const_array());
+                              visc_rem_u);
     amrex::Gpu::synchronize();
 
     expect_arrays_equal(h_u_after, to_host_fab(h_u), "h_u");
@@ -609,9 +646,16 @@ TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
     const auto   visc_rem         = captured.fab_device("_visc_rem");
     const auto   do_I_in          = captured.int_fab_device("_do_I_in");
     const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
-    const auto   vhbt             = captured.fab_device("_vhbt");
-    auto         vh_3d            = captured.fab_device("_vh_3d_before");
-    const auto   vh_3d_after      = captured.fab_host("_vh_3d_after");
+    // _vhbt is captured unconditionally but may still be null-encoded
+    // (Fortran container unassociated at capture time); _vh_3d is an
+    // optional in/out output captured only when associated.
+    amrex::FArrayBox vhbt_fab;
+    amrex::Array4<const amrex::Real> vhbt{};
+    if (captured.is_associated("_vhbt")) {
+        vhbt_fab = captured.fab_device("_vhbt");
+        vhbt = vhbt_fab.const_array();
+    }
+    auto vh_3d = bind_optional_inout(captured, "vh_3d");
 
     MOM::meridional_flux_adjust(bxC,
                                 v.const_array(),
@@ -631,13 +675,13 @@ TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
                                 visc_rem.const_array(),
                                 do_I_in.const_array(),
                                 por_face_areaV.const_array(),
-                                vhbt.const_array(),
-                                vh_3d.array(),
+                                vhbt,
+                                vh_3d.arr,
                                 /*obc=*/nullptr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(dv_after,     to_host_fab(dv),     "dv");
-    expect_arrays_equal(vh_3d_after,  to_host_fab(vh_3d),  "vh_3d");
+    expect_arrays_equal(dv_after, to_host_fab(dv), "dv");
+    if (vh_3d.present) expect_arrays_equal(vh_3d.after_fab, to_host_fab(vh_3d.before_fab), "vh_3d");
 }
 
 // -------------------------------------------------------------------------
@@ -659,11 +703,12 @@ TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
 // _better_iter/_vol_CFL are the only transport_adjust_CS_C fields this
 // kernel reads, and are the only ones the shim captures; the rest of CS is
 // left default-initialized. do_I_in is captured as a LogicalArray_t, read
-// via int_fab_device(). uhbt/uh_3d are captured only when associated at
-// record time -- a fixture recorded with either unassociated would be
-// missing the corresponding field(s). obc is never captured -- pass
-// nullptr, matching the existing PPM_reconstruction_x/_y tests
-// (OBC-inactive configs only).
+// via int_fab_device(). uhbt/uh_3d may both be absent at record time --
+// uhbt is captured unconditionally but may be null-encoded, while uh_3d
+// (an optional in/out output) is missing entirely from the fixture when
+// unassociated; is_associated()/bind_optional_inout() handle both cases.
+// obc is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ZonalFluxAdjust, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "zonal_flux_adjust");
 
@@ -690,9 +735,16 @@ TEST(ZonalFluxAdjust, MatchesFortranCapture) {
     const auto   visc_rem         = captured.fab_device("_visc_rem");
     const auto   do_I_in          = captured.int_fab_device("_do_I_in");
     const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
-    const auto   uhbt             = captured.fab_device("_uhbt");
-    auto         uh_3d            = captured.fab_device("_uh_3d_before");
-    const auto   uh_3d_after      = captured.fab_host("_uh_3d_after");
+    // _uhbt is captured unconditionally but may still be null-encoded
+    // (Fortran container unassociated at capture time); _uh_3d is an
+    // optional in/out output captured only when associated.
+    amrex::FArrayBox uhbt_fab;
+    amrex::Array4<const amrex::Real> uhbt{};
+    if (captured.is_associated("_uhbt")) {
+        uhbt_fab = captured.fab_device("_uhbt");
+        uhbt = uhbt_fab.const_array();
+    }
+    auto uh_3d = bind_optional_inout(captured, "uh_3d");
 
     MOM::zonal_flux_adjust(bxC,
                            u.const_array(),
@@ -712,13 +764,13 @@ TEST(ZonalFluxAdjust, MatchesFortranCapture) {
                            visc_rem.const_array(),
                            do_I_in.const_array(),
                            por_face_areaU.const_array(),
-                           uhbt.const_array(),
-                           uh_3d.array(),
+                           uhbt,
+                           uh_3d.arr,
                            /*obc=*/nullptr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(du_after,    to_host_fab(du),    "du");
-    expect_arrays_equal(uh_3d_after, to_host_fab(uh_3d), "uh_3d");
+    expect_arrays_equal(du_after, to_host_fab(du), "du");
+    if (uh_3d.present) expect_arrays_equal(uh_3d.after_fab, to_host_fab(uh_3d.before_fab), "uh_3d");
 }
 
 // -------------------------------------------------------------------------
@@ -788,22 +840,17 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
         visc_rem_v_fab = captured.fab_device("_visc_rem_v");
         visc_rem_v = visc_rem_v_fab.const_array();
     }
-    auto         v_cor             = captured.fab_device("_v_cor_before");
-    const auto   v_cor_after       = captured.fab_host("_v_cor_after");
-    auto         FA_v_S0           = captured.fab_device("_FA_v_S0_before");
-    auto         FA_v_N0           = captured.fab_device("_FA_v_N0_before");
-    auto         FA_v_SS           = captured.fab_device("_FA_v_SS_before");
-    auto         FA_v_NN           = captured.fab_device("_FA_v_NN_before");
-    auto         vBT_SS            = captured.fab_device("_vBT_SS_before");
-    auto         vBT_NN            = captured.fab_device("_vBT_NN_before");
-    const auto   FA_v_S0_after     = captured.fab_host("_FA_v_S0_after");
-    const auto   FA_v_N0_after     = captured.fab_host("_FA_v_N0_after");
-    const auto   FA_v_SS_after     = captured.fab_host("_FA_v_SS_after");
-    const auto   FA_v_NN_after     = captured.fab_host("_FA_v_NN_after");
-    const auto   vBT_SS_after      = captured.fab_host("_vBT_SS_after");
-    const auto   vBT_NN_after      = captured.fab_host("_vBT_NN_after");
-    auto         dv_cor            = captured.fab_device("_dv_cor_before");
-    const auto   dv_cor_after      = captured.fab_host("_dv_cor_after");
+    // _v_cor/_FA_v_*/_vBT_*/_dv_cor are all part of the same optional
+    // transport-adjustment output (may be absent -- see kernel header)
+    // that _vhbt/_visc_rem_v also belong to.
+    auto v_cor  = bind_optional_inout(captured, "v_cor");
+    auto FA_v_S0 = bind_optional_inout(captured, "FA_v_S0");
+    auto FA_v_N0 = bind_optional_inout(captured, "FA_v_N0");
+    auto FA_v_SS = bind_optional_inout(captured, "FA_v_SS");
+    auto FA_v_NN = bind_optional_inout(captured, "FA_v_NN");
+    auto vBT_SS  = bind_optional_inout(captured, "vBT_SS");
+    auto vBT_NN  = bind_optional_inout(captured, "vBT_NN");
+    auto dv_cor  = bind_optional_inout(captured, "dv_cor");
 
     MOM::meridional_mass_flux(bxC,
                               v.const_array(),
@@ -827,25 +874,25 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
                               por_face_areaV.const_array(),
                               vhbt,
                               visc_rem_v,
-                              v_cor.array(),
-                              FA_v_S0.array(),
-                              FA_v_N0.array(),
-                              FA_v_SS.array(),
-                              FA_v_NN.array(),
-                              vBT_SS.array(),
-                              vBT_NN.array(),
-                              dv_cor.array());
+                              v_cor.arr,
+                              FA_v_S0.arr,
+                              FA_v_N0.arr,
+                              FA_v_SS.arr,
+                              FA_v_NN.arr,
+                              vBT_SS.arr,
+                              vBT_NN.arr,
+                              dv_cor.arr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(vh_after,     to_host_fab(vh),     "vh");
-    expect_arrays_equal(v_cor_after,  to_host_fab(v_cor),  "v_cor");
-    expect_arrays_equal(FA_v_S0_after, to_host_fab(FA_v_S0), "FA_v_S0");
-    expect_arrays_equal(FA_v_N0_after, to_host_fab(FA_v_N0), "FA_v_N0");
-    expect_arrays_equal(FA_v_SS_after, to_host_fab(FA_v_SS), "FA_v_SS");
-    expect_arrays_equal(FA_v_NN_after, to_host_fab(FA_v_NN), "FA_v_NN");
-    expect_arrays_equal(vBT_SS_after,  to_host_fab(vBT_SS),  "vBT_SS");
-    expect_arrays_equal(vBT_NN_after,  to_host_fab(vBT_NN),  "vBT_NN");
-    expect_arrays_equal(dv_cor_after, to_host_fab(dv_cor), "dv_cor");
+    expect_arrays_equal(vh_after, to_host_fab(vh), "vh");
+    if (v_cor.present)  expect_arrays_equal(v_cor.after_fab,  to_host_fab(v_cor.before_fab),  "v_cor");
+    if (FA_v_S0.present) expect_arrays_equal(FA_v_S0.after_fab, to_host_fab(FA_v_S0.before_fab), "FA_v_S0");
+    if (FA_v_N0.present) expect_arrays_equal(FA_v_N0.after_fab, to_host_fab(FA_v_N0.before_fab), "FA_v_N0");
+    if (FA_v_SS.present) expect_arrays_equal(FA_v_SS.after_fab, to_host_fab(FA_v_SS.before_fab), "FA_v_SS");
+    if (FA_v_NN.present) expect_arrays_equal(FA_v_NN.after_fab, to_host_fab(FA_v_NN.before_fab), "FA_v_NN");
+    if (vBT_SS.present)  expect_arrays_equal(vBT_SS.after_fab,  to_host_fab(vBT_SS.before_fab),  "vBT_SS");
+    if (vBT_NN.present)  expect_arrays_equal(vBT_NN.after_fab,  to_host_fab(vBT_NN.before_fab),  "vBT_NN");
+    if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
 }
 
 // -------------------------------------------------------------------------
@@ -910,22 +957,17 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
         visc_rem_u_fab = captured.fab_device("_visc_rem_u");
         visc_rem_u = visc_rem_u_fab.const_array();
     }
-    auto         u_cor             = captured.fab_device("_u_cor_before");
-    const auto   u_cor_after       = captured.fab_host("_u_cor_after");
-    auto         FA_u_W0           = captured.fab_device("_FA_u_W0_before");
-    auto         FA_u_E0           = captured.fab_device("_FA_u_E0_before");
-    auto         FA_u_WW           = captured.fab_device("_FA_u_WW_before");
-    auto         FA_u_EE           = captured.fab_device("_FA_u_EE_before");
-    auto         uBT_WW            = captured.fab_device("_uBT_WW_before");
-    auto         uBT_EE            = captured.fab_device("_uBT_EE_before");
-    const auto   FA_u_W0_after     = captured.fab_host("_FA_u_W0_after");
-    const auto   FA_u_E0_after     = captured.fab_host("_FA_u_E0_after");
-    const auto   FA_u_WW_after     = captured.fab_host("_FA_u_WW_after");
-    const auto   FA_u_EE_after     = captured.fab_host("_FA_u_EE_after");
-    const auto   uBT_WW_after      = captured.fab_host("_uBT_WW_after");
-    const auto   uBT_EE_after      = captured.fab_host("_uBT_EE_after");
-    auto         du_cor            = captured.fab_device("_du_cor_before");
-    const auto   du_cor_after      = captured.fab_host("_du_cor_after");
+    // _u_cor/_FA_u_*/_uBT_*/_du_cor are all part of the same optional
+    // transport-adjustment output (may be absent -- see kernel header)
+    // that _uhbt/_visc_rem_u also belong to.
+    auto u_cor  = bind_optional_inout(captured, "u_cor");
+    auto FA_u_W0 = bind_optional_inout(captured, "FA_u_W0");
+    auto FA_u_E0 = bind_optional_inout(captured, "FA_u_E0");
+    auto FA_u_WW = bind_optional_inout(captured, "FA_u_WW");
+    auto FA_u_EE = bind_optional_inout(captured, "FA_u_EE");
+    auto uBT_WW  = bind_optional_inout(captured, "uBT_WW");
+    auto uBT_EE  = bind_optional_inout(captured, "uBT_EE");
+    auto du_cor  = bind_optional_inout(captured, "du_cor");
 
     MOM::zonal_mass_flux(bxC,
                          u.const_array(),
@@ -947,25 +989,25 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
                          por_face_areaU.const_array(),
                          uhbt,
                          visc_rem_u,
-                         u_cor.array(),
-                         FA_u_W0.array(),
-                         FA_u_E0.array(),
-                         FA_u_WW.array(),
-                         FA_u_EE.array(),
-                         uBT_WW.array(),
-                         uBT_EE.array(),
-                         du_cor.array());
+                         u_cor.arr,
+                         FA_u_W0.arr,
+                         FA_u_E0.arr,
+                         FA_u_WW.arr,
+                         FA_u_EE.arr,
+                         uBT_WW.arr,
+                         uBT_EE.arr,
+                         du_cor.arr);
     amrex::Gpu::synchronize();
 
-    expect_arrays_equal(uh_after,     to_host_fab(uh),     "uh");
-    expect_arrays_equal(u_cor_after,  to_host_fab(u_cor),  "u_cor");
-    expect_arrays_equal(FA_u_W0_after, to_host_fab(FA_u_W0), "FA_u_W0");
-    expect_arrays_equal(FA_u_E0_after, to_host_fab(FA_u_E0), "FA_u_E0");
-    expect_arrays_equal(FA_u_WW_after, to_host_fab(FA_u_WW), "FA_u_WW");
-    expect_arrays_equal(FA_u_EE_after, to_host_fab(FA_u_EE), "FA_u_EE");
-    expect_arrays_equal(uBT_WW_after,  to_host_fab(uBT_WW),  "uBT_WW");
-    expect_arrays_equal(uBT_EE_after,  to_host_fab(uBT_EE),  "uBT_EE");
-    expect_arrays_equal(du_cor_after, to_host_fab(du_cor), "du_cor");
+    expect_arrays_equal(uh_after, to_host_fab(uh), "uh");
+    if (u_cor.present)  expect_arrays_equal(u_cor.after_fab,  to_host_fab(u_cor.before_fab),  "u_cor");
+    if (FA_u_W0.present) expect_arrays_equal(FA_u_W0.after_fab, to_host_fab(FA_u_W0.before_fab), "FA_u_W0");
+    if (FA_u_E0.present) expect_arrays_equal(FA_u_E0.after_fab, to_host_fab(FA_u_E0.before_fab), "FA_u_E0");
+    if (FA_u_WW.present) expect_arrays_equal(FA_u_WW.after_fab, to_host_fab(FA_u_WW.before_fab), "FA_u_WW");
+    if (FA_u_EE.present) expect_arrays_equal(FA_u_EE.after_fab, to_host_fab(FA_u_EE.before_fab), "FA_u_EE");
+    if (uBT_WW.present)  expect_arrays_equal(uBT_WW.after_fab,  to_host_fab(uBT_WW.before_fab),  "uBT_WW");
+    if (uBT_EE.present)  expect_arrays_equal(uBT_EE.after_fab,  to_host_fab(uBT_EE.before_fab),  "uBT_EE");
+    if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
 }
 
 // -------------------------------------------------------------------------
@@ -1063,38 +1105,26 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
         visc_rem_v_fab = captured.fab_device("_visc_rem_v");
         visc_rem_v = visc_rem_v_fab.const_array();
     }
-    auto         u_cor              = captured.fab_device("_u_cor_before");
-    const auto   u_cor_after        = captured.fab_host("_u_cor_after");
-    auto         v_cor              = captured.fab_device("_v_cor_before");
-    const auto   v_cor_after        = captured.fab_host("_v_cor_after");
-    auto         FA_u_W0            = captured.fab_device("_FA_u_W0_before");
-    auto         FA_u_E0            = captured.fab_device("_FA_u_E0_before");
-    auto         FA_u_WW            = captured.fab_device("_FA_u_WW_before");
-    auto         FA_u_EE            = captured.fab_device("_FA_u_EE_before");
-    auto         uBT_WW             = captured.fab_device("_uBT_WW_before");
-    auto         uBT_EE             = captured.fab_device("_uBT_EE_before");
-    const auto   FA_u_W0_after      = captured.fab_host("_FA_u_W0_after");
-    const auto   FA_u_E0_after      = captured.fab_host("_FA_u_E0_after");
-    const auto   FA_u_WW_after      = captured.fab_host("_FA_u_WW_after");
-    const auto   FA_u_EE_after      = captured.fab_host("_FA_u_EE_after");
-    const auto   uBT_WW_after       = captured.fab_host("_uBT_WW_after");
-    const auto   uBT_EE_after       = captured.fab_host("_uBT_EE_after");
-    auto         FA_v_S0            = captured.fab_device("_FA_v_S0_before");
-    auto         FA_v_N0            = captured.fab_device("_FA_v_N0_before");
-    auto         FA_v_SS            = captured.fab_device("_FA_v_SS_before");
-    auto         FA_v_NN            = captured.fab_device("_FA_v_NN_before");
-    auto         vBT_SS             = captured.fab_device("_vBT_SS_before");
-    auto         vBT_NN             = captured.fab_device("_vBT_NN_before");
-    const auto   FA_v_S0_after      = captured.fab_host("_FA_v_S0_after");
-    const auto   FA_v_N0_after      = captured.fab_host("_FA_v_N0_after");
-    const auto   FA_v_SS_after      = captured.fab_host("_FA_v_SS_after");
-    const auto   FA_v_NN_after      = captured.fab_host("_FA_v_NN_after");
-    const auto   vBT_SS_after       = captured.fab_host("_vBT_SS_after");
-    const auto   vBT_NN_after       = captured.fab_host("_vBT_NN_after");
-    auto         du_cor             = captured.fab_device("_du_cor_before");
-    const auto   du_cor_after       = captured.fab_host("_du_cor_after");
-    auto         dv_cor             = captured.fab_device("_dv_cor_before");
-    const auto   dv_cor_after       = captured.fab_host("_dv_cor_after");
+    // _u_cor/_v_cor/_FA_u_*/_FA_v_*/_uBT_*/_vBT_*/_du_cor/_dv_cor are all
+    // part of the same optional transport-adjustment output (may be
+    // absent -- see kernel header) that _uhbt/_vhbt/_visc_rem_u/
+    // _visc_rem_v also belong to.
+    auto u_cor  = bind_optional_inout(captured, "u_cor");
+    auto v_cor  = bind_optional_inout(captured, "v_cor");
+    auto FA_u_W0 = bind_optional_inout(captured, "FA_u_W0");
+    auto FA_u_E0 = bind_optional_inout(captured, "FA_u_E0");
+    auto FA_u_WW = bind_optional_inout(captured, "FA_u_WW");
+    auto FA_u_EE = bind_optional_inout(captured, "FA_u_EE");
+    auto uBT_WW  = bind_optional_inout(captured, "uBT_WW");
+    auto uBT_EE  = bind_optional_inout(captured, "uBT_EE");
+    auto FA_v_S0 = bind_optional_inout(captured, "FA_v_S0");
+    auto FA_v_N0 = bind_optional_inout(captured, "FA_v_N0");
+    auto FA_v_SS = bind_optional_inout(captured, "FA_v_SS");
+    auto FA_v_NN = bind_optional_inout(captured, "FA_v_NN");
+    auto vBT_SS  = bind_optional_inout(captured, "vBT_SS");
+    auto vBT_NN  = bind_optional_inout(captured, "vBT_NN");
+    auto du_cor  = bind_optional_inout(captured, "du_cor");
+    auto dv_cor  = bind_optional_inout(captured, "dv_cor");
 
     MOM::continuity_PPM(u.const_array(),
                         v.const_array(),
@@ -1132,43 +1162,43 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
                         vhbt,
                         visc_rem_u,
                         visc_rem_v,
-                        u_cor.array(),
-                        v_cor.array(),
-                        FA_u_W0.array(),
-                        FA_u_E0.array(),
-                        FA_u_WW.array(),
-                        FA_u_EE.array(),
-                        uBT_WW.array(),
-                        uBT_EE.array(),
-                        FA_v_S0.array(),
-                        FA_v_N0.array(),
-                        FA_v_SS.array(),
-                        FA_v_NN.array(),
-                        vBT_SS.array(),
-                        vBT_NN.array(),
-                        du_cor.array(),
-                        dv_cor.array());
+                        u_cor.arr,
+                        v_cor.arr,
+                        FA_u_W0.arr,
+                        FA_u_E0.arr,
+                        FA_u_WW.arr,
+                        FA_u_EE.arr,
+                        uBT_WW.arr,
+                        uBT_EE.arr,
+                        FA_v_S0.arr,
+                        FA_v_N0.arr,
+                        FA_v_SS.arr,
+                        FA_v_NN.arr,
+                        vBT_SS.arr,
+                        vBT_NN.arr,
+                        du_cor.arr,
+                        dv_cor.arr);
     amrex::Gpu::synchronize();
 
     expect_arrays_equal(h_after,  to_host_fab(h),  "h");
     expect_arrays_equal(uh_after, to_host_fab(uh), "uh");
     expect_arrays_equal(vh_after, to_host_fab(vh), "vh");
-    expect_arrays_equal(u_cor_after, to_host_fab(u_cor), "u_cor");
-    expect_arrays_equal(v_cor_after, to_host_fab(v_cor), "v_cor");
-    expect_arrays_equal(FA_u_W0_after, to_host_fab(FA_u_W0), "FA_u_W0");
-    expect_arrays_equal(FA_u_E0_after, to_host_fab(FA_u_E0), "FA_u_E0");
-    expect_arrays_equal(FA_u_WW_after, to_host_fab(FA_u_WW), "FA_u_WW");
-    expect_arrays_equal(FA_u_EE_after, to_host_fab(FA_u_EE), "FA_u_EE");
-    expect_arrays_equal(uBT_WW_after,  to_host_fab(uBT_WW),  "uBT_WW");
-    expect_arrays_equal(uBT_EE_after,  to_host_fab(uBT_EE),  "uBT_EE");
-    expect_arrays_equal(FA_v_S0_after, to_host_fab(FA_v_S0), "FA_v_S0");
-    expect_arrays_equal(FA_v_N0_after, to_host_fab(FA_v_N0), "FA_v_N0");
-    expect_arrays_equal(FA_v_SS_after, to_host_fab(FA_v_SS), "FA_v_SS");
-    expect_arrays_equal(FA_v_NN_after, to_host_fab(FA_v_NN), "FA_v_NN");
-    expect_arrays_equal(vBT_SS_after,  to_host_fab(vBT_SS),  "vBT_SS");
-    expect_arrays_equal(vBT_NN_after,  to_host_fab(vBT_NN),  "vBT_NN");
-    expect_arrays_equal(du_cor_after, to_host_fab(du_cor), "du_cor");
-    expect_arrays_equal(dv_cor_after, to_host_fab(dv_cor), "dv_cor");
+    if (u_cor.present)  expect_arrays_equal(u_cor.after_fab,  to_host_fab(u_cor.before_fab),  "u_cor");
+    if (v_cor.present)  expect_arrays_equal(v_cor.after_fab,  to_host_fab(v_cor.before_fab),  "v_cor");
+    if (FA_u_W0.present) expect_arrays_equal(FA_u_W0.after_fab, to_host_fab(FA_u_W0.before_fab), "FA_u_W0");
+    if (FA_u_E0.present) expect_arrays_equal(FA_u_E0.after_fab, to_host_fab(FA_u_E0.before_fab), "FA_u_E0");
+    if (FA_u_WW.present) expect_arrays_equal(FA_u_WW.after_fab, to_host_fab(FA_u_WW.before_fab), "FA_u_WW");
+    if (FA_u_EE.present) expect_arrays_equal(FA_u_EE.after_fab, to_host_fab(FA_u_EE.before_fab), "FA_u_EE");
+    if (uBT_WW.present)  expect_arrays_equal(uBT_WW.after_fab,  to_host_fab(uBT_WW.before_fab),  "uBT_WW");
+    if (uBT_EE.present)  expect_arrays_equal(uBT_EE.after_fab,  to_host_fab(uBT_EE.before_fab),  "uBT_EE");
+    if (FA_v_S0.present) expect_arrays_equal(FA_v_S0.after_fab, to_host_fab(FA_v_S0.before_fab), "FA_v_S0");
+    if (FA_v_N0.present) expect_arrays_equal(FA_v_N0.after_fab, to_host_fab(FA_v_N0.before_fab), "FA_v_N0");
+    if (FA_v_SS.present) expect_arrays_equal(FA_v_SS.after_fab, to_host_fab(FA_v_SS.before_fab), "FA_v_SS");
+    if (FA_v_NN.present) expect_arrays_equal(FA_v_NN.after_fab, to_host_fab(FA_v_NN.before_fab), "FA_v_NN");
+    if (vBT_SS.present)  expect_arrays_equal(vBT_SS.after_fab,  to_host_fab(vBT_SS.before_fab),  "vBT_SS");
+    if (vBT_NN.present)  expect_arrays_equal(vBT_NN.after_fab,  to_host_fab(vBT_NN.before_fab),  "vBT_NN");
+    if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
+    if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
 }
 
 // -------------------------------------------------------------------------
@@ -1208,7 +1238,14 @@ TEST(MeridionalFluxThickness, MatchesFortranCapture) {
     const bool   vol_CFL         = captured.logical("_vol_CFL");
     const bool   marginal        = captured.logical("_marginal");
     const auto   por_face_areaV  = captured.fab_device("_por_face_areaV");
-    const auto   visc_rem_v      = captured.fab_device("_visc_rem_v");
+    // _visc_rem_v is captured only when associated -- may be absent
+    // entirely from this fixture.
+    amrex::FArrayBox visc_rem_v_fab;
+    amrex::Array4<const amrex::Real> visc_rem_v{};
+    if (captured.is_associated("_visc_rem_v")) {
+        visc_rem_v_fab = captured.fab_device("_visc_rem_v");
+        visc_rem_v = visc_rem_v_fab.const_array();
+    }
 
     MOM::meridional_flux_thickness(bxC,
                                    v.const_array(),
@@ -1224,7 +1261,7 @@ TEST(MeridionalFluxThickness, MatchesFortranCapture) {
                                    marginal,
                                    /*obc=*/nullptr,
                                    por_face_areaV.const_array(),
-                                   visc_rem_v.const_array());
+                                   visc_rem_v);
     amrex::Gpu::synchronize();
 
     expect_arrays_equal(h_v_after, to_host_fab(h_v), "h_v");
