@@ -192,6 +192,18 @@ holds the template or rationale.
    etc.), set the factor to `no` and record the change. If the body
    is purely `(i,j,k)`-local, keep `yes`.
 
+   **Cross-check the body against the Step 2 contract.** List every
+   array the captured body writes — directly, through a callee's
+   `intent(inout)`/`intent(out)` actual, or as a derived-type field
+   (`BT_cont%h_u`) — and confirm each has an output channel in the
+   `bind(C)` signature. If one doesn't, the Fortran bridge contract is
+   incomplete: **stop and report it** (the missing field, where the body
+   writes it, and that the fix belongs to the MOM6-side
+   `generate_cpp_bridge` interface, its AMREX arm and its capture
+   records). Do not port around the gap, and do not record it as
+   "out of scope" in a source comment — a missing output leaves the
+   Fortran-side value stale in AMReX mode with no error at all.
+
    Do not proceed to Step 4 until the body has been captured.
 
 ### 4. Locate the capture file (regression input)
@@ -230,6 +242,28 @@ holds the template or rationale.
    modes (Step 5), select between them with a single `if/else`
    **before** the `ParallelFor`, never inside the lambda. Each lambda
    calls exactly one primitive with no conditional. See lessons.md §7 #9.
+
+   **Orchestrators: reproduce each callee shim's argument handling.** When
+   the Fortran body calls another bridged subroutine (a shim) and the C++
+   kernel calls that callee's `MOM::` kernel directly, the C++ call
+   bypasses the shim — so it must do whatever the shim does to its
+   arguments before calling its own bridge. For every such call, read the
+   callee's Fortran shim (not just its `_fortran` worker) and list each
+   value it derives or defaults before the bridge call: a scaled scalar
+   (`h_min = 2.0 * Angstrom_H`), a default for an absent optional
+   (`h_min = 0.0 ; if (present(hmin)) h_min = hmin`), a field pulled out
+   of a control structure. Pass the same derived value from the C++
+   orchestrator. Compare against the Fortran caller's actual argument,
+   not the kernel parameter's name — `Angstrom_H` at the Fortran call
+   site and an `h_min` parameter on the C++ kernel is exactly the
+   mismatch to catch (lessons.md §7 #11).
+
+   **Comments.** Carry over the Fortran source's own comments for the
+   code being ported, reworded only as far as C++ syntax requires. Add no
+   commentary about the conversion itself — no notes on what the Fortran
+   does differently, which shim a value mirrors, what is deferred or out
+   of scope, or why a scratch buffer exists. That reasoning goes in the
+   Step 12 report, not the source.
 
 ### 7. Bridge header in `mom/cpp/turbotmp_<module>_bridge.h`
    First-time creation: start with `#include "turbotmp_bridge_c_types.h"`
@@ -326,8 +360,19 @@ holds the template or rationale.
 - Do not modify any Fortran source, the existing
   `turbotmp_helper.{hpp,cpp}` core API, or the mirror C struct
   layout (`RealArray_C`, `Box_C`).
+- Do not silently work around a bridge contract that is missing an
+  output the Fortran body writes (Step 3's cross-check) — stop and
+  report it for the MOM6 side to fix; never leave an "out of scope"
+  comment in its place (lessons.md §7 #10).
 - Do not invent kernel math. The AMReX body must come from the
   Fortran source captured in Step 3, ported verbatim.
+- When a C++ kernel calls another `MOM::` kernel directly in place of a
+  Fortran shim call, pass exactly the values that shim passes to its own
+  bridge — including any scaling or defaulting it does (Step 6,
+  lessons.md §7 #11).
+- Do not add conversion commentary to source or test files. Copy the
+  Fortran comments; put any explanation of the port in the Step 12
+  report (Step 6).
 
 If something not covered here comes up, consult lessons.md §7
 (C++-side pitfalls) before improvising.

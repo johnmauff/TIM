@@ -367,9 +367,8 @@ void meridional_edge_thickness(
     }
 }
 
-//> Meridional volume/thickness flux: PPM-reconstructed edge thickness
-//  advected by the meridional velocity, scaled by viscosity remnant and
-//  open-face area.
+//> Sets the effective interface thickness associated with the fluxes at each meridional velocity point,
+// optionally scaling back these thicknesses to account for viscosity and fractional open areas.
 void meridional_flux_thickness(
     const Box& bxC,                        //!< Continuity iteration box
     Array4<const Real> const& v,           //!< Meridional velocity
@@ -497,9 +496,8 @@ void meridional_flux_thickness(
     */
 }
 
-//> Zonal volume/thickness flux: PPM-reconstructed edge thickness
-//  advected by the zonal velocity, scaled by viscosity remnant and
-//  open-face area.
+//> Sets the effective interface thickness associated with the fluxes at each zonal velocity point,
+// optionally scaling back these thicknesses to account for viscosity and fractional open areas.
 void zonal_flux_thickness(
     const Box& bxC,                        //!< Continuity iteration box
     Array4<const Real> const& u,           //!< Zonal velocity
@@ -627,8 +625,7 @@ void zonal_flux_thickness(
     */
 }
 
-//> Zonal continuity update: advances layer thickness by the convergence
-//  of the zonal thickness flux.
+//> Updates the thicknesses due to zonal thickness fluxes.
 void continuity_zonal_convergence(
     const Box& bxC,                   //!< Iteration box for continuity solver
     Array4<Real> const& h,            //!< Final layer thickness
@@ -656,8 +653,7 @@ void continuity_zonal_convergence(
     }
 }
 
-//> Meridional continuity update: advances layer thickness by the
-//  convergence of the meridional thickness flux.
+//> Updates the thicknesses due to meridional thickness fluxes.
 void continuity_meridional_convergence(
     const Box& bxC,                   //!< Iteration box for continuity solver
     Array4<Real> const& h,            //!< Final layer thickness
@@ -685,9 +681,8 @@ void continuity_meridional_convergence(
     }
 }
 
-//> Sets the effective open face areas and barotropic-velocity corrections
-//  at zonal faces as a function of barotropic flow, for use by the
-//  barotropic solver's transport-adjustment iteration.
+//> Sets a structure that describes the zonal barotropic volume or mass fluxes as a
+// function of barotropic flow to agree closely with the sum of the layer's transports.
 void set_zonal_BT_cont(
     const Box& bxC,                          //!< Iteration box for continuity solver
     Array4<const Real> const& u,             //!< Zonal velocity
@@ -822,9 +817,8 @@ void set_zonal_BT_cont(
     });
 }
 
-//> Sets the effective open face areas and barotropic-velocity corrections
-//  at meridional faces as a function of barotropic flow, for use by the
-//  barotropic solver's transport-adjustment iteration.
+//> Sets of a structure that describes the meridional barotropic volume or mass fluxes as a
+// function of barotropic flow to agree closely with the sum of the layer's transports.
 void set_merid_BT_cont(
     const Box& bxC,                          //!< Iteration box for continuity solver
     Array4<const Real> const& v,             //!< Meridional velocity
@@ -959,10 +953,9 @@ void set_merid_BT_cont(
     });
 }
 
-//> Newton-iterates a barotropic velocity correction per zonal face so that
-//  the vertically-summed zonal mass/volume transport matches the target
-//  barotropic transport, to within the transport-adjustment iteration's
-//  tolerance. Always completes the fixed-count itt-loop rather than exiting
+//> Returns the barotropic velocity adjustment that gives the
+// desired barotropic (layer-summed) transport.
+//  Always completes the fixed-count itt-loop rather than exiting
 //  early once every column in a row has converged, matching the Fortran
 //  source's own OpenMP-target-compiled path -- the alternative (a
 //  data-dependent per-row early exit) is disabled there because it
@@ -1116,10 +1109,8 @@ void zonal_flux_adjust(
     });
 }
 
-//> Newton-iterates a barotropic velocity correction per meridional face so
-//  that the vertically-summed meridional mass/volume transport matches the
-//  target barotropic transport, to within the transport-adjustment
-//  iteration's tolerance. Always completes the fixed-count itt-loop rather
+//> Returns the barotropic velocity adjustment that gives the desired barotropic (layer-summed) transport.
+//  Always completes the fixed-count itt-loop rather
 //  than exiting early once every column in a row has converged, matching
 //  the Fortran source's own OpenMP-target-compiled path -- the alternative
 //  (a data-dependent per-row early exit) is disabled there because it
@@ -1275,12 +1266,8 @@ void meridional_flux_adjust(
     });
 }
 
-//> Zonal mass/volume flux orchestrator. Computes the zonal PPM transport
-//  uh (and its viscosity-remnant-scaled velocity derivative), then -- only
-//  when a barotropic target transport (uhbt) and/or BT_cont output is
-//  requested -- the transport-adjustment correction via zonal_flux_adjust,
-//  set_zonal_BT_cont, and (deferred here -- see note near the end)
-//  zonal_flux_thickness. do_I is always true here: it is only ever set
+//> Calculates the mass or volume fluxes through the zonal faces, and other related quantities.
+//  do_I is always true here: it is only ever set
 //  false by OBC segment logic, which is out of scope until OceanOBC is
 //  implemented in C++ (see the AMREX_ABORT_LOC guard below).
 void zonal_mass_flux(
@@ -1311,6 +1298,7 @@ void zonal_mass_flux(
     Array4<Real> const& FA_u_EE,
     Array4<Real> const& uBT_WW,
     Array4<Real> const& uBT_EE,
+    Array4<Real> const& h_u,
     Array4<Real> const& du_cor)
 {
     BL_PROFILE("zonal_mass_flux");
@@ -1350,10 +1338,6 @@ void zonal_mass_flux(
     Box bx2d(IntVect(bxU.smallEnd(0), bxU.smallEnd(1), 0),
              IntVect(bxU.bigEnd(0),   bxU.bigEnd(1),   0));
 
-    // Scratch, internal to this orchestrator -- never crosses the Fortran/C
-    // boundary. Mirrors the Fortran source's own local allocView()/free()
-    // calls (see lessons.md's backlog note on an alternative, scratch-free
-    // design deferred for later).
     FArrayBox visc_rem_u_tmp_fab(bxU, 1, amrex::The_Arena());
     FArrayBox uh_tot_0_fab(bx2d, 1, amrex::The_Arena());
     FArrayBox duhdu_tot_0_fab(bx2d, 1, amrex::The_Arena());
@@ -1395,7 +1379,7 @@ void zonal_mass_flux(
                 flux_elem_obc_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), uh(i,j,k), duhdu_val,
                                     vrt, por_face_areaU(i,j,k), dy_Cu(i,j,0), obc, l_seg);
             }
-            // untested (Fortran source's own comment)!
+            // untested!
             if (local_specified_BC && obc->segnum_u(i,j,0) != 0) {
                 int const l_seg = amrex::Math::abs(obc->segnum_u(i,j,0));
                 if (obc->segment[l_seg].specified) uh(i,j,k) = obc->segment[l_seg].normal_trans(i,j,k);
@@ -1430,7 +1414,7 @@ void zonal_mass_flux(
 
             if (use_visc_rem) {
                 if (CS.aggress_adjust) {
-                    // untested (Fortran source's own comment)!
+                    // untested!
                     for (int k = kmin; k <= kmax; ++k) {
                         Real const vrt = visc_rem_u_tmp(i,j,k);
                         Real const du_lim_max = 0.499_rt * ((dx_W*I_dt - u(i,j,k)) + amrex::min(0.0_rt, u(i-1,j,k)));
@@ -1448,7 +1432,7 @@ void zonal_mass_flux(
                     }
                 }
             } else {
-                // untested (Fortran source's own comment)!
+                // untested!
                 if (CS.aggress_adjust) {
                     for (int k = kmin; k <= kmax; ++k) {
                         du_max_CFL_val = amrex::min(du_max_CFL_val,
@@ -1495,7 +1479,7 @@ void zonal_mass_flux(
                             u_cor(i,j,k) = u(i,j,k) + du(i,j,0) * visc_rem_u_tmp(i,j,k);
                         }
                         /*
-                        // untested (Fortran source's own comment)!
+                        // untested!
                         if (any_simple_OBC && simple_OBC_pt(i,j)) {
                             for (int k = kmin; k <= kmax; ++k) {
                                 u_cor(i,j,k) = obc->segment[amrex::Math::abs(obc->segnum_u(i,j,0))]
@@ -1529,7 +1513,7 @@ void zonal_mass_flux(
                                    do_I, por_face_areaU);
 
             /*
-            // untested (Fortran source's own comment)!
+            // untested!
             if (any_simple_OBC) {
                 ParallelFor(bx2d, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
                 {
@@ -1554,7 +1538,7 @@ void zonal_mass_flux(
     }
 
     /*
-    // untested (Fortran source's own comment)!
+    // untested!
     if (local_open_BC && set_BT_cont) {
         for (int n = 0; n < obc->number_of_segments; ++n) {
             if (obc->segment[n].open && obc->segment[n].is_E_or_W) {
@@ -1577,23 +1561,20 @@ void zonal_mass_flux(
     }
     */
 
-    // NOTE: BT_cont%h_u (a zonal_flux_thickness call) is out of scope here --
-    // turbotmp_zonal_mass_flux_bridge does not currently expose an h_u
-    // channel, so there is nothing on the C side to write that result into.
+    if (set_BT_cont && h_u.p != nullptr) {
+        Array4<const Real> const u_ft = has_u_cor ? Array4<const Real>(u_cor) : u;
+        MOM::zonal_flux_thickness(bxC, u_ft, h_in, h_W, h_E, h_u, dt,
+                                  dy_Cu, IareaT, IdxT,
+                                  CS.vol_CFL, CS.marginal_faces, obc, por_face_areaU,
+                                  visc_rem_u_tmp);
+    }
 }
 
-//> Meridional mass/volume flux orchestrator. Computes the meridional PPM
-//  transport vh (and its viscosity-remnant-scaled velocity derivative),
-//  then -- only when a barotropic target transport (vhbt) and/or BT_cont
-//  output is requested -- the transport-adjustment correction via
-//  meridional_flux_adjust and set_merid_BT_cont (deferred here -- see note
-//  near the end -- for meridional_flux_thickness/BT_cont%h_v). do_I is
+//> Calculates the mass or volume fluxes through the meridional faces, and other related quantities.
+//  do_I is
 //  always true here: it is only ever set false by OBC segment logic,
 //  which is out of scope until OceanOBC is implemented in C++ (see the
-//  AMREX_ABORT_LOC guard below). isd/ied bound a wider i-range than this
-//  box's own [ish,ieh] -- visc_rem_v_tmp is filled over that full range,
-//  matching the Fortran source, even though only [ish,ieh] is ever read
-//  by this kernel.
+//  AMREX_ABORT_LOC guard below).
 void meridional_mass_flux(
     const Box& bxC,
     Array4<const Real> const& v,
@@ -1624,6 +1605,7 @@ void meridional_mass_flux(
     Array4<Real> const& FA_v_NN,
     Array4<Real> const& vBT_SS,
     Array4<Real> const& vBT_NN,
+    Array4<Real> const& h_v,
     Array4<Real> const& dv_cor)
 {
     BL_PROFILE("meridional_mass_flux");
@@ -1663,15 +1645,9 @@ void meridional_mass_flux(
     Box bx2d(IntVect(bxV.smallEnd(0), bxV.smallEnd(1), 0),
              IntVect(bxV.bigEnd(0),   bxV.bigEnd(1),   0));
 
-    // visc_rem_v_tmp is filled over the full data-domain i-range [isd,ied]
-    // (matching the Fortran source), wider than this box's own i-range.
     Box bx_visc_wide(IntVect(isd,               bxV.smallEnd(1), kmin),
                       IntVect(ied,               bxV.bigEnd(1),   kmax));
 
-    // Scratch, internal to this orchestrator -- never crosses the Fortran/C
-    // boundary. Mirrors the Fortran source's own local allocView()/free()
-    // calls (see lessons.md's backlog note on an alternative, scratch-free
-    // design deferred for later).
     FArrayBox visc_rem_v_tmp_fab(bx_visc_wide, 1, amrex::The_Arena());
     FArrayBox vh_tot_0_fab(bx2d, 1, amrex::The_Arena());
     FArrayBox dvhdv_tot_0_fab(bx2d, 1, amrex::The_Arena());
@@ -1712,13 +1688,13 @@ void meridional_mass_flux(
                             dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
                             dt, CS.vol_CFL, por_face_areaV(i,j,k));
             /*
-            // untested (Fortran source's own comment)!
+            // untested!
             if (local_open_BC) {
                 int const l_seg = obc->segnum_v(i,j,0);
                 flux_elem_obc_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), vh(i,j,k), dvhdv_val,
                                     vrt, por_face_areaV(i,j,k), dx_Cv(i,j,0), obc, l_seg);
             }
-            // untested (Fortran source's own comment)!
+            // untested!
             if (local_specified_BC && obc->segnum_v(i,j,0) != 0) {
                 int const l_seg = amrex::Math::abs(obc->segnum_v(i,j,0));
                 if (obc->segment[l_seg].specified) vh(i,j,k) = obc->segment[l_seg].normal_trans(i,j,k);
@@ -1753,13 +1729,11 @@ void meridional_mass_flux(
 
             if (use_visc_rem) {
                 if (CS.aggress_adjust) {
-                    // untested (Fortran source's own comment)!
+                    // untested!
                     for (int k = kmin; k <= kmax; ++k) {
                         Real const vrt = visc_rem_v_tmp(i,j,k);
                         Real const dv_lim_max = 0.499_rt * ((dy_S*I_dt - v(i,j,k)) + amrex::min(0.0_rt, v(i,j-1,k)));
                         if (dv_max_CFL_val * vrt > dv_lim_max) dv_max_CFL_val = dv_lim_max / vrt;
-                        // Fortran source uses CFL_dt (not I_dt) on this line; the two are
-                        // guaranteed equal here since CS.aggress_adjust forces CFL_dt = I_dt.
                         Real const dv_lim_min = 0.499_rt * ((-dy_N*CFL_dt - v(i,j,k)) + amrex::max(0.0_rt, v(i,j+1,k)));
                         if (dv_min_CFL_val * vrt < dv_lim_min) dv_min_CFL_val = dv_lim_min / vrt;
                     }
@@ -1774,7 +1748,7 @@ void meridional_mass_flux(
                 }
             } else {
                 if (CS.aggress_adjust) {
-                    // untested (Fortran source's own comment)!
+                    // untested!
                     for (int k = kmin; k <= kmax; ++k) {
                         dv_max_CFL_val = amrex::min(dv_max_CFL_val,
                             0.499_rt*((dy_S*I_dt - v(i,j,k)) + amrex::min(0.0_rt, v(i,j-1,k))));
@@ -1820,7 +1794,7 @@ void meridional_mass_flux(
                             v_cor(i,j,k) = v(i,j,k) + dv(i,j,0) * visc_rem_v_tmp(i,j,k);
                         }
                         /*
-                        // untested (Fortran source's own comment)!
+                        // untested!
                         if (any_simple_OBC && simple_OBC_pt(i,j)) {
                             for (int k = kmin; k <= kmax; ++k) {
                                 v_cor(i,j,k) = obc->segment[amrex::Math::abs(obc->segnum_v(i,j,0))]
@@ -1854,7 +1828,7 @@ void meridional_mass_flux(
                                    do_I, por_face_areaV);
 
             /*
-            // untested (Fortran source's own comment)!
+            // untested!
             // NOTE: the Fortran source's own i-range here reads i=ish:jeh (not
             // ieh) -- ported verbatim; likely a pre-existing Fortran-side typo.
             if (any_simple_OBC) {
@@ -1881,7 +1855,7 @@ void meridional_mass_flux(
     }
 
     /*
-    // untested (Fortran source's own comment)!
+    // untested!
     if (local_open_BC && set_BT_cont) {
         for (int n = 0; n < obc->number_of_segments; ++n) {
             if (obc->segment[n].open && obc->segment[n].is_N_or_S) {
@@ -1904,20 +1878,17 @@ void meridional_mass_flux(
     }
     */
 
-    // NOTE: BT_cont%h_v (a meridional_flux_thickness call) is out of scope
-    // here -- turbotmp_meridional_mass_flux_bridge does not currently expose
-    // an h_v channel, so there is nothing on the C side to write that
-    // result into.
+    if (set_BT_cont && h_v.p != nullptr) {
+        Array4<const Real> const v_ft = has_v_cor ? Array4<const Real>(v_cor) : v;
+        MOM::meridional_flux_thickness(bxC, v_ft, h_in, h_S, h_N, h_v, dt,
+                                       dx_Cv, IareaT, IdyT,
+                                       CS.vol_CFL, CS.marginal_faces, obc, por_face_areaV,
+                                       visc_rem_v_tmp);
+    }
 }
 
-//> Monolithic continuity solver. Reconstructs edge thicknesses, then advects
-//  (via zonal_mass_flux/meridional_mass_flux and
-//  continuity_zonal_convergence/continuity_meridional_convergence) first in
-//  one direction and then the other, in the order set by x_first; the
-//  second direction's reconstruction and advection use the thickness
-//  already updated by the first. The first half-step's iteration box is
-//  grown by stencil in the OTHER direction (to accommodate the second
-//  half-step's own stencil needs); the second half-step uses bx0 unchanged.
+//> Time steps the layer thicknesses, using a monotonically limit, directionally split PPM scheme,
+// based on Lin (1994).
 void continuity_PPM(
     Array4<const Real> const& u,
     Array4<const Real> const& v,
@@ -1969,6 +1940,8 @@ void continuity_PPM(
     Array4<Real> const& FA_v_NN,
     Array4<Real> const& vBT_SS,
     Array4<Real> const& vBT_NN,
+    Array4<Real> const& h_u,
+    Array4<Real> const& h_v,
     Array4<Real> const& du_cor,
     Array4<Real> const& dv_cor)
 {
@@ -1986,9 +1959,8 @@ void continuity_PPM(
     }
 
     const Real h_min = Angstrom_H;
+    const Real edge_h_min = 2.0_rt * Angstrom_H;
 
-    // Scratch box spanning h's full array extent (matches h_a%lb/%ub in the
-    // Fortran source, which allocates h_W/h_E/h_S/h_N over that same range).
     Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
               IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
 
@@ -1999,13 +1971,13 @@ void continuity_PPM(
         FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
         FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
         MOM::zonal_edge_thickness(bxC, hin, h_W_fab.array(), h_E_fab.array(), mask2dT,
-                                  Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                                   reconstruction_CS.simple_2nd, obc);
         MOM::zonal_mass_flux(bxC, u, hin, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
                              dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
                              H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
                              uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
-                             uBT_WW, uBT_EE, du_cor);
+                             uBT_WW, uBT_EE, h_u, du_cor);
         MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, hin, 0.0_rt);
 
         // Now advect meridionally, using the updated thicknesses to determine the fluxes.
@@ -2013,13 +1985,13 @@ void continuity_PPM(
         FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
         FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
         MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
-                                       Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                                        reconstruction_CS.simple_2nd, obc);
         MOM::meridional_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
                                   dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
                                   H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
                                   vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
-                                  vBT_SS, vBT_NN, dv_cor);
+                                  vBT_SS, vBT_NN, h_v, dv_cor);
         MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, Array4<const Real>{}, h_min);
     } else {
         // First advect meridionally, with loop bounds that accommodate the
@@ -2028,13 +2000,13 @@ void continuity_PPM(
         FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
         FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
         MOM::meridional_edge_thickness(bxC, hin, h_S_fab.array(), h_N_fab.array(), mask2dT,
-                                       Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                       edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                                        reconstruction_CS.simple_2nd, obc);
         MOM::meridional_mass_flux(bxC, v, hin, h_S_fab.const_array(), h_N_fab.const_array(), vh, dt,
                                   dx_Cv, IareaT, IdyT, areaT, dyT, mask2dCv, dyCv, isd, ied,
                                   H_subroundoff, transport_adjust_CS, obc, por_face_areaV,
                                   vhbt, visc_rem_v, v_cor, FA_v_S0, FA_v_N0, FA_v_SS, FA_v_NN,
-                                  vBT_SS, vBT_NN, dv_cor);
+                                  vBT_SS, vBT_NN, h_v, dv_cor);
         MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, hin, 0.0_rt);
 
         // Now advect zonally, using the updated thicknesses to determine the fluxes.
@@ -2042,21 +2014,18 @@ void continuity_PPM(
         FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
         FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
         MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
-                                  Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                  edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                                   reconstruction_CS.simple_2nd, obc);
         MOM::zonal_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uh, dt,
                              dy_Cu, IareaT, IdxT, areaT, dxT, mask2dCu, dxCu,
                              H_subroundoff, transport_adjust_CS, obc, por_face_areaU,
                              uhbt, visc_rem_u, u_cor, FA_u_W0, FA_u_E0, FA_u_WW, FA_u_EE,
-                             uBT_WW, uBT_EE, du_cor);
+                             uBT_WW, uBT_EE, h_u, du_cor);
         MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, Array4<const Real>{}, h_min);
     }
 }
 
-//> Sums the zonal PPM transport over all layers to give the barotropic
-//  (depth-integrated) zonal transport, uhbt. visc_rem is fixed at 1.0 here
-//  (this kernel takes no visc_rem parameter at all, unlike
-//  set_zonal_BT_cont/zonal_flux_adjust).
+//> Calculates the vertically integrated mass or volume fluxes through the zonal faces.
 void zonal_BT_mass_flux(
     const Box& bxC,
     Array4<const Real> const& u,
@@ -2107,7 +2076,7 @@ void zonal_BT_mass_flux(
                             dy_Cu(i,j,0), IareaT(i,j,0), IareaT(i+1,j,0), IdxT(i,j,0), IdxT(i+1,j,0),
                             dt, CS.vol_CFL, por_face_areaU(i,j,k));
             /*
-            // untested (Fortran source's own comment)!
+            // untested!
             if (local_specified_BC) {
                 flux_elem_obc_point(u(i,j,k), h_in(i,j,k), h_in(i+1,j,k), uh_val, duhdu_val, 1.0_rt,
                                     por_face_areaU(i,j,k), dy_Cu(i,j,0), obc, obc->segnum_u(i,j,0));
@@ -2126,10 +2095,7 @@ void zonal_BT_mass_flux(
     });
 }
 
-//> Sums the meridional PPM transport over all layers to give the
-//  barotropic (depth-integrated) meridional transport, vhbt. visc_rem is
-//  fixed at 1.0 here (this kernel takes no visc_rem parameter at all,
-//  unlike set_merid_BT_cont/meridional_flux_adjust).
+//> Calculates the vertically integrated mass or volume fluxes through the meridional faces.
 void meridional_BT_mass_flux(
     const Box& bxC,
     Array4<const Real> const& v,
@@ -2180,7 +2146,7 @@ void meridional_BT_mass_flux(
                             dx_Cv(i,j,0), IareaT(i,j,0), IareaT(i,j+1,0), IdyT(i,j,0), IdyT(i,j+1,0),
                             dt, CS.vol_CFL, por_face_areaV(i,j,k));
             /*
-            // untested (Fortran source's own comment)!
+            // untested!
             if (local_specified_BC) {
                 flux_elem_obc_point(v(i,j,k), h_in(i,j,k), h_in(i,j+1,k), vh_val, dvhdv_val, 1.0_rt,
                                     por_face_areaV(i,j,k), dx_Cv(i,j,0), obc, obc->segnum_v(i,j,0));
@@ -2199,11 +2165,10 @@ void meridional_BT_mass_flux(
     });
 }
 
-//> Reconstructs zonal and meridional edge thicknesses, then computes the
-//  barotropic (depth-integrated) zonal and meridional transports uhbt and
-//  vhbt via zonal_BT_mass_flux and meridional_BT_mass_flux. Unlike
-//  continuity_PPM, there is no stencil/x_first two-half-step split here --
-//  both directions are reconstructed from the same, single input h.
+//> Find the vertical sum of the thickness fluxes from the continuity solver without actually
+// updating the layer thicknesses.  Because the fluxes in the two directions are calculated
+// based on the input thicknesses, which are not updated between the directions, the fluxes
+// returned here are not the same as those that would be returned by a call to continuity.
 void continuity_PPM_2d_fluxes(
     Array4<const Real> const& u,
     Array4<const Real> const& v,
@@ -2233,15 +2198,15 @@ void continuity_PPM_2d_fluxes(
        AMREX_ABORT_LOC("OBC pointer provided but not yet implemented");
     }
 
-    // Scratch box spanning h's full array extent (matches h_a%lb/%ub in the
-    // Fortran source, which allocates h_W/h_E/h_S/h_N over that same range).
     Box h_box(IntVect(h.begin.x, h.begin.y, h.begin.z),
               IntVect(h.end.x-1, h.end.y-1, h.end.z-1));
+
+    const Real edge_h_min = 2.0_rt * Angstrom_H;
 
     FArrayBox h_W_fab(h_box, 1, amrex::The_Arena());
     FArrayBox h_E_fab(h_box, 1, amrex::The_Arena());
     MOM::zonal_edge_thickness(bxC, h, h_W_fab.array(), h_E_fab.array(), mask2dT,
-                              Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                              edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                               reconstruction_CS.simple_2nd, obc);
     MOM::zonal_BT_mass_flux(bxC, u, h, h_W_fab.const_array(), h_E_fab.const_array(), uhbt, dt,
                             dy_Cu, IareaT, IdxT, transport_adjust_CS, obc, por_face_areaU);
@@ -2249,7 +2214,7 @@ void continuity_PPM_2d_fluxes(
     FArrayBox h_S_fab(h_box, 1, amrex::The_Arena());
     FArrayBox h_N_fab(h_box, 1, amrex::The_Arena());
     MOM::meridional_edge_thickness(bxC, h, h_S_fab.array(), h_N_fab.array(), mask2dT,
-                                   Angstrom_H, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
+                                   edge_h_min, reconstruction_CS.upwind_1st, reconstruction_CS.monotonic,
                                    reconstruction_CS.simple_2nd, obc);
     MOM::meridional_BT_mass_flux(bxC, v, h, h_S_fab.const_array(), h_N_fab.const_array(), vhbt, dt,
                                  dx_Cv, IareaT, IdyT, transport_adjust_CS, obc, por_face_areaV);

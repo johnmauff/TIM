@@ -1432,6 +1432,7 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
                                      RealArray_C* FA_u_EE_HOST,
                                      RealArray_C* uBT_WW_HOST,
                                      RealArray_C* uBT_EE_HOST,
+                                     RealArray_C* h_u_HOST,
                                      RealArray_C* du_cor_HOST)
 {
     /// Define Active domain (kernel launch only on real cells)
@@ -1462,9 +1463,11 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
     const bool has_u_cor      = (u_cor_HOST->data != nullptr);
     const bool has_du_cor     = (du_cor_HOST->data != nullptr);
     const bool set_BT_cont    = (FA_u_W0_HOST->data != nullptr);
+    const bool has_h_u        = (h_u_HOST->data != nullptr);
 
     turbotmp::A4Box uhbt_DEV{}, visc_rem_u_DEV{}, u_cor_DEV{}, du_cor_DEV{};
     turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
+    turbotmp::A4Box h_u_DEV{};
     if (has_uhbt) {
         uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
     }
@@ -1485,8 +1488,11 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
         uBT_WW_DEV  = turbotmp::make_array4(uBT_WW_HOST->shape[0], uBT_WW_HOST->shape[1], 1, 1, uBT_WW_HOST->lb[0], uBT_WW_HOST->lb[1], 1);
         uBT_EE_DEV  = turbotmp::make_array4(uBT_EE_HOST->shape[0], uBT_EE_HOST->shape[1], 1, 1, uBT_EE_HOST->lb[0], uBT_EE_HOST->lb[1], 1);
     }
+    if (has_h_u) {
+        h_u_DEV = turbotmp::make_array4(h_u_HOST->shape[0], h_u_HOST->shape[1], h_u_HOST->shape[2], 1, h_u_HOST->lb[0], h_u_HOST->lb[1], h_u_HOST->lb[2]);
+    }
 
-    /// Copy host → device (uh/u_cor/du_cor/FA_u_*/uBT_* are inout: copy in before kernel)
+    /// Copy host → device (uh/u_cor/du_cor/FA_u_*/uBT_*/h_u are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(u_HOST->data,               u_DEV);
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
     turbotmp::copy_FortranHost_to_array4(h_W_HOST->data,             h_W_DEV);
@@ -1520,6 +1526,9 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
         turbotmp::copy_FortranHost_to_array4(uBT_WW_HOST->data,  uBT_WW_DEV);
         turbotmp::copy_FortranHost_to_array4(uBT_EE_HOST->data,  uBT_EE_DEV);
     }
+    if (has_h_u) {
+        turbotmp::copy_FortranHost_to_array4(h_u_HOST->data, h_u_DEV);
+    }
 
     if(verbose) amrex::Print() << "Entered: turbotmp_zonal_mass_flux_bridge\n";
     ///-------------------------------------------------
@@ -1552,6 +1561,7 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
                          FA_u_EE_DEV.arr,
                          uBT_WW_DEV.arr,
                          uBT_EE_DEV.arr,
+                         h_u_DEV.arr,
                          du_cor_DEV.arr);
 
     /// Ensure kernel is done before copying back
@@ -1572,6 +1582,9 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
         turbotmp::copy_array4_to_FortranHost(FA_u_EE_DEV, FA_u_EE_HOST->data);
         turbotmp::copy_array4_to_FortranHost(uBT_WW_DEV,  uBT_WW_HOST->data);
         turbotmp::copy_array4_to_FortranHost(uBT_EE_DEV,  uBT_EE_HOST->data);
+    }
+    if (has_h_u) {
+        turbotmp::copy_array4_to_FortranHost(h_u_DEV, h_u_HOST->data);
     }
 
     /// Free memory from a4 containers (free_array4 on a never-allocated
@@ -1599,6 +1612,7 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST,
     turbotmp::free_array4(FA_u_EE_DEV);
     turbotmp::free_array4(uBT_WW_DEV);
     turbotmp::free_array4(uBT_EE_DEV);
+    turbotmp::free_array4(h_u_DEV);
 }
 
 void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
@@ -1630,6 +1644,7 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
                                           RealArray_C* FA_v_NN_HOST,
                                           RealArray_C* vBT_SS_HOST,
                                           RealArray_C* vBT_NN_HOST,
+                                          RealArray_C* h_v_HOST,
                                           RealArray_C* dv_cor_HOST)
 {
     /// Define Active domain (kernel launch only on real cells)
@@ -1664,9 +1679,11 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
     const bool has_v_cor      = (v_cor_HOST->data != nullptr);
     const bool has_dv_cor     = (dv_cor_HOST->data != nullptr);
     const bool set_BT_cont    = (FA_v_S0_HOST->data != nullptr);
+    const bool has_h_v        = (h_v_HOST->data != nullptr);
 
     turbotmp::A4Box vhbt_DEV{}, visc_rem_v_DEV{}, v_cor_DEV{}, dv_cor_DEV{};
     turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
+    turbotmp::A4Box h_v_DEV{};
     if (has_vhbt) {
         vhbt_DEV = turbotmp::make_array4(vhbt_HOST->shape[0], vhbt_HOST->shape[1], 1, 1, vhbt_HOST->lb[0], vhbt_HOST->lb[1], 1);
     }
@@ -1687,8 +1704,11 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
         vBT_SS_DEV  = turbotmp::make_array4(vBT_SS_HOST->shape[0], vBT_SS_HOST->shape[1], 1, 1, vBT_SS_HOST->lb[0], vBT_SS_HOST->lb[1], 1);
         vBT_NN_DEV  = turbotmp::make_array4(vBT_NN_HOST->shape[0], vBT_NN_HOST->shape[1], 1, 1, vBT_NN_HOST->lb[0], vBT_NN_HOST->lb[1], 1);
     }
+    if (has_h_v) {
+        h_v_DEV = turbotmp::make_array4(h_v_HOST->shape[0], h_v_HOST->shape[1], h_v_HOST->shape[2], 1, h_v_HOST->lb[0], h_v_HOST->lb[1], h_v_HOST->lb[2]);
+    }
 
-    /// Copy host → device (vh/v_cor/dv_cor/FA_v_*/vBT_* are inout: copy in before kernel)
+    /// Copy host → device (vh/v_cor/dv_cor/FA_v_*/vBT_*/h_v are inout: copy in before kernel)
     turbotmp::copy_FortranHost_to_array4(v_HOST->data,               v_DEV);
     turbotmp::copy_FortranHost_to_array4(h_in_HOST->data,            h_in_DEV);
     turbotmp::copy_FortranHost_to_array4(h_S_HOST->data,             h_S_DEV);
@@ -1721,6 +1741,9 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
         turbotmp::copy_FortranHost_to_array4(FA_v_NN_HOST->data, FA_v_NN_DEV);
         turbotmp::copy_FortranHost_to_array4(vBT_SS_HOST->data,  vBT_SS_DEV);
         turbotmp::copy_FortranHost_to_array4(vBT_NN_HOST->data,  vBT_NN_DEV);
+    }
+    if (has_h_v) {
+        turbotmp::copy_FortranHost_to_array4(h_v_HOST->data, h_v_DEV);
     }
 
     if(verbose) amrex::Print() << "Entered: turbotmp_meridional_mass_flux_bridge\n";
@@ -1756,6 +1779,7 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
                               FA_v_NN_DEV.arr,
                               vBT_SS_DEV.arr,
                               vBT_NN_DEV.arr,
+                              h_v_DEV.arr,
                               dv_cor_DEV.arr);
 
     /// Ensure kernel is done before copying back
@@ -1776,6 +1800,9 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
         turbotmp::copy_array4_to_FortranHost(FA_v_NN_DEV, FA_v_NN_HOST->data);
         turbotmp::copy_array4_to_FortranHost(vBT_SS_DEV,  vBT_SS_HOST->data);
         turbotmp::copy_array4_to_FortranHost(vBT_NN_DEV,  vBT_NN_HOST->data);
+    }
+    if (has_h_v) {
+        turbotmp::copy_array4_to_FortranHost(h_v_DEV, h_v_HOST->data);
     }
 
     /// Free memory from a4 containers (free_array4 on a never-allocated
@@ -1803,6 +1830,7 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST,
     turbotmp::free_array4(FA_v_NN_DEV);
     turbotmp::free_array4(vBT_SS_DEV);
     turbotmp::free_array4(vBT_NN_DEV);
+    turbotmp::free_array4(h_v_DEV);
 }
 
 void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
@@ -1855,6 +1883,8 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
                                     RealArray_C* FA_v_NN_HOST,
                                     RealArray_C* vBT_SS_HOST,
                                     RealArray_C* vBT_NN_HOST,
+                                    RealArray_C* h_u_HOST,
+                                    RealArray_C* h_v_HOST,
                                     RealArray_C* du_cor_HOST,
                                     RealArray_C* dv_cor_HOST)
 {
@@ -1894,6 +1924,8 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
     /// fields may all be absent (data == nullptr); only allocate/copy each when
     /// present. The six FA_u_*/uBT_* fields are always associated together (or
     /// not at all), and likewise for the six FA_v_*/vBT_* fields.
+    const bool has_h_u         = (h_u_HOST->data != nullptr);
+    const bool has_h_v         = (h_v_HOST->data != nullptr);
     const bool has_uhbt        = (uhbt_HOST->data != nullptr);
     const bool has_vhbt        = (vhbt_HOST->data != nullptr);
     const bool has_visc_rem_u  = (visc_rem_u_HOST->data != nullptr);
@@ -1909,6 +1941,13 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
     turbotmp::A4Box u_cor_DEV{}, v_cor_DEV{}, du_cor_DEV{}, dv_cor_DEV{};
     turbotmp::A4Box FA_u_W0_DEV{}, FA_u_E0_DEV{}, FA_u_WW_DEV{}, FA_u_EE_DEV{}, uBT_WW_DEV{}, uBT_EE_DEV{};
     turbotmp::A4Box FA_v_S0_DEV{}, FA_v_N0_DEV{}, FA_v_SS_DEV{}, FA_v_NN_DEV{}, vBT_SS_DEV{}, vBT_NN_DEV{};
+    turbotmp::A4Box h_u_DEV{}, h_v_DEV{};
+    if (has_h_u) {
+        h_u_DEV = turbotmp::make_array4(h_u_HOST->shape[0], h_u_HOST->shape[1], h_u_HOST->shape[2], 1, h_u_HOST->lb[0], h_u_HOST->lb[1], h_u_HOST->lb[2]);
+    }
+    if (has_h_v) {
+        h_v_DEV = turbotmp::make_array4(h_v_HOST->shape[0], h_v_HOST->shape[1], h_v_HOST->shape[2], 1, h_v_HOST->lb[0], h_v_HOST->lb[1], h_v_HOST->lb[2]);
+    }
     if (has_uhbt) {
         uhbt_DEV = turbotmp::make_array4(uhbt_HOST->shape[0], uhbt_HOST->shape[1], 1, 1, uhbt_HOST->lb[0], uhbt_HOST->lb[1], 1);
     }
@@ -2012,6 +2051,12 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
         turbotmp::copy_FortranHost_to_array4(vBT_SS_HOST->data,  vBT_SS_DEV);
         turbotmp::copy_FortranHost_to_array4(vBT_NN_HOST->data,  vBT_NN_DEV);
     }
+    if (has_h_u) {
+        turbotmp::copy_FortranHost_to_array4(h_u_HOST->data, h_u_DEV);
+    }
+    if (has_h_v) {
+        turbotmp::copy_FortranHost_to_array4(h_v_HOST->data, h_v_DEV);
+    }
 
     if(verbose) amrex::Print() << "Entered: turbotmp_continuity_ppm_bridge\n";
     ///-------------------------------------------------
@@ -2067,6 +2112,8 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
                         FA_v_NN_DEV.arr,
                         vBT_SS_DEV.arr,
                         vBT_NN_DEV.arr,
+                        h_u_DEV.arr,
+                        h_v_DEV.arr,
                         du_cor_DEV.arr,
                         dv_cor_DEV.arr);
 
@@ -2104,6 +2151,12 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
         turbotmp::copy_array4_to_FortranHost(FA_v_NN_DEV, FA_v_NN_HOST->data);
         turbotmp::copy_array4_to_FortranHost(vBT_SS_DEV,  vBT_SS_HOST->data);
         turbotmp::copy_array4_to_FortranHost(vBT_NN_DEV,  vBT_NN_HOST->data);
+    }
+    if (has_h_u) {
+        turbotmp::copy_array4_to_FortranHost(h_u_DEV, h_u_HOST->data);
+    }
+    if (has_h_v) {
+        turbotmp::copy_array4_to_FortranHost(h_v_DEV, h_v_HOST->data);
     }
 
     /// Free memory from a4 containers (free_array4 on a never-allocated
@@ -2149,6 +2202,8 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST,
     turbotmp::free_array4(FA_v_NN_DEV);
     turbotmp::free_array4(vBT_SS_DEV);
     turbotmp::free_array4(vBT_NN_DEV);
+    turbotmp::free_array4(h_u_DEV);
+    turbotmp::free_array4(h_v_DEV);
 }
 
 void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST,

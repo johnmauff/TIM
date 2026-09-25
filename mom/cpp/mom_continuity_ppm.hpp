@@ -115,9 +115,8 @@ void meridional_edge_thickness(
     OceanOBC*);
 
 /**
- * @brief Meridional volume/thickness flux — PPM-reconstructed edge
- * thickness advected by the meridional velocity, scaled by viscosity
- * remnant and open-face area
+ * @brief Sets the effective interface thickness associated with the fluxes at each meridional velocity point,
+ * optionally scaling back these thicknesses to account for viscosity and fractional open areas.
  */
 void meridional_flux_thickness(
     const Box&,                  //!< Iteration box for continuity solver
@@ -139,9 +138,8 @@ void meridional_flux_thickness(
                                   //!< between 0 (bottom) and 1 (far above the bottom)
 
 /**
- * @brief Zonal volume/thickness flux — PPM-reconstructed edge
- * thickness advected by the zonal velocity, scaled by viscosity
- * remnant and open-face area
+ * @brief Sets the effective interface thickness associated with the fluxes at each zonal velocity point,
+ * optionally scaling back these thicknesses to account for viscosity and fractional open areas.
  */
 void zonal_flux_thickness(
     const Box&,                  //!< Iteration box for continuity solver
@@ -163,8 +161,7 @@ void zonal_flux_thickness(
                                   //!< between 0 (bottom) and 1 (far above the bottom)
 
 /**
- * @brief Zonal continuity update — advances layer thickness by the
- * convergence of the zonal thickness flux
+ * @brief Updates the thicknesses due to zonal thickness fluxes.
  */
 void continuity_zonal_convergence(
     const Box&,                  //!< Iteration box for continuity solver
@@ -178,8 +175,7 @@ void continuity_zonal_convergence(
     Real);                       //!< The minimum layer thickness [H ~> m or kg m-2]
 
 /**
- * @brief Meridional continuity update — advances layer thickness by the
- * convergence of the meridional thickness flux
+ * @brief Updates the thicknesses due to meridional thickness fluxes.
  */
 void continuity_meridional_convergence(
     const Box&,                  //!< Iteration box for continuity solver
@@ -193,9 +189,8 @@ void continuity_meridional_convergence(
     Real);                       //!< The minimum layer thickness [H ~> m or kg m-2]
 
 /**
- * @brief Sets the effective open face areas and barotropic-velocity
- * corrections at zonal faces as a function of barotropic flow, for use
- * by the barotropic solver's transport-adjustment iteration
+ * @brief Sets a structure that describes the zonal barotropic volume or mass fluxes as a
+ * function of barotropic flow to agree closely with the sum of the layer's transports.
  */
 void set_zonal_BT_cont(
     const Box&,                  //!< Iteration box for continuity solver
@@ -228,9 +223,8 @@ void set_zonal_BT_cont(
     Array4<const Real> const&);  //!< Fractional open area of U-faces [nondim]
 
 /**
- * @brief Sets the effective open face areas and barotropic-velocity
- * corrections at meridional faces as a function of barotropic flow, for
- * use by the barotropic solver's transport-adjustment iteration
+ * @brief Sets of a structure that describes the meridional barotropic volume or mass fluxes as a
+ * function of barotropic flow to agree closely with the sum of the layer's transports.
  */
 void set_merid_BT_cont(
     const Box&,                  //!< Iteration box for continuity solver
@@ -263,10 +257,8 @@ void set_merid_BT_cont(
     Array4<const Real> const&);  //!< Fractional open area of V-faces [nondim]
 
 /**
- * @brief Newton-iterates a barotropic velocity correction per zonal face so
- * that the vertically-summed zonal mass/volume transport matches the target
- * barotropic transport, to within the transport-adjustment iteration's
- * tolerance
+ * @brief Returns the barotropic velocity adjustment that gives the
+ * desired barotropic (layer-summed) transport.
  */
 void zonal_flux_adjust(
     const Box&,                   //!< Iteration box for continuity solver
@@ -296,10 +288,7 @@ void zonal_flux_adjust(
     OceanOBC*);                   //!< Open boundary control structure
 
 /**
- * @brief Newton-iterates a barotropic velocity correction per meridional
- * face so that the vertically-summed meridional mass/volume transport
- * matches the target barotropic transport, to within the
- * transport-adjustment iteration's tolerance
+ * @brief Returns the barotropic velocity adjustment that gives the desired barotropic (layer-summed) transport.
  */
 void meridional_flux_adjust(
     const Box&,                   //!< Iteration box for continuity solver
@@ -329,10 +318,7 @@ void meridional_flux_adjust(
     OceanOBC*);                   //!< Open boundary control structure
 
 /**
- * @brief Zonal mass/volume flux orchestrator -- computes the zonal PPM
- * transport, then (when a barotropic target transport and/or BT_cont
- * output is requested) the transport-adjustment correction via
- * zonal_flux_adjust, set_zonal_BT_cont, and zonal_flux_thickness
+ * @brief Calculates the mass or volume fluxes through the zonal faces, and other related quantities.
  */
 void zonal_mass_flux(
     const Box&,                   //!< Iteration box for continuity solver
@@ -373,15 +359,14 @@ void zonal_mass_flux(
                                    //!< may be absent (.p == nullptr)
     Array4<Real> const&,          //!< Easterly correction to the barotropic velocity;
                                    //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at zonal faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
     Array4<Real> const&);         //!< Zonal velocity increment from u that gives uhbt as the
                                    //!< depth-integrated transport [L T-1 ~> m s-1];
                                    //!< may be absent (.p == nullptr)
 
 /**
- * @brief Meridional mass/volume flux orchestrator -- computes the
- * meridional PPM transport, then (when a barotropic target transport
- * and/or BT_cont output is requested) the transport-adjustment
- * correction via meridional_flux_adjust and set_merid_BT_cont
+ * @brief Calculates the mass or volume fluxes through the meridional faces, and other related quantities.
  */
 void meridional_mass_flux(
     const Box&,                   //!< Iteration box for continuity solver
@@ -424,15 +409,15 @@ void meridional_mass_flux(
                                    //!< may be absent (.p == nullptr)
     Array4<Real> const&,          //!< Northerly correction to the barotropic velocity;
                                    //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at meridional faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
     Array4<Real> const&);         //!< Meridional velocity increment from v that gives vhbt as the
                                    //!< depth-integrated transport [L T-1 ~> m s-1];
                                    //!< may be absent (.p == nullptr)
 
 /**
- * @brief Monolithic continuity solver -- reconstructs edge thicknesses, then
- * advects (via zonal_mass_flux/meridional_mass_flux and
- * continuity_zonal_convergence/continuity_meridional_convergence) first in
- * one direction and then the other, in the order set by x_first
+ * @brief Time steps the layer thicknesses, using a monotonically limit, directionally split PPM scheme,
+ * based on Lin (1994).
  */
 void continuity_PPM(
     Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]
@@ -505,6 +490,10 @@ void continuity_PPM(
                                    //!< may be absent (.p == nullptr)
     Array4<Real> const&,          //!< Northerly correction to the barotropic velocity;
                                    //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at zonal faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
+    Array4<Real> const&,          //!< Effective thickness at meridional faces [H ~> m or kg m-2];
+                                   //!< may be absent (.p == nullptr)
     Array4<Real> const&,          //!< Zonal velocity increment from u that gives uhbt as the
                                    //!< depth-integrated transport [L T-1 ~> m s-1];
                                    //!< may be absent (.p == nullptr)
@@ -513,8 +502,7 @@ void continuity_PPM(
                                    //!< may be absent (.p == nullptr)
 
 /**
- * @brief Sums the zonal PPM transport over all layers to give the
- * barotropic (depth-integrated) zonal transport, uhbt
+ * @brief Calculates the vertically integrated mass or volume fluxes through the zonal faces.
  */
 void zonal_BT_mass_flux(
     const Box&,                   //!< Iteration box for continuity solver
@@ -533,8 +521,7 @@ void zonal_BT_mass_flux(
     Array4<const Real> const&);   //!< Fractional open area of U-faces [nondim]
 
 /**
- * @brief Sums the meridional PPM transport over all layers to give the
- * barotropic (depth-integrated) meridional transport, vhbt
+ * @brief Calculates the vertically integrated mass or volume fluxes through the meridional faces.
  */
 void meridional_BT_mass_flux(
     const Box&,                   //!< Iteration box for continuity solver
@@ -553,9 +540,10 @@ void meridional_BT_mass_flux(
     Array4<const Real> const&);   //!< Fractional open area of V-faces [nondim]
 
 /**
- * @brief Reconstructs zonal and meridional edge thicknesses, then computes
- * the barotropic (depth-integrated) zonal and meridional transports uhbt
- * and vhbt via zonal_BT_mass_flux and meridional_BT_mass_flux
+ * @brief Find the vertical sum of the thickness fluxes from the continuity solver without actually
+ * updating the layer thicknesses.  Because the fluxes in the two directions are calculated
+ * based on the input thicknesses, which are not updated between the directions, the fluxes
+ * returned here are not the same as those that would be returned by a call to continuity.
  */
 void continuity_PPM_2d_fluxes(
     Array4<const Real> const&,    //!< Zonal velocity [L T-1 ~> m s-1]

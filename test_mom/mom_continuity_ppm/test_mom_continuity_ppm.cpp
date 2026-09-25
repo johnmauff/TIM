@@ -21,13 +21,6 @@ using test_mom::to_host_fab;
 
 namespace {
 
-// Binds a "<field>_before" / "<field>_after" in/out array pair that the
-// Fortran shim only captures when the corresponding container was
-// associated at capture time (may be null-encoded or missing entirely --
-// CapturedFile::is_associated() checks both). When absent, `arr` is left
-// default-constructed (Array4<Real>{}, a null pointer), matching the
-// kernel's own "may be absent (.p == nullptr)" parameter convention;
-// `present` gates whether the post-call assertion runs at all.
 struct OptionalInOutArray {
     amrex::FArrayBox before_fab;
     amrex::FArrayBox after_fab;
@@ -148,22 +141,7 @@ TEST(PpmLimitCw84, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // meridional_edge_thickness
 // -------------------------------------------------------------------------
-//
-// No capture/meridional_edge_thickness.{bin,meta} fixture exists yet, so
-// this test's field mapping is grounded directly in Fortran source (not a
-// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:1870-1966,
-// the meridional_edge_thickness shim's TIMH_capture arm (rec%add(...)
-// calls at lines 1914-1922 and 1931-1932). Cross-checked against the
-// bind(C) interface (lines 136-153) and against
-// turbotmp_meridional_edge_thickness_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all three agree.
-//
-// MOM::meridional_edge_thickness(bxC, h_in, h_S, h_N, mask2dT, h_min,
-//                                upwind_1st, monotonic, simple_2nd, obc)
-// internally branches on upwind_1st between a 1st-order upwind copy and a
-// full PPM_reconstruction_y call; whichever fixture is eventually captured
-// will exercise only whichever branch was live at record time. OBC is
-// never captured -- pass nullptr, matching the existing
+// OBC is never captured -- pass nullptr, matching the existing
 // PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(MeridionalEdgeThickness, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "meridional_edge_thickness");
@@ -199,22 +177,7 @@ TEST(MeridionalEdgeThickness, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // zonal_edge_thickness
 // -------------------------------------------------------------------------
-//
-// No capture/zonal_edge_thickness.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a
-// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:1737-1833,
-// the zonal_edge_thickness shim's TIMH_capture arm (rec%add(...) calls at
-// lines 1781-1789 and 1798-1799). Cross-checked against the bind(C)
-// interface (lines 113-131) and against
-// turbotmp_zonal_edge_thickness_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all three agree.
-//
-// MOM::zonal_edge_thickness(bxC, h_in, h_W, h_E, mask2dT, h_min,
-//                           upwind_1st, monotonic, simple_2nd, obc)
-// internally branches on upwind_1st between a 1st-order upwind copy and a
-// full PPM_reconstruction_x call; whichever fixture is eventually captured
-// will exercise only whichever branch was live at record time. OBC is
-// never captured -- pass nullptr, matching the existing
+// OBC is never captured -- pass nullptr, matching the existing
 // PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ZonalEdgeThickness, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "zonal_edge_thickness");
@@ -250,22 +213,6 @@ TEST(ZonalEdgeThickness, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // zonal_flux_thickness
 // -------------------------------------------------------------------------
-//
-// No capture/zonal_flux_thickness.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a
-// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:3023-3142,
-// the zonal_flux_thickness shim's TIMH_capture arm (rec%add(...) calls at
-// lines 3084-3097 and 3105). Cross-checked against the bind(C) interface
-// (lines 337-375) and against turbotmp_zonal_flux_thickness_bridge's
-// parameter order in mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all
-// three agree.
-//
-// MOM::zonal_flux_thickness(bxC, u, h, h_W, h_E, h_u, dt, dy_Cu, IareaT,
-//                           IdxT, vol_CFL, marginal, obc, por_face_areaU,
-//                           visc_rem_u)
-// h_W/h_E are pure inputs here (only h_u is modified). visc_rem_u is
-// recorded by the Fortran shim only when associated, so a fixture
-// captured with it unassociated would be missing the _visc_rem_u field.
 // OBC is never captured -- pass nullptr, matching the existing
 // PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ZonalFluxThickness, MatchesFortranCapture) {
@@ -285,8 +232,6 @@ TEST(ZonalFluxThickness, MatchesFortranCapture) {
     const bool   vol_CFL         = captured.logical("_vol_CFL");
     const bool   marginal        = captured.logical("_marginal");
     const auto   por_face_areaU  = captured.fab_device("_por_face_areaU");
-    // _visc_rem_u is captured only when associated -- may be absent
-    // entirely from this fixture.
     amrex::FArrayBox visc_rem_u_fab;
     amrex::Array4<const amrex::Real> visc_rem_u{};
     if (captured.is_associated("_visc_rem_u")) {
@@ -317,21 +262,6 @@ TEST(ZonalFluxThickness, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // continuity_meridional_convergence
 // -------------------------------------------------------------------------
-//
-// No capture/continuity_meridional_convergence.{bin,meta} fixture exists
-// yet, so this test's field mapping is grounded directly in Fortran source
-// (not a .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:1626-1700,
-// the continuity_meridional_convergence shim's TIMH_capture arm (rec%add(...)
-// calls at lines 1665-1671 and 1677). Cross-checked against the bind(C)
-// interface (lines 176-193) -- both agree.
-//
-// MOM::continuity_meridional_convergence(bxC, h, vh, dt, IareaT, hin, h_min)
-// advances h in place by the convergence of the meridional thickness flux.
-// hin is recorded unconditionally by the shim (unlike visc_rem_u/v in the
-// flux-thickness kernels), but the Fortran source itself allows hin to be
-// unassociated -- if the captured call site had it that way, this fixture's
-// _hin field will be empty and CapturedFile::fab_device("_hin") will throw
-// rather than silently misbehave.
 TEST(ContinuityMeridionalConvergence, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "continuity_meridional_convergence");
 
@@ -342,8 +272,6 @@ TEST(ContinuityMeridionalConvergence, MatchesFortranCapture) {
     const double dt      = captured.real64("_dt");
     const auto   IareaT  = captured.fab_device("_IareaT");
     const double h_min   = captured.real64("_h_min");
-    // _hin is captured unconditionally but may still be null-encoded
-    // (Fortran container unassociated at capture time).
     amrex::FArrayBox hin_fab;
     amrex::Array4<const amrex::Real> hin{};
     if (captured.is_associated("_hin")) {
@@ -366,21 +294,6 @@ TEST(ContinuityMeridionalConvergence, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // continuity_zonal_convergence
 // -------------------------------------------------------------------------
-//
-// No capture/continuity_zonal_convergence.{bin,meta} fixture exists yet, so
-// this test's field mapping is grounded directly in Fortran source (not a
-// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:1504-1578,
-// the continuity_zonal_convergence shim's TIMH_capture arm (rec%add(...)
-// calls at lines 1543-1549 and 1555). Cross-checked against the bind(C)
-// interface (lines 158-172) -- both agree.
-//
-// MOM::continuity_zonal_convergence(bxC, h, uh, dt, IareaT, hin, h_min)
-// advances h in place by the convergence of the zonal thickness flux. hin
-// is recorded unconditionally by the shim (unlike visc_rem_u/v in the
-// flux-thickness kernels), but the Fortran source itself allows hin to be
-// unassociated -- if the captured call site had it that way, this fixture's
-// _hin field will be empty and CapturedFile::fab_device("_hin") will throw
-// rather than silently misbehave.
 TEST(ContinuityZonalConvergence, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "continuity_zonal_convergence");
 
@@ -391,8 +304,6 @@ TEST(ContinuityZonalConvergence, MatchesFortranCapture) {
     const double dt      = captured.real64("_dt");
     const auto   IareaT  = captured.fab_device("_IareaT");
     const double h_min   = captured.real64("_h_min");
-    // _hin is captured unconditionally but may still be null-encoded
-    // (Fortran container unassociated at capture time).
     amrex::FArrayBox hin_fab;
     amrex::Array4<const amrex::Real> hin{};
     if (captured.is_associated("_hin")) {
@@ -415,22 +326,6 @@ TEST(ContinuityZonalConvergence, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // set_merid_BT_cont
 // -------------------------------------------------------------------------
-//
-// No capture/set_merid_bt_cont.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a .meta
-// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:5564-5724, the
-// set_merid_BT_cont shim's TIMH_capture arm (rec%add(...) calls at lines
-// 5637-5662 and 5671-5676). Cross-checked against the bind(C) interface and
-// against turbotmp_set_merid_bt_cont_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all three agree.
-//
-// MOM::set_merid_BT_cont computes the effective open face areas and
-// barotropic-velocity corrections at meridional faces as a function of
-// barotropic flow, for use by the barotropic solver's transport-adjustment
-// iteration. do_I is captured as a LogicalArray_t, read here via
-// int_fab_device() into an amrex::IArrayBox. Only CS.vol_CFL is captured --
-// the kernel reads no other transport_adjust_CS_C field, so the rest of CS
-// is left default-initialized.
 TEST(SetMeridBtCont, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "set_merid_bt_cont");
 
@@ -507,22 +402,6 @@ TEST(SetMeridBtCont, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // set_zonal_BT_cont
 // -------------------------------------------------------------------------
-//
-// No capture/set_zonal_bt_cont.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a .meta
-// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:3724-3883, the
-// set_zonal_BT_cont shim's TIMH_capture arm (rec%add(...) calls at lines
-// 3796-3821 and 3830-3835). Cross-checked against the bind(C) interface and
-// against turbotmp_set_zonal_bt_cont_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all three agree.
-//
-// MOM::set_zonal_BT_cont computes the effective open face areas and
-// barotropic-velocity corrections at zonal faces as a function of
-// barotropic flow, for use by the barotropic solver's transport-adjustment
-// iteration. do_I is captured as a LogicalArray_t, read here via
-// int_fab_device() into an amrex::IArrayBox. Only CS.vol_CFL is captured --
-// the kernel reads no other transport_adjust_CS_C field, so the rest of CS
-// is left default-initialized.
 TEST(SetZonalBtCont, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "set_zonal_bt_cont");
 
@@ -599,27 +478,8 @@ TEST(SetZonalBtCont, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // meridional_flux_adjust
 // -------------------------------------------------------------------------
-//
-// No capture/meridional_flux_adjust.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a .meta
-// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:5210-5362, the
-// meridional_flux_adjust shim's TIMH_capture arm (rec%add(...) calls at
-// lines 5283-5305 and 5313-5314). Cross-checked against the bind(C)
-// interface and against turbotmp_meridional_flux_adjust_bridge's parameter
-// order in mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
-//
-// MOM::meridional_flux_adjust Newton-iterates a barotropic velocity
-// correction per meridional face so that the vertically-summed meridional
-// mass/volume transport matches the target barotropic transport, to within
-// the transport-adjustment iteration's tolerance. _tol_eta/_tol_vel/
-// _better_iter/_vol_CFL are the only transport_adjust_CS_C fields this
-// kernel reads, and are the only ones the shim captures; the rest of CS is
-// left default-initialized. do_I_in is captured as a LogicalArray_t, read
-// via int_fab_device(). vhbt/vh_3d are captured only when associated at
-// record time -- a fixture recorded with either unassociated would be
-// missing the corresponding field(s). obc is never captured -- pass
-// nullptr, matching the existing PPM_reconstruction_x/_y tests
-// (OBC-inactive configs only).
+// OBC is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "meridional_flux_adjust");
 
@@ -646,9 +506,6 @@ TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
     const auto   visc_rem         = captured.fab_device("_visc_rem");
     const auto   do_I_in          = captured.int_fab_device("_do_I_in");
     const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
-    // _vhbt is captured unconditionally but may still be null-encoded
-    // (Fortran container unassociated at capture time); _vh_3d is an
-    // optional in/out output captured only when associated.
     amrex::FArrayBox vhbt_fab;
     amrex::Array4<const amrex::Real> vhbt{};
     if (captured.is_associated("_vhbt")) {
@@ -687,27 +544,7 @@ TEST(MeridionalFluxAdjust, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // zonal_flux_adjust
 // -------------------------------------------------------------------------
-//
-// No capture/zonal_flux_adjust.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a .meta
-// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:3371-3526, the
-// zonal_flux_adjust shim's TIMH_capture arm (rec%add(...) calls at lines
-// 3447-3469 and 3477-3478). Cross-checked against the bind(C) interface and
-// against turbotmp_zonal_flux_adjust_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
-//
-// MOM::zonal_flux_adjust Newton-iterates a barotropic velocity correction
-// per zonal face so that the vertically-summed zonal mass/volume transport
-// matches the target barotropic transport, to within the
-// transport-adjustment iteration's tolerance. _tol_eta/_tol_vel/
-// _better_iter/_vol_CFL are the only transport_adjust_CS_C fields this
-// kernel reads, and are the only ones the shim captures; the rest of CS is
-// left default-initialized. do_I_in is captured as a LogicalArray_t, read
-// via int_fab_device(). uhbt/uh_3d may both be absent at record time --
-// uhbt is captured unconditionally but may be null-encoded, while uh_3d
-// (an optional in/out output) is missing entirely from the fixture when
-// unassociated; is_associated()/bind_optional_inout() handle both cases.
-// obc is never captured -- pass nullptr, matching the existing
+// OBC is never captured -- pass nullptr, matching the existing
 // PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ZonalFluxAdjust, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "zonal_flux_adjust");
@@ -735,9 +572,6 @@ TEST(ZonalFluxAdjust, MatchesFortranCapture) {
     const auto   visc_rem         = captured.fab_device("_visc_rem");
     const auto   do_I_in          = captured.int_fab_device("_do_I_in");
     const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
-    // _uhbt is captured unconditionally but may still be null-encoded
-    // (Fortran container unassociated at capture time); _uh_3d is an
-    // optional in/out output captured only when associated.
     amrex::FArrayBox uhbt_fab;
     amrex::Array4<const amrex::Real> uhbt{};
     if (captured.is_associated("_uhbt")) {
@@ -776,29 +610,7 @@ TEST(ZonalFluxAdjust, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // meridional_mass_flux
 // -------------------------------------------------------------------------
-//
-// No capture/meridional_mass_flux.{bin,meta} fixture exists yet, so this
-// test's field mapping is grounded directly in Fortran source (not a .meta
-// file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:4290-4502, the
-// meridional_mass_flux shim's TIMH_capture arm (rec%add(...) calls at lines
-// 4383-4417 and 4427-4437). Cross-checked against the bind(C) interface and
-// against turbotmp_meridional_mass_flux_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
-//
-// MOM::meridional_mass_flux is the orchestrator that computes the
-// meridional PPM transport vh, then -- when vhbt/BT_cont output is
-// requested -- the transport-adjustment correction via
-// meridional_flux_adjust and set_merid_BT_cont. _isd/_ied are Fortran
-// 1-based data-domain i-bounds; the bridge normally converts these to
-// 0-based before calling the kernel, so this test does the same
-// subtraction directly. _vhbt/_visc_rem_v are captured unconditionally by
-// the shim (unlike v_cor/dv_cor/the six FA_v_*/vBT_* fields, which are
-// captured only when associated). _CFL_limit_adjust/_aggress_adjust/
-// _vol_CFL/_use_visc_rem_max/_marginal_faces are the transport_adjust_CS_C
-// fields the shim captures; the kernel itself does not read marginal_faces
-// (that would only matter for the BT_cont%h_v/meridional_flux_thickness
-// tail, which is out of scope -- see the kernel's own source comment). obc
-// is never captured -- pass nullptr, matching the existing
+// OBC is never captured -- pass nullptr, matching the existing
 // PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(MeridionalMassFlux, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "meridional_mass_flux");
@@ -828,8 +640,6 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
     CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
     CS.marginal_faces             = captured.logical("_marginal_faces");
     const auto   por_face_areaV   = captured.fab_device("_por_face_areaV");
-    // _vhbt/_visc_rem_v are captured unconditionally but may still be
-    // null-encoded (Fortran container unassociated at capture time).
     amrex::FArrayBox vhbt_fab, visc_rem_v_fab;
     amrex::Array4<const amrex::Real> vhbt{}, visc_rem_v{};
     if (captured.is_associated("_vhbt")) {
@@ -840,9 +650,6 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
         visc_rem_v_fab = captured.fab_device("_visc_rem_v");
         visc_rem_v = visc_rem_v_fab.const_array();
     }
-    // _v_cor/_FA_v_*/_vBT_*/_dv_cor are all part of the same optional
-    // transport-adjustment output (may be absent -- see kernel header)
-    // that _vhbt/_visc_rem_v also belong to.
     auto v_cor  = bind_optional_inout(captured, "v_cor");
     auto FA_v_S0 = bind_optional_inout(captured, "FA_v_S0");
     auto FA_v_N0 = bind_optional_inout(captured, "FA_v_N0");
@@ -850,6 +657,7 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
     auto FA_v_NN = bind_optional_inout(captured, "FA_v_NN");
     auto vBT_SS  = bind_optional_inout(captured, "vBT_SS");
     auto vBT_NN  = bind_optional_inout(captured, "vBT_NN");
+    auto h_v     = bind_optional_inout(captured, "h_v");
     auto dv_cor  = bind_optional_inout(captured, "dv_cor");
 
     MOM::meridional_mass_flux(bxC,
@@ -881,6 +689,7 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
                               FA_v_NN.arr,
                               vBT_SS.arr,
                               vBT_NN.arr,
+                              h_v.arr,
                               dv_cor.arr);
     amrex::Gpu::synchronize();
 
@@ -892,33 +701,15 @@ TEST(MeridionalMassFlux, MatchesFortranCapture) {
     if (FA_v_NN.present) expect_arrays_equal(FA_v_NN.after_fab, to_host_fab(FA_v_NN.before_fab), "FA_v_NN");
     if (vBT_SS.present)  expect_arrays_equal(vBT_SS.after_fab,  to_host_fab(vBT_SS.before_fab),  "vBT_SS");
     if (vBT_NN.present)  expect_arrays_equal(vBT_NN.after_fab,  to_host_fab(vBT_NN.before_fab),  "vBT_NN");
+    if (h_v.present)     expect_arrays_equal(h_v.after_fab,     to_host_fab(h_v.before_fab),     "h_v");
     if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
 }
 
 // -------------------------------------------------------------------------
 // zonal_mass_flux
 // -------------------------------------------------------------------------
-//
-// No capture/zonal_mass_flux.{bin,meta} fixture exists yet, so this test's
-// field mapping is grounded directly in Fortran source (not a .meta file):
-// submodules/MOM6/src/core/MOM_continuity_PPM.F90:2371-2570, the
-// zonal_mass_flux shim's TIMH_capture arm (rec%add(...) calls at lines
-// 2455-2487 and 2496-2506). Cross-checked against the bind(C) interface
-// and against turbotmp_zonal_mass_flux_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
-//
-// MOM::zonal_mass_flux is the orchestrator that computes the zonal PPM
-// transport uh, then -- when uhbt/BT_cont output is requested -- the
-// transport-adjustment correction via zonal_flux_adjust and
-// set_zonal_BT_cont. _uhbt/_visc_rem_u are captured unconditionally by
-// the shim (unlike u_cor/du_cor/the six FA_u_*/uBT_* fields, which are
-// captured only when associated). _CFL_limit_adjust/_aggress_adjust/
-// _vol_CFL/_use_visc_rem_max/_marginal_faces are the transport_adjust_CS_C
-// fields the shim captures; the kernel itself does not read
-// marginal_faces (that would only matter for the BT_cont%h_u/
-// zonal_flux_thickness tail, which is out of scope -- see the kernel's
-// own source comment). obc is never captured -- pass nullptr, matching
-// the existing PPM_reconstruction_x/_y tests (OBC-inactive configs only).
+// OBC is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ZonalMassFlux, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "zonal_mass_flux");
 
@@ -945,8 +736,6 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
     CS.use_visc_rem_max           = captured.logical("_use_visc_rem_max");
     CS.marginal_faces             = captured.logical("_marginal_faces");
     const auto   por_face_areaU   = captured.fab_device("_por_face_areaU");
-    // _uhbt/_visc_rem_u are captured unconditionally but may still be
-    // null-encoded (Fortran container unassociated at capture time).
     amrex::FArrayBox uhbt_fab, visc_rem_u_fab;
     amrex::Array4<const amrex::Real> uhbt{}, visc_rem_u{};
     if (captured.is_associated("_uhbt")) {
@@ -957,9 +746,6 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
         visc_rem_u_fab = captured.fab_device("_visc_rem_u");
         visc_rem_u = visc_rem_u_fab.const_array();
     }
-    // _u_cor/_FA_u_*/_uBT_*/_du_cor are all part of the same optional
-    // transport-adjustment output (may be absent -- see kernel header)
-    // that _uhbt/_visc_rem_u also belong to.
     auto u_cor  = bind_optional_inout(captured, "u_cor");
     auto FA_u_W0 = bind_optional_inout(captured, "FA_u_W0");
     auto FA_u_E0 = bind_optional_inout(captured, "FA_u_E0");
@@ -967,6 +753,7 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
     auto FA_u_EE = bind_optional_inout(captured, "FA_u_EE");
     auto uBT_WW  = bind_optional_inout(captured, "uBT_WW");
     auto uBT_EE  = bind_optional_inout(captured, "uBT_EE");
+    auto h_u     = bind_optional_inout(captured, "h_u");
     auto du_cor  = bind_optional_inout(captured, "du_cor");
 
     MOM::zonal_mass_flux(bxC,
@@ -996,6 +783,7 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
                          FA_u_EE.arr,
                          uBT_WW.arr,
                          uBT_EE.arr,
+                         h_u.arr,
                          du_cor.arr);
     amrex::Gpu::synchronize();
 
@@ -1007,35 +795,15 @@ TEST(ZonalMassFlux, MatchesFortranCapture) {
     if (FA_u_EE.present) expect_arrays_equal(FA_u_EE.after_fab, to_host_fab(FA_u_EE.before_fab), "FA_u_EE");
     if (uBT_WW.present)  expect_arrays_equal(uBT_WW.after_fab,  to_host_fab(uBT_WW.before_fab),  "uBT_WW");
     if (uBT_EE.present)  expect_arrays_equal(uBT_EE.after_fab,  to_host_fab(uBT_EE.before_fab),  "uBT_EE");
+    if (h_u.present)     expect_arrays_equal(h_u.after_fab,     to_host_fab(h_u.before_fab),     "h_u");
     if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
 }
 
 // -------------------------------------------------------------------------
 // continuity_PPM
 // -------------------------------------------------------------------------
-//
-// No capture/continuity_ppm.{bin,meta} fixture exists yet, so this test's
-// field mapping is grounded directly in Fortran source (not a .meta file):
-// submodules/MOM6/src/core/MOM_continuity_PPM.F90:1148-1467, the
-// continuity_PPM shim's TIMH_capture arm (rec%add(...) calls at lines
-// 1278-1339 and 1350-1370). Cross-checked against the bind(C) interface
-// and against turbotmp_continuity_ppm_bridge's parameter order in
-// mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp -- all agree.
-//
-// MOM::continuity_PPM is the monolithic continuity solver: reconstructs
-// edge thicknesses, then advects first in one direction and then the
-// other (order set by x_first), via zonal_mass_flux/meridional_mass_flux
-// and continuity_zonal_convergence/continuity_meridional_convergence.
-// _isd/_ied are Fortran 1-based data-domain i-bounds; the bridge normally
-// converts these to 0-based before calling the kernel, so this test does
-// the same subtraction directly. Every field of both reconstruction_CS_C
-// (upwind_1st/monotonic/simple_2nd) and transport_adjust_CS_C (the
-// remaining 8 fields) is captured here, unlike some of the leaf kernels'
-// fixtures. uhbt/vhbt/visc_rem_u/visc_rem_v are captured unconditionally;
-// u_cor/v_cor/du_cor/dv_cor and the twelve FA_u_*/uBT_*/FA_v_*/vBT_*
-// fields are captured only when associated. obc is never captured -- pass
-// nullptr, matching the existing PPM_reconstruction_x/_y tests
-// (OBC-inactive configs only).
+// OBC is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(ContinuityPPM, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "continuity_ppm");
 
@@ -1084,9 +852,6 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     transport_adjust_CS.marginal_faces   = captured.logical("_marginal_faces");
     const auto   por_face_areaU    = captured.fab_device("_por_face_areaU");
     const auto   por_face_areaV    = captured.fab_device("_por_face_areaV");
-    // _uhbt/_vhbt/_visc_rem_u/_visc_rem_v are captured unconditionally but
-    // may still be null-encoded (Fortran container unassociated at capture
-    // time).
     amrex::FArrayBox uhbt_fab, vhbt_fab, visc_rem_u_fab, visc_rem_v_fab;
     amrex::Array4<const amrex::Real> uhbt{}, vhbt{}, visc_rem_u{}, visc_rem_v{};
     if (captured.is_associated("_uhbt")) {
@@ -1105,10 +870,6 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
         visc_rem_v_fab = captured.fab_device("_visc_rem_v");
         visc_rem_v = visc_rem_v_fab.const_array();
     }
-    // _u_cor/_v_cor/_FA_u_*/_FA_v_*/_uBT_*/_vBT_*/_du_cor/_dv_cor are all
-    // part of the same optional transport-adjustment output (may be
-    // absent -- see kernel header) that _uhbt/_vhbt/_visc_rem_u/
-    // _visc_rem_v also belong to.
     auto u_cor  = bind_optional_inout(captured, "u_cor");
     auto v_cor  = bind_optional_inout(captured, "v_cor");
     auto FA_u_W0 = bind_optional_inout(captured, "FA_u_W0");
@@ -1123,6 +884,8 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     auto FA_v_NN = bind_optional_inout(captured, "FA_v_NN");
     auto vBT_SS  = bind_optional_inout(captured, "vBT_SS");
     auto vBT_NN  = bind_optional_inout(captured, "vBT_NN");
+    auto h_u     = bind_optional_inout(captured, "h_u");
+    auto h_v     = bind_optional_inout(captured, "h_v");
     auto du_cor  = bind_optional_inout(captured, "du_cor");
     auto dv_cor  = bind_optional_inout(captured, "dv_cor");
 
@@ -1176,6 +939,8 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
                         FA_v_NN.arr,
                         vBT_SS.arr,
                         vBT_NN.arr,
+                        h_u.arr,
+                        h_v.arr,
                         du_cor.arr,
                         dv_cor.arr);
     amrex::Gpu::synchronize();
@@ -1197,6 +962,8 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
     if (FA_v_NN.present) expect_arrays_equal(FA_v_NN.after_fab, to_host_fab(FA_v_NN.before_fab), "FA_v_NN");
     if (vBT_SS.present)  expect_arrays_equal(vBT_SS.after_fab,  to_host_fab(vBT_SS.before_fab),  "vBT_SS");
     if (vBT_NN.present)  expect_arrays_equal(vBT_NN.after_fab,  to_host_fab(vBT_NN.before_fab),  "vBT_NN");
+    if (h_u.present)     expect_arrays_equal(h_u.after_fab,     to_host_fab(h_u.before_fab),     "h_u");
+    if (h_v.present)     expect_arrays_equal(h_v.after_fab,     to_host_fab(h_v.before_fab),     "h_v");
     if (du_cor.present) expect_arrays_equal(du_cor.after_fab, to_host_fab(du_cor.before_fab), "du_cor");
     if (dv_cor.present) expect_arrays_equal(dv_cor.after_fab, to_host_fab(dv_cor.before_fab), "dv_cor");
 }
@@ -1204,23 +971,8 @@ TEST(ContinuityPPM, MatchesFortranCapture) {
 // -------------------------------------------------------------------------
 // meridional_flux_thickness
 // -------------------------------------------------------------------------
-//
-// No capture/meridional_flux_thickness.{bin,meta} fixture exists yet, so
-// this test's field mapping is grounded directly in Fortran source (not a
-// .meta file): submodules/MOM6/src/core/MOM_continuity_PPM.F90:5292-5411,
-// the meridional_flux_thickness shim's TIMH_capture arm (rec%add(...)
-// calls at lines 5352-5365 and 5373). Cross-checked against the bind(C)
-// interface and against turbotmp_meridional_flux_thickness_bridge's
-// parameter order in mom/cpp/turbotmp_mom_continuity_ppm_bridge.cpp --
-// all three agree.
-//
-// MOM::meridional_flux_thickness computes the effective thickness at
-// meridional faces, scaled down to account for the effects of viscosity
-// and the fractional open area. visc_rem_v is recorded by the Fortran
-// shim only when associated, so a fixture captured with it unassociated
-// would be missing the _visc_rem_v field. OBC is never captured -- pass
-// nullptr, matching the existing PPM_reconstruction_x/_y tests
-// (OBC-inactive configs only).
+// OBC is never captured -- pass nullptr, matching the existing
+// PPM_reconstruction_x/_y tests (OBC-inactive configs only).
 TEST(MeridionalFluxThickness, MatchesFortranCapture) {
     test_mom::CapturedFile captured(test_mom::data_dir / "meridional_flux_thickness");
 
@@ -1238,8 +990,6 @@ TEST(MeridionalFluxThickness, MatchesFortranCapture) {
     const bool   vol_CFL         = captured.logical("_vol_CFL");
     const bool   marginal        = captured.logical("_marginal");
     const auto   por_face_areaV  = captured.fab_device("_por_face_areaV");
-    // _visc_rem_v is captured only when associated -- may be absent
-    // entirely from this fixture.
     amrex::FArrayBox visc_rem_v_fab;
     amrex::Array4<const amrex::Real> visc_rem_v{};
     if (captured.is_associated("_visc_rem_v")) {

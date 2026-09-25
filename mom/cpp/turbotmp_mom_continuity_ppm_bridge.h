@@ -109,7 +109,7 @@ void turbotmp_zonal_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* u
                         const RealArray_C* visc_rem_u_HOST, RealArray_C* u_cor_HOST,
                         RealArray_C* FA_u_W0_HOST, RealArray_C* FA_u_E0_HOST, RealArray_C* FA_u_WW_HOST,
                         RealArray_C* FA_u_EE_HOST, RealArray_C* uBT_WW_HOST, RealArray_C* uBT_EE_HOST,
-                        RealArray_C* du_cor_HOST);
+                        RealArray_C* h_u_HOST, RealArray_C* du_cor_HOST);
 void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* v_HOST,
                         const RealArray_C* h_in_HOST, const RealArray_C* h_S_HOST, const RealArray_C* h_N_HOST,
                         RealArray_C* vh_HOST, const double dt, const RealArray_C* dx_Cv_HOST,
@@ -122,7 +122,7 @@ void turbotmp_meridional_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray
                         const RealArray_C* visc_rem_v_HOST, RealArray_C* v_cor_HOST,
                         RealArray_C* FA_v_S0_HOST, RealArray_C* FA_v_N0_HOST, RealArray_C* FA_v_SS_HOST,
                         RealArray_C* FA_v_NN_HOST, RealArray_C* vBT_SS_HOST, RealArray_C* vBT_NN_HOST,
-                        RealArray_C* dv_cor_HOST);
+                        RealArray_C* h_v_HOST, RealArray_C* dv_cor_HOST);
 void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST, const RealArray_C* v_HOST,
                         const RealArray_C* hin_HOST, RealArray_C* h_HOST, RealArray_C* uh_HOST,
                         RealArray_C* vh_HOST, const double dt, const Box_C* bx0_HOST,
@@ -144,6 +144,7 @@ void turbotmp_continuity_ppm_bridge(const RealArray_C* u_HOST, const RealArray_C
                         RealArray_C* FA_u_EE_HOST, RealArray_C* uBT_WW_HOST, RealArray_C* uBT_EE_HOST,
                         RealArray_C* FA_v_S0_HOST, RealArray_C* FA_v_N0_HOST, RealArray_C* FA_v_SS_HOST,
                         RealArray_C* FA_v_NN_HOST, RealArray_C* vBT_SS_HOST, RealArray_C* vBT_NN_HOST,
+                        RealArray_C* h_u_HOST, RealArray_C* h_v_HOST,
                         RealArray_C* du_cor_HOST, RealArray_C* dv_cor_HOST);
 void turbotmp_zonal_bt_mass_flux_bridge(const Box_C* bxC_HOST, const RealArray_C* u_HOST,
                         const RealArray_C* h_in_HOST, const RealArray_C* h_W_HOST, const RealArray_C* h_E_HOST,

@@ -365,6 +365,30 @@ PR #8's ~30 commits surface the friction worth flagging:
    mode — and select between two separate `ParallelFor` calls with a
    single `if/else` at the box level before the loop. This eliminates
    the divergent branch from every GPU thread. (Lesson from PR #11.)
+10. **A Fortran output with no bridge channel.** `zonal_mass_flux`'s
+    Fortran body ends by writing `BT_cont%h_u` via
+    `zonal_flux_thickness`, but its `bind(C)` interface carried only
+    the six `FA_u_*`/`uBT_*` BT_cont fields. The C++ port noticed and
+    left a source comment calling `h_u` "out of scope" because the
+    bridge "does not currently expose an h_u channel" — consistent with
+    this skill's no-Fortran-edits rule, but the gap was never reported
+    back, so AMReX mode silently returned a stale `h_u`. A missing
+    channel is a bridge-contract bug on the MOM6 side: stop and report
+    it (SKILL.md Step 3) rather than documenting it in code.
+11. **An orchestrator skipping a shim's argument transformation.**
+    `continuity_PPM_fortran` calls `zonal_edge_thickness(..., Angstrom_H,
+    ...)`; that shim computes `h_min = 2.0 * Angstrom_H` and passes the
+    doubled value to its bridge and `_fortran` worker. The C++
+    `MOM::continuity_PPM` called `MOM::zonal_edge_thickness` directly
+    with `Angstrom_H`, so the PPM reconstruction ran with half the
+    minimum thickness (`continuity_PPM_2d_fluxes` had the same bug).
+    Every leaf kernel matched Fortran bit-for-bit when run individually
+    — each shim still did its own doubling — and only
+    `CONTINUITY_PPM_MODE=AMREX` diverged, and only where an edge value
+    reached the thickness floor. Fix: for every callee the C++
+    orchestrator invokes directly, read the callee's Fortran shim and
+    reproduce each scaled, derived, or defaulted argument (SKILL.md
+    Step 6).
 
 ---
 
